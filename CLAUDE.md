@@ -20,6 +20,24 @@ Next.js app (`tavus-avatar/`) for an AWS Summit Sydney booth demo. Real-time con
 ## Environment Variables
 - `TAVUS_API_KEY` - API key for Tavus
 - `TAVUS_PERSONA_ID` - Default persona ID. **For Pipecat integrations, always use `pipecat-stream`** — this is a special Tavus persona (pipeline_mode: echo) that disables Tavus's own greeting and LLM, letting Pipecat handle all AI orchestration. It will NOT appear in `GET /v2/personas` list but is valid and available on all accounts.
+- `EVENT_CONFIG` - Directory name under `prompts/` (default `aws-summit-mumbai-2026`). Selects the system prompt (`prompts/<event>/system-instruction.md`) and greeting (`prompts/<event>/greeting.md`, falls back to the AWS Summit Sydney greeting if absent). Forwarded into the client bundle via `next.config.ts`'s `env` field, so `src/lib/content-items.ts` and `src/lib/persona-tools.ts` can also branch on it (see `src/lib/event.ts`).
+
+## Digital Finance Manager event (`EVENT_CONFIG=digital-finance-manager`)
+A second persona alongside the AWS booth demo: an F&I finance-manager voice agent that walks a
+customer through GAP/VSC/warranty/maintenance pricing and a payment breakdown instead of AWS
+content/schedule. Same app, same Daily/Tavus plumbing — only the prompt, tools, and content panels
+differ, selected via `isFinanceEvent()` in `src/lib/event.ts`.
+- `prompts/digital-finance-manager/system-instruction.md` - placeholder F&I script; replace with
+  the dealership's approved script before customer use (see file header).
+- `src/lib/persona-tools.ts` - `show_pricing({product})` and `show_payment_breakdown()` replace
+  `show_content`/`show_schedule` for this event.
+- `src/app/content/pricing-{gap,vsc,warranty,maintenance}/page.tsx`, `payment-breakdown/page.tsx` -
+  the panels those tools display; GAP/VSC prices are real placeholders from the build guide,
+  warranty/maintenance are marked `placeholder` and need real dealership numbers.
+- `scripts/create-finance-persona.ps1` - one-time persona creation (stock replica + system prompt),
+  reads keys from `.env.local` so they never need to be typed into a command.
+- One-time after creating the persona: `POST /api/persona/setup-tools` and
+  `POST /api/persona/sync-prompt` to push the tools/prompt above onto it.
 
 ## Architecture
 - Frontend creates conversation via Next.js API route -> Tavus API

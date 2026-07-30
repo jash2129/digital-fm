@@ -1,0 +1,1 @@
+Just want to let you know, first of all, this transaction is recorded audio and video for insurance purposes. Also, I'm required by the law to disclose all the information with you before you sign any paperwork. So it's very important to make sure that you understand everything first before you sign. Is that okay?

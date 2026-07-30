@@ -16,6 +16,7 @@ import {
   resolveContentItemKey,
   type ContentItemKey,
 } from "@/lib/content-items";
+import { isFinanceEvent } from "@/lib/event";
 import { getCustomTavusLlmConfig } from "@/lib/tavus-custom-llms";
 import type {
   TavusAppMessage,
@@ -47,6 +48,7 @@ type OverlayState =
   | {
       kind: "content";
       contentItemKey: ContentItemKey;
+      query?: Record<string, string>;
     }
   | {
       kind: "schedule";
@@ -529,6 +531,52 @@ function FloatingMicControl({
   );
 }
 
+type CallControlBarProps = {
+  isMuted: boolean;
+  onEndCall(): void;
+  onToggleMute(): void;
+};
+
+function CallControlBar({ isMuted, onEndCall, onToggleMute }: CallControlBarProps) {
+  return (
+    <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-slate-950/80 px-3 py-2.5 shadow-[0_18px_44px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+      <button
+        aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
+        className={
+          isMuted
+            ? "flex size-11 items-center justify-center rounded-full border border-rose-300/30 bg-rose-500/90 text-white transition hover:bg-rose-500"
+            : "flex size-11 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white transition hover:bg-white/20"
+        }
+        onClick={onToggleMute}
+        type="button"
+      >
+        {isMuted ? (
+          <svg fill="none" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 3l18 18M9 9v3a3 3 0 0 0 4.24 2.73M15 9.34V6a3 3 0 0 0-5.94-.6M5 11a7 7 0 0 0 9.9 6.37M19 11a7 7 0 0 1-.94 3.52M12 18v3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+          </svg>
+        ) : (
+          <svg fill="none" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+            <path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+          </svg>
+        )}
+      </button>
+
+      <button
+        aria-label="End call"
+        className="flex h-11 items-center gap-2 rounded-full bg-rose-600 px-5 text-sm font-semibold text-white transition hover:bg-rose-500"
+        onClick={onEndCall}
+        type="button"
+      >
+        <svg fill="none" height="18" viewBox="0 0 24 24" width="18" xmlns="http://www.w3.org/2000/svg">
+          <path d="M3.6 9.6c5.6-5 11.2-5 16.8 0a1.2 1.2 0 0 1 .18 1.6l-2.1 2.8a1.2 1.2 0 0 1-1.62.28l-2.35-1.57a1.2 1.2 0 0 0-1.36.04c-.6.44-1.42.44-2.15.44-.73 0-1.55 0-2.15-.44a1.2 1.2 0 0 0-1.36-.04l-2.35 1.57a1.2 1.2 0 0 1-1.62-.28l-2.1-2.8a1.2 1.2 0 0 1 .18-1.6z" fill="currentColor" />
+        </svg>
+        End call
+      </button>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // TavusSession – renders the active call with video, overlays, and audio
 // ---------------------------------------------------------------------------
@@ -539,6 +587,7 @@ type TavusSessionProps = {
   isMicMuted: boolean;
   latestReplicaTranscript: TranscriptEntry | null;
   latestUserTranscript: TranscriptEntry | null;
+  onEndCall(): void;
   onToggleMicMute(): void;
   overlayState: OverlayState | null;
   replicaReady: boolean;
@@ -553,6 +602,7 @@ function TavusSession({
   isMicMuted,
   latestReplicaTranscript,
   latestUserTranscript,
+  onEndCall,
   onToggleMicMute,
   overlayState,
   replicaReady,
@@ -561,6 +611,7 @@ function TavusSession({
   userSpeaking,
 }: TavusSessionProps) {
   const remoteParticipantIds = useParticipantIds({ filter: "remote" });
+  const localParticipantId = useParticipantIds({ filter: "local" })[0] ?? null;
   const { currentMic, currentSpeaker, refreshDevices, setSpeaker, speakers } = useDevices();
   const audioHandleRef = useRef<DailyAudioHandle | null>(null);
 
@@ -569,7 +620,10 @@ function TavusSession({
       return null;
     }
 
-    return CONTENT_ITEMS[overlayState.contentItemKey];
+    const item = CONTENT_ITEMS[overlayState.contentItemKey];
+    const query = overlayState.query ? new URLSearchParams(overlayState.query).toString() : "";
+
+    return { ...item, url: query ? `${item.url}?${query}` : item.url };
   }, [overlayState]);
 
   const activeSchedule = overlayState?.kind === "schedule" ? overlayState : null;
@@ -725,8 +779,29 @@ function TavusSession({
           </>
         )}
 
+        <div className="absolute bottom-4 right-4 z-20 h-[96px] w-[128px] overflow-hidden rounded-[1.1rem] border border-white/15 bg-slate-950/90 shadow-2xl backdrop-blur sm:h-[108px] sm:w-[144px] md:h-[120px] md:w-[160px]">
+          {localParticipantId ? (
+            <DailyVideo
+              className="h-full w-full bg-slate-950 object-cover"
+              fit="cover"
+              mirror
+              sessionId={localParticipantId}
+              type="video"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-[0.6rem] uppercase tracking-[0.2em] text-slate-500">
+              Camera off
+            </div>
+          )}
+          <span className="absolute bottom-1 left-1.5 rounded-full bg-black/50 px-1.5 py-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.16em] text-white/80">
+            You
+          </span>
+        </div>
+
+        <CallControlBar isMuted={isMicMuted} onEndCall={onEndCall} onToggleMute={onToggleMicMute} />
+
         {audioBlocked ? (
-          <div className="absolute inset-x-0 bottom-6 z-30 mx-auto flex w-fit items-center gap-3 rounded-full border border-amber-300/30 bg-amber-400/15 px-4 py-3 text-sm text-amber-50 backdrop-blur">
+          <div className="absolute inset-x-0 bottom-24 z-30 mx-auto flex w-fit items-center gap-3 rounded-full border border-amber-300/30 bg-amber-400/15 px-4 py-3 text-sm text-amber-50 backdrop-blur">
             <span>Browser blocked audio playback.</span>
             <button
               className="rounded-full bg-amber-300 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-slate-950 transition hover:bg-amber-200"
@@ -804,6 +879,7 @@ export function TavusDemo() {
     processedUtterancesRef.current = getProcessedMessageStore("__tavusProcessedUtterances__");
   }
 
+  const financeMode = isFinanceEvent();
   const showPersonaSelector = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("personas");
 
   useEffect(() => {
@@ -996,6 +1072,47 @@ export function TavusDemo() {
             overlay: { kind: "content", contentItemKey: nextContentItemKey },
           });
           responseText = `Showing ${CONTENT_ITEMS[nextContentItemKey].label}.`;
+          break;
+        }
+        case "show_pricing": {
+          const product = (parsedArguments as { product?: string }).product;
+          const nextContentItemKey = resolveContentItemKey(
+            typeof product === "string" ? `pricing_${product}` : undefined,
+          );
+          if (!nextContentItemKey) {
+            responseText = "I could not find pricing for that product.";
+            break;
+          }
+
+          dispatch({
+            type: "SET_OVERLAY",
+            overlay: { kind: "content", contentItemKey: nextContentItemKey },
+          });
+          responseText = `Showing ${CONTENT_ITEMS[nextContentItemKey].label}.`;
+          break;
+        }
+        case "show_payment_breakdown": {
+          const nextContentItemKey = resolveContentItemKey("payment_breakdown");
+          if (!nextContentItemKey) {
+            responseText = "I could not find the payment breakdown screen.";
+            break;
+          }
+
+          const rawDailyRate = (parsedArguments as { daily_rate?: number }).daily_rate;
+          const approvedDailyRates = [4, 3.5, 3.25, 3];
+          const dailyRate = approvedDailyRates.includes(rawDailyRate as number)
+            ? (rawDailyRate as number)
+            : 4;
+
+          dispatch({
+            type: "SET_OVERLAY",
+            overlay: {
+              kind: "content",
+              contentItemKey: nextContentItemKey,
+              query: { rate: String(dailyRate) },
+            },
+          });
+          responseText = `Showing the price at $${dailyRate} a day.`;
           break;
         }
         case "show_schedule": {
@@ -1497,6 +1614,10 @@ export function TavusDemo() {
     void handleStart();
   }, [handleStart]);
 
+  const handleEndCall = useCallback(() => {
+    void teardownDemo();
+  }, [teardownDemo]);
+
   const handleAudioBlockedChange = useCallback(
     (blocked: boolean) => dispatch({ type: "SET_AUDIO_BLOCKED", blocked }),
     [],
@@ -1511,6 +1632,7 @@ export function TavusDemo() {
           isMicMuted={isMicMuted}
           latestReplicaTranscript={latestReplicaTranscript}
           latestUserTranscript={latestUserTranscript}
+          onEndCall={handleEndCall}
           onToggleMicMute={handleToggleMicMute}
           overlayState={overlayState}
           replicaReady={replicaReady}
@@ -1536,9 +1658,11 @@ export function TavusDemo() {
       <div className="relative z-10 mx-auto flex min-h-full w-full max-w-7xl flex-col px-6 py-8 md:px-10">
         <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.4em] text-sky-200/80">AWS Summit Sydney 2026</p>
+            <p className="text-xs uppercase tracking-[0.4em] text-sky-200/80">
+              {financeMode ? "Digital Finance Manager" : "AWS Summit Sydney 2026"}
+            </p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-4xl">
-              Conversational Voice AI
+              {financeMode ? "F&I Pricing Walkthrough" : "Conversational Voice AI"}
             </h1>
           </div>
 
@@ -1572,16 +1696,18 @@ export function TavusDemo() {
             <div className="flex flex-col justify-between gap-8">
               <div className="space-y-5">
                 <span className="inline-flex w-fit rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.3em] text-emerald-200">
-                  Camera-aware voice AI demo
+                  {financeMode ? "Camera-aware F&I demo" : "Camera-aware voice AI demo"}
                 </span>
                 <div className="space-y-4">
                   <h2 className="max-w-2xl text-4xl font-semibold leading-tight text-white md:text-5xl">
-                    Start the voice AI booth experience with a single click.
+                    {financeMode
+                      ? "Start the finance manager walkthrough with a single click."
+                      : "Start the voice AI booth experience with a single click."}
                   </h2>
                   <p className="max-w-2xl text-base leading-8 text-slate-300 md:text-lg">
-                    The demo requests camera and microphone access, creates an AI conversation,
-                    joins the session room, and listens for tool calls that can change the on-screen
-                    content while the avatar keeps speaking.
+                    {financeMode
+                      ? "The demo requests camera and microphone access, creates an AI conversation, joins the session room, and listens for tool calls that show pricing panels while the avatar keeps talking."
+                      : "The demo requests camera and microphone access, creates an AI conversation, joins the session room, and listens for tool calls that can change the on-screen content while the avatar keeps speaking."}
                   </p>
                 </div>
               </div>
@@ -1615,9 +1741,19 @@ export function TavusDemo() {
               <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
                 <p className="text-xs uppercase tracking-[0.3em] text-emerald-200/70">Tool Use Demo</p>
                 <p className="mt-4 leading-7 text-slate-300">
-                  Ask the agent to show content on screen. Try{" "}
-                  <em>&ldquo;Show the voice agent guidance&rdquo;</em> or{" "}
-                  <em>&ldquo;Show me the schedule&rdquo;</em>.
+                  {financeMode ? (
+                    <>
+                      Ask the agent to show pricing. Try{" "}
+                      <em>&ldquo;Can you show me the GAP pricing&rdquo;</em> or{" "}
+                      <em>&ldquo;What&apos;s the payment breakdown?&rdquo;</em>.
+                    </>
+                  ) : (
+                    <>
+                      Ask the agent to show content on screen. Try{" "}
+                      <em>&ldquo;Show the voice agent guidance&rdquo;</em> or{" "}
+                      <em>&ldquo;Show me the schedule&rdquo;</em>.
+                    </>
+                  )}
                 </p>
               </div>
               <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">

@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from "fs";
+import { resolve } from "path";
+
 import { NextResponse } from "next/server";
 
 import { getCustomTavusLlmConfig } from "@/lib/tavus-custom-llms";
@@ -7,6 +10,28 @@ import type { TavusConversationCreateResponse } from "@/types/tavus";
 
 // Tavus knowledge base document for the AWS Summit Sydney schedule.
 const AWS_SUMMIT_SCHEDULE_DOCUMENT_ID = "d4-c663569fd55d";
+const DEFAULT_GREETING =
+  "Hi, welcome to the AWS booth at Summit Sydney! I'm here to help you explore voice AI on AWS. Before we get started, what's your name and which company are you with? I can also show you diagrams, walk you through the Summit schedule, and answer questions about our tech stack.";
+
+function getEventConfigName(): string {
+  return process.env.EVENT_CONFIG || "aws-summit-mumbai-2026";
+}
+
+function getGreeting(): string {
+  const eventDir = resolve(process.cwd(), `../prompts/${getEventConfigName()}`);
+  const greetingPath = resolve(eventDir, "greeting.md");
+
+  if (!existsSync(greetingPath)) {
+    return DEFAULT_GREETING;
+  }
+
+  return readFileSync(greetingPath, "utf-8").trim();
+}
+
+function getDocumentIds(): string[] {
+  // The AWS Summit schedule knowledge base only applies to the AWS booth events.
+  return getEventConfigName().startsWith("aws-") ? [AWS_SUMMIT_SCHEDULE_DOCUMENT_ID] : [];
+}
 
 // Module-level singletons — survive across requests in the same Node process (kiosk/Docker).
 // Tracks the last created conversation so orphaned sessions can be ended before creating a new one.
@@ -78,14 +103,14 @@ export async function POST(request: Request) {
     }
 
     const conversationPersonaId = await resolveConversationPersonaId(personaId, llmName);
+    const documentIds = getDocumentIds();
 
     const response = await tavusFetch("/conversations", {
       method: "POST",
       body: JSON.stringify({
         persona_id: conversationPersonaId,
-        document_ids: [AWS_SUMMIT_SCHEDULE_DOCUMENT_ID],
-        custom_greeting:
-          "Hi, welcome to the AWS booth at Summit Sydney! I'm here to help you explore voice AI on AWS. Before we get started, what's your name and which company are you with? I can also show you diagrams, walk you through the Summit schedule, and answer questions about our tech stack.",
+        ...(documentIds.length > 0 ? { document_ids: documentIds } : {}),
+        custom_greeting: getGreeting(),
         properties: {
           max_call_duration: 600,
           participant_left_timeout: 30,

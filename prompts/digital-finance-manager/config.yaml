@@ -1,0 +1,26 @@
+# Event config — Digital Finance Manager prototype
+#
+# The system prompt is system-instruction.md; the opening line is greeting.md.
+# Content panels and tool definitions for this event live in code, not here
+# (src/lib/content-items.ts and src/lib/persona-tools.ts), because each panel
+# needs voice-command aliases and layout that don't fit a flat YAML list.
+#
+# Set EVENT_CONFIG=digital-finance-manager and NEXT_PUBLIC_EVENT_CONFIG=digital-finance-manager
+# in tavus-avatar/.env.local to activate this event end to end.
+
+content_items:
+  pricing_gap:
+    url: "/content/pricing-gap"
+    label: "GAP Pricing"
+  pricing_vsc:
+    url: "/content/pricing-vsc"
+    label: "VSC Pricing"
+  pricing_warranty:
+    url: "/content/pricing-warranty"
+    label: "Extended Warranty Pricing"
+  pricing_maintenance:
+    url: "/content/pricing-maintenance"
+    label: "Maintenance Plan Pricing"
+  payment_breakdown:
+    url: "/content/payment-breakdown"
+    label: "Payment Breakdown"

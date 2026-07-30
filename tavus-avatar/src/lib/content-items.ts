@@ -1,4 +1,6 @@
-export const CONTENT_ITEMS = {
+import { isFinanceEvent } from "@/lib/event";
+
+const AWS_CONTENT_ITEMS = {
   aws_voice_ai_overview: {
     url: "/content/aws-voice-ai",
     label: "AWS Voice AI Overview",
@@ -13,10 +15,7 @@ export const CONTENT_ITEMS = {
   },
 } as const;
 
-export type ContentItemKey = keyof typeof CONTENT_ITEMS;
-export const DEFAULT_CONTENT_ITEM_KEY: ContentItemKey = "aws_voice_ai_overview";
-
-const CONTENT_ITEM_ALIASES: Record<ContentItemKey, string[]> = {
+const AWS_CONTENT_ITEM_ALIASES: Record<keyof typeof AWS_CONTENT_ITEMS, string[]> = {
   aws_voice_ai_overview: [
     "aws_voice_ai_overview",
     "aws voice ai overview",
@@ -54,6 +53,83 @@ const CONTENT_ITEM_ALIASES: Record<ContentItemKey, string[]> = {
     "use case examples",
   ],
 };
+
+const FINANCE_CONTENT_ITEMS = {
+  pricing_gap: {
+    url: "/content/pricing-gap",
+    label: "GAP Coverage",
+  },
+  pricing_vsc: {
+    url: "/content/pricing-vsc",
+    label: "10-Year Bumper-to-Bumper",
+  },
+  pricing_tire_wheel: {
+    url: "/content/pricing-tire-wheel",
+    label: "Tire & Wheel Coverage",
+  },
+  pricing_maintenance: {
+    url: "/content/pricing-maintenance",
+    label: "Maintenance Plan",
+  },
+  payment_breakdown: {
+    url: "/content/payment-breakdown",
+    label: "Payment Breakdown",
+  },
+} as const;
+
+const FINANCE_CONTENT_ITEM_ALIASES: Record<keyof typeof FINANCE_CONTENT_ITEMS, string[]> = {
+  pricing_gap: ["pricing_gap", "gap", "gap insurance", "gap coverage", "gap pricing", "show gap"],
+  pricing_vsc: [
+    "pricing_vsc",
+    "vsc",
+    "bumper to bumper",
+    "bumper-to-bumper",
+    "vehicle service contract",
+    "extended service contract",
+    "service contract",
+    "vsc pricing",
+  ],
+  pricing_tire_wheel: [
+    "pricing_tire_wheel",
+    "tire and wheel",
+    "tire & wheel",
+    "tire wheel coverage",
+    "tires and wheels",
+    "show tire and wheel",
+  ],
+  pricing_maintenance: [
+    "pricing_maintenance",
+    "maintenance",
+    "maintenance plan",
+    "prepaid maintenance",
+    "maintenance pricing",
+    "show maintenance",
+  ],
+  payment_breakdown: [
+    "payment_breakdown",
+    "payment breakdown",
+    "monthly payment",
+    "daily payment",
+    "payment comparison",
+    "show payment",
+    "show payments",
+    "the offer",
+    "show the price",
+  ],
+};
+
+export type ContentItemKey = keyof typeof AWS_CONTENT_ITEMS | keyof typeof FINANCE_CONTENT_ITEMS;
+
+export const CONTENT_ITEMS = (isFinanceEvent() ? FINANCE_CONTENT_ITEMS : AWS_CONTENT_ITEMS) as Record<
+  ContentItemKey,
+  { url: string; label: string }
+>;
+const CONTENT_ITEM_ALIASES = (
+  isFinanceEvent() ? FINANCE_CONTENT_ITEM_ALIASES : AWS_CONTENT_ITEM_ALIASES
+) as Record<ContentItemKey, string[]>;
+export const DEFAULT_CONTENT_ITEM_KEY: ContentItemKey = Object.keys(
+  CONTENT_ITEMS,
+)[0] as ContentItemKey;
 
 function normalizeContentKey(value: string) {
   return value
