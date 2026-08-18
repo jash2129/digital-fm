@@ -1,0 +1,66 @@
+{
+  "_comment": "Single source of truth for the negotiation tiers and product coverage panels. Edit this file, then run scripts/push-pricing-config.ps1 to push the tool schema to the live persona. See docs/OPERATIONS.md for the full how-to. Do NOT edit the numbers in prompts/digital-finance-manager/system-instruction.md separately without also updating them here — they must match.",
+
+  "negotiation": {
+    "openingRateUsd": 4,
+    "tiersUsd": [4, 3.5, 3.25, 3],
+    "floorRateUsd": 3
+  },
+
+  "products": {
+    "vsc": {
+      "order": 1,
+      "label": "10-Year Bumper-to-Bumper",
+      "eyebrow": "Protection Package · Part 1 of 4",
+      "title": "10-Year, 100,000-Mile Bumper-to-Bumper",
+      "description": "Wraps a blanket-cover contract around the vehicle for wear-and-tear failures the factory warranty won't pay for — the same major components, but covered no matter what caused the breakdown.",
+      "bullets": [
+        "Engine and transmission",
+        "Drive axle and four-wheel drive components",
+        "Suspension and steering",
+        "Electrical system",
+        "Brakes",
+        "Air conditioning and cooling system",
+        "All high-tech accessories, including labor",
+        "Zero deductible out of pocket"
+      ]
+    },
+    "maintenance": {
+      "order": 2,
+      "label": "Maintenance Plan",
+      "eyebrow": "Protection Package · Part 2 of 4",
+      "title": "5-Year Maintenance Cover",
+      "description": "Routine scheduled maintenance for the next five years, taken care of — no more paying out of pocket every time it's due.",
+      "bullets": [
+        "Full synthetic oil changes",
+        "Filters",
+        "Tire rotations",
+        "Covers the next 5 years of scheduled service"
+      ]
+    },
+    "tire_wheel": {
+      "order": 3,
+      "label": "Tire & Wheel Coverage",
+      "eyebrow": "Protection Package · Part 3 of 4",
+      "title": "5-Year Tire & Wheel Coverage",
+      "description": "Potholes, blowouts, and road hazards happen — this covers the tires and wheels for the next five years.",
+      "bullets": [
+        "Blowouts and road-hazard tire damage replaced at no cost",
+        "Cosmetic rim damage from potholes repaired",
+        "Covers the next 5 years"
+      ]
+    },
+    "gap": {
+      "order": 4,
+      "label": "GAP Coverage",
+      "eyebrow": "Protection Package · Part 4 of 4",
+      "title": "GAP Coverage",
+      "description": "If the vehicle is totaled, stolen, or destroyed and the insurance payout doesn't cover the full loan balance, GAP covers the difference — so you're not paying out of pocket on a vehicle you no longer have.",
+      "bullets": [
+        "Covers the gap between insurance payout and loan balance",
+        "Applies to accident, theft, hail, flood, and fire total losses",
+        "No out-of-pocket balance left on a vehicle you no longer have"
+      ]
+    }
+  }
+}

@@ -3,9 +3,14 @@ import { resolve } from "path";
 
 import { NextResponse } from "next/server";
 
+import { getActiveConversation, setActiveConversation } from "@/lib/active-conversations";
+import { linkDealToConversation } from "@/lib/conversation-deals";
+import { recordConversationEnded, recordConversationStarted } from "@/lib/conversation-usage";
+import { formatDealContext, getDeal } from "@/lib/deal-context";
 import { getCustomTavusLlmConfig } from "@/lib/tavus-custom-llms";
 import { resolveConversationPersonaId } from "@/lib/tavus-personas";
 import { getTavusConfig, getTavusErrorMessage, readResponsePayload, tavusFetch } from "@/lib/tavus-api";
+import { attachVisitorCookie, getOrCreateVisitorId } from "@/lib/visitor";
 import type { TavusConversationCreateResponse } from "@/types/tavus";
 
 // Tavus knowledge base document for the AWS Summit Sydney schedule.
@@ -33,22 +38,22 @@ function getDocumentIds(): string[] {
   return getEventConfigName().startsWith("aws-") ? [AWS_SUMMIT_SCHEDULE_DOCUMENT_ID] : [];
 }
 
-// Module-level singletons — survive across requests in the same Node process (kiosk/Docker).
-// Tracks the last created conversation so orphaned sessions can be ended before creating a new one.
-let trackedConversationId: string | null = null;
-const lastCreatedAt = new Map<string, number>(); // sessionToken → ms timestamp
-const RATE_LIMIT_MS = 60_000;
-
-function getSessionToken(request: Request): string | null {
-  return (
-    request.headers
-      .get("cookie")
-      ?.split(";")
-      .find((c) => c.trim().startsWith("demo-session="))
-      ?.split("=")[1]
-      ?.trim() ?? null
-  );
+// Module-level singleton — survives across requests in the same Node process (kiosk/Docker).
+// Only correct on a single persistent process; see active-conversations.ts for why this must
+// not be deployed to a multi-instance or serverless host without a shared store.
+declare global {
+  var __conversationRateLimitByVisitor__: Map<string, number> | undefined;
 }
+
+function getRateLimitStore() {
+  if (!globalThis.__conversationRateLimitByVisitor__) {
+    globalThis.__conversationRateLimitByVisitor__ = new Map<string, number>();
+  }
+
+  return globalThis.__conversationRateLimitByVisitor__;
+}
+
+const RATE_LIMIT_MS = 60_000;
 
 export async function POST(request: Request) {
   try {
@@ -56,11 +61,14 @@ export async function POST(request: Request) {
     const params = new URL(request.url).searchParams;
     const llmName = params.get("llm");
     const personaId = params.get("persona") || defaultPersonaId;
+    const { visitorId, isNew: isNewVisitor } = getOrCreateVisitorId(request);
 
     // Rate limiting — only enforced when DEMO_API_TOKEN is set (skipped in local dev).
-    const sessionToken = getSessionToken(request);
-    if (sessionToken && process.env.DEMO_API_TOKEN) {
-      const last = lastCreatedAt.get(sessionToken);
+    // Keyed per-visitor, not per shared auth token — every visitor who logs in with the
+    // same DEMO_API_TOKEN would otherwise share a single rate-limit bucket.
+    if (process.env.DEMO_API_TOKEN) {
+      const rateLimitStore = getRateLimitStore();
+      const last = rateLimitStore.get(visitorId);
       if (last !== undefined && Date.now() - last < RATE_LIMIT_MS) {
         const retryAfter = Math.ceil((RATE_LIMIT_MS - (Date.now() - last)) / 1000);
         return NextResponse.json(
@@ -90,13 +98,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // End any previously tracked conversation before creating a new one.
-    // This cleans up orphans caused by browser crashes or failed pagehide requests.
-    if (trackedConversationId) {
-      const prevId = trackedConversationId;
-      trackedConversationId = null;
+    // End this same visitor's previously tracked conversation before creating a new one.
+    // This cleans up orphans caused by browser crashes or failed pagehide requests —
+    // scoped to this visitor only, so it never touches another customer's live call.
+    const previousConversationId = getActiveConversation(visitorId);
+    if (previousConversationId) {
       try {
-        await tavusFetch(`/conversations/${prevId}/end`, { method: "POST" });
+        await tavusFetch(`/conversations/${previousConversationId}/end`, { method: "POST" });
+        recordConversationEnded(previousConversationId);
       } catch {
         // Best-effort cleanup — do not block conversation creation.
       }
@@ -105,11 +114,19 @@ export async function POST(request: Request) {
     const conversationPersonaId = await resolveConversationPersonaId(personaId, llmName);
     const documentIds = getDocumentIds();
 
+    // Optional real deal data (customer/vehicle/financing) from an external system —
+    // see src/lib/deal-context.ts. Falls back to nothing (AI asks conversationally)
+    // when no ?deal= param is given or the deal has expired.
+    const dealId = params.get("deal");
+    const dealContext = dealId ? getDeal(dealId) : undefined;
+    const conversationalContext = dealContext ? formatDealContext(dealContext) : null;
+
     const response = await tavusFetch("/conversations", {
       method: "POST",
       body: JSON.stringify({
         persona_id: conversationPersonaId,
         ...(documentIds.length > 0 ? { document_ids: documentIds } : {}),
+        ...(conversationalContext ? { conversational_context: conversationalContext } : {}),
         custom_greeting: getGreeting(),
         properties: {
           max_call_duration: 600,
@@ -141,13 +158,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // Track the new conversation and record the creation time for rate limiting.
-    trackedConversationId = payload.json.conversation_id;
-    if (sessionToken) {
-      lastCreatedAt.set(sessionToken, Date.now());
+    // Track the new conversation against this visitor and record the creation time for
+    // rate limiting.
+    setActiveConversation(visitorId, payload.json.conversation_id);
+    recordConversationStarted(payload.json.conversation_id, conversationPersonaId);
+    if (dealContext) {
+      linkDealToConversation(payload.json.conversation_id, dealContext);
+    }
+    if (process.env.DEMO_API_TOKEN) {
+      getRateLimitStore().set(visitorId, Date.now());
     }
 
-    return NextResponse.json(
+    const successResponse = NextResponse.json(
       {
         conversation_id: payload.json.conversation_id,
         conversation_url: payload.json.conversation_url,
@@ -158,6 +180,12 @@ export async function POST(request: Request) {
         },
       },
     );
+
+    if (isNewVisitor) {
+      attachVisitorCookie(successResponse, visitorId);
+    }
+
+    return successResponse;
   } catch (error) {
     return NextResponse.json(
       {

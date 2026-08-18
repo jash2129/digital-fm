@@ -1,16 +1,28 @@
 import { PricingPanel } from "@/components/pricing-panel";
+import { getOrderedProductKeys, getPricingConfig } from "@/lib/pricing-config";
 
-export default function PricingTireWheelPage() {
+type PageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function PricingTireWheelPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const config = getPricingConfig();
+  const product = config.products.tire_wheel;
+  const completedRaw = params.completed;
+  const completedKeys = (Array.isArray(completedRaw) ? completedRaw[0] : completedRaw)?.split(",") ?? [];
+
   return (
     <PricingPanel
-      eyebrow="Protection Package · Part 3 of 4"
-      title="5-Year Tire & Wheel Coverage"
-      description="Potholes, blowouts, and road hazards happen — this covers the tires and wheels for the next five years."
-      bullets={[
-        "Blowouts and road-hazard tire damage replaced at no cost",
-        "Cosmetic rim damage from potholes repaired",
-        "Covers the next 5 years",
-      ]}
+      eyebrow={product.eyebrow}
+      title={product.title}
+      description={product.description}
+      bullets={product.bullets}
+      progress={{
+        steps: getOrderedProductKeys(config).map((key) => ({ key, label: config.products[key].label })),
+        completedKeys,
+        currentKey: "tire_wheel",
+      }}
     />
   );
 }

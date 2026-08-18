@@ -10,6 +10,8 @@ import { DailyAudio, DailyProvider, DailyVideo, useDevices, useParticipantIds } 
 import type { DailyAudioHandle } from "@daily-co/daily-react/dist/components/DailyAudio";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 
+import { CallSummaryScreen } from "@/components/CallSummaryScreen";
+import { CountdownScreen } from "@/components/CountdownScreen";
 import { ScheduleOverlay, type ScheduleOverlayColumn } from "@/components/schedule-overlay";
 import {
   CONTENT_ITEMS,
@@ -68,6 +70,14 @@ const START_BUTTON_LABELS: Record<Exclude<DemoStatus, "connected" | "error">, st
   leaving: "Ending current session",
 };
 
+const FINANCE_START_BUTTON_LABELS: Record<Exclude<DemoStatus, "connected" | "error">, string> = {
+  idle: "Start consultation",
+  "requesting-permissions": "Approve camera and microphone",
+  loading: "Connecting you with Max",
+  joining: "Joining the call",
+  leaving: "Wrapping up",
+};
+
 const REPLICA_READY_EVENT_TYPES = new Set([
   "system.replica_present",
   "system.replica_joined",
@@ -75,6 +85,9 @@ const REPLICA_READY_EVENT_TYPES = new Set([
 ]);
 
 const START_TIMEOUT_MS = 30_000;
+// Ceiling on how long we wait, once actually joined, for the avatar to show up before treating
+// it as a failure — not a target everyone waits out, just a backstop for the slow case.
+const REPLICA_READY_TIMEOUT_MS = 60_000;
 const ACTIVE_CONVERSATION_STORAGE_KEY = "tavus_active_conversation_id";
 
 // ---------------------------------------------------------------------------
@@ -405,7 +418,7 @@ function TranscriptPanel({
     : latestReplicaTranscript?.text ?? "Agent responses appear here.";
 
   return (
-    <div className="absolute bottom-6 left-6 z-20 w-[min(34rem,calc(100vw-3rem))] rounded-[1.75rem] border border-white/10 bg-slate-950/55 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+    <div className="absolute bottom-24 left-3 z-20 w-[min(34rem,calc(100vw-1.5rem-9.5rem))] rounded-[1.75rem] border border-white/10 bg-slate-950/55 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.45)] backdrop-blur-xl sm:bottom-28 sm:left-6">
       <div className="space-y-3">
         <TranscriptPanelRow active={userSpeaking} label="You" text={userText} />
         <TranscriptPanelRow active={replicaSpeaking} label="Agent" text={replicaText} />
@@ -464,10 +477,9 @@ function FloatingMicControl({
 
   return (
     <div
-      className="absolute left-4 top-4 z-40 overflow-hidden rounded-[1rem] border border-white/10 bg-slate-950/78 px-2.5 py-2 shadow-[0_18px_44px_rgba(0,0,0,0.35)] backdrop-blur-xl transition-all duration-200"
+      className={`absolute left-2 top-2 z-40 overflow-hidden rounded-[1rem] border border-white/10 bg-slate-950/78 px-2.5 py-2 shadow-[0_18px_44px_rgba(0,0,0,0.35)] backdrop-blur-xl transition-all duration-200 sm:left-4 sm:top-4 ${isCollapsed ? "w-[4.5rem]" : "w-28 sm:w-[11.5rem]"}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      style={{ width: isCollapsed ? "4.5rem" : "11.5rem" }}
     >
       <div className="flex items-center gap-2">
         <span
@@ -495,7 +507,7 @@ function FloatingMicControl({
       </div>
 
       {!isCollapsed && (
-        <div className="mt-1.5 space-y-1 border-t border-white/8 pt-1.5">
+        <div className="mt-1.5 hidden space-y-1 border-t border-white/8 pt-1.5 sm:block">
           <button
             className="flex w-full items-center gap-2 rounded-[0.75rem] bg-white/5 px-2 py-1 text-left transition hover:bg-white/8 disabled:cursor-default disabled:hover:bg-white/5"
             disabled={!onCycleMic}
@@ -539,40 +551,42 @@ type CallControlBarProps = {
 
 function CallControlBar({ isMuted, onEndCall, onToggleMute }: CallControlBarProps) {
   return (
-    <div className="absolute bottom-4 left-1/2 z-30 flex -translate-x-1/2 items-center gap-3 rounded-full border border-white/10 bg-slate-950/80 px-3 py-2.5 shadow-[0_18px_44px_rgba(0,0,0,0.4)] backdrop-blur-xl">
-      <button
-        aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
-        className={
-          isMuted
-            ? "flex size-11 items-center justify-center rounded-full border border-rose-300/30 bg-rose-500/90 text-white transition hover:bg-rose-500"
-            : "flex size-11 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white transition hover:bg-white/20"
-        }
-        onClick={onToggleMute}
-        type="button"
-      >
-        {isMuted ? (
-          <svg fill="none" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
-            <path d="M3 3l18 18M9 9v3a3 3 0 0 0 4.24 2.73M15 9.34V6a3 3 0 0 0-5.94-.6M5 11a7 7 0 0 0 9.9 6.37M19 11a7 7 0 0 1-.94 3.52M12 18v3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-          </svg>
-        ) : (
-          <svg fill="none" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
-            <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-            <path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
-          </svg>
-        )}
-      </button>
+    <div className="absolute inset-x-0 bottom-0 z-30 flex justify-center border-t border-white/10 bg-slate-950/85 px-3 py-3 backdrop-blur-xl">
+      <div className="flex items-center gap-3">
+        <button
+          aria-label={isMuted ? "Unmute microphone" : "Mute microphone"}
+          className={
+            isMuted
+              ? "flex size-11 shrink-0 items-center justify-center rounded-full border border-rose-300/30 bg-rose-500/90 text-white transition hover:bg-rose-500"
+              : "flex size-11 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white transition hover:bg-white/20"
+          }
+          onClick={onToggleMute}
+          type="button"
+        >
+          {isMuted ? (
+            <svg fill="none" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 3l18 18M9 9v3a3 3 0 0 0 4.24 2.73M15 9.34V6a3 3 0 0 0-5.94-.6M5 11a7 7 0 0 0 9.9 6.37M19 11a7 7 0 0 1-.94 3.52M12 18v3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+            </svg>
+          ) : (
+            <svg fill="none" height="20" viewBox="0 0 24 24" width="20" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+              <path d="M5 11a7 7 0 0 0 14 0M12 18v3" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+            </svg>
+          )}
+        </button>
 
-      <button
-        aria-label="End call"
-        className="flex h-11 items-center gap-2 rounded-full bg-rose-600 px-5 text-sm font-semibold text-white transition hover:bg-rose-500"
-        onClick={onEndCall}
-        type="button"
-      >
-        <svg fill="none" height="18" viewBox="0 0 24 24" width="18" xmlns="http://www.w3.org/2000/svg">
-          <path d="M3.6 9.6c5.6-5 11.2-5 16.8 0a1.2 1.2 0 0 1 .18 1.6l-2.1 2.8a1.2 1.2 0 0 1-1.62.28l-2.35-1.57a1.2 1.2 0 0 0-1.36.04c-.6.44-1.42.44-2.15.44-.73 0-1.55 0-2.15-.44a1.2 1.2 0 0 0-1.36-.04l-2.35 1.57a1.2 1.2 0 0 1-1.62-.28l-2.1-2.8a1.2 1.2 0 0 1 .18-1.6z" fill="currentColor" />
-        </svg>
-        End call
-      </button>
+        <button
+          aria-label="End call"
+          className="flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-rose-600 px-4 text-sm font-semibold text-white transition hover:bg-rose-500 sm:px-5"
+          onClick={onEndCall}
+          type="button"
+        >
+          <svg fill="none" height="18" viewBox="0 0 24 24" width="18" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3.6 9.6c5.6-5 11.2-5 16.8 0a1.2 1.2 0 0 1 .18 1.6l-2.1 2.8a1.2 1.2 0 0 1-1.62.28l-2.35-1.57a1.2 1.2 0 0 0-1.36.04c-.6.44-1.42.44-2.15.44-.73 0-1.55 0-2.15-.44a1.2 1.2 0 0 0-1.36-.04l-2.35 1.57a1.2 1.2 0 0 1-1.62-.28l-2.1-2.8a1.2 1.2 0 0 1 .18-1.6z" fill="currentColor" />
+          </svg>
+          <span className="hidden sm:inline">End call</span>
+        </button>
+      </div>
     </div>
   );
 }
@@ -765,9 +779,15 @@ function TavusSession({
                 type="video"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center bg-black text-sm uppercase tracking-[0.25em] text-slate-400">
-                {replicaReady ? "Waiting for video track" : "Waiting for avatar"}
-              </div>
+              <CountdownScreen
+                key="waiting-for-avatar"
+                label={replicaReady ? "Connecting video" : "Connecting you now"}
+                seconds={60}
+                onComplete={() => {
+                  // Purely visual — the authoritative 60s timeout that actually errors
+                  // out lives in TavusDemo's replica-ready watchdog effect, not here.
+                }}
+              />
             )}
 
             <TranscriptPanel
@@ -779,7 +799,7 @@ function TavusSession({
           </>
         )}
 
-        <div className="absolute bottom-4 right-4 z-20 h-[96px] w-[128px] overflow-hidden rounded-[1.1rem] border border-white/15 bg-slate-950/90 shadow-2xl backdrop-blur sm:h-[108px] sm:w-[144px] md:h-[120px] md:w-[160px]">
+        <div className="absolute bottom-24 right-3 z-20 h-[88px] w-[118px] overflow-hidden rounded-[1.1rem] border border-white/15 bg-slate-950/90 shadow-2xl backdrop-blur sm:h-[108px] sm:w-[144px] md:right-4 md:h-[120px] md:w-[160px]">
           {localParticipantId ? (
             <DailyVideo
               className="h-full w-full bg-slate-950 object-cover"
@@ -801,7 +821,7 @@ function TavusSession({
         <CallControlBar isMuted={isMicMuted} onEndCall={onEndCall} onToggleMute={onToggleMicMute} />
 
         {audioBlocked ? (
-          <div className="absolute inset-x-0 bottom-24 z-30 mx-auto flex w-fit items-center gap-3 rounded-full border border-amber-300/30 bg-amber-400/15 px-4 py-3 text-sm text-amber-50 backdrop-blur">
+          <div className="absolute inset-x-3 bottom-[13.5rem] z-30 mx-auto flex w-fit max-w-full flex-wrap items-center justify-center gap-3 rounded-full border border-amber-300/30 bg-amber-400/15 px-4 py-3 text-sm text-amber-50 backdrop-blur sm:inset-x-0 sm:bottom-24">
             <span>Browser blocked audio playback.</span>
             <button
               className="rounded-full bg-amber-300 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-slate-950 transition hover:bg-amber-200"
@@ -849,6 +869,7 @@ export function TavusDemo() {
   } = state;
   const [personas, setPersonas] = useState<{ persona_id: string; persona_name: string }[]>([]);
   const [selectedPersonaId, setSelectedPersonaId] = useState<string>("");
+  const [callSummary, setCallSummary] = useState<{ productLabels: string[]; dailyRate: number | null } | null>(null);
 
   // Refs that mirror state for use inside async callbacks where reading state
   // directly would capture a stale closure.
@@ -863,6 +884,11 @@ export function TavusDemo() {
   const startInFlightRef = useRef(false);
   const isManualTeardownRef = useRef(false);
   const autoStartAttemptedRef = useRef(false);
+  // Which show_pricing products have already been shown this call — drives the progress
+  // stepper on the product panels. Session-local only, not a dedup/correctness store.
+  const shownProductsRef = useRef<Set<string>>(new Set());
+  // Last daily_rate actually shown — used for the post-call summary screen.
+  const lastRateRef = useRef<number | null>(null);
 
   // Keep refs in sync with state
   useEffect(() => { callObjectRef.current = callObject; }, [callObject]);
@@ -1084,9 +1110,20 @@ export function TavusDemo() {
             break;
           }
 
+          // Snapshot completed products *before* adding this one, so the panel about to load
+          // shows everything shown before it as complete and itself as current, not completed.
+          const completedSoFar = Array.from(shownProductsRef.current).join(",");
+          if (typeof product === "string") {
+            shownProductsRef.current.add(product);
+          }
+
           dispatch({
             type: "SET_OVERLAY",
-            overlay: { kind: "content", contentItemKey: nextContentItemKey },
+            overlay: {
+              kind: "content",
+              contentItemKey: nextContentItemKey,
+              query: completedSoFar ? { completed: completedSoFar } : undefined,
+            },
           });
           responseText = `Showing ${CONTENT_ITEMS[nextContentItemKey].label}.`;
           break;
@@ -1103,6 +1140,7 @@ export function TavusDemo() {
           const dailyRate = approvedDailyRates.includes(rawDailyRate as number)
             ? (rawDailyRate as number)
             : 4;
+          lastRateRef.current = dailyRate;
 
           dispatch({
             type: "SET_OVERLAY",
@@ -1157,6 +1195,30 @@ export function TavusDemo() {
             },
           });
           responseText = "Showing the schedule on screen.";
+          break;
+        }
+        case "escalate_to_human": {
+          const nextContentItemKey = resolveContentItemKey("escalate_to_human");
+          if (!nextContentItemKey) {
+            responseText = "I could not find the hand-off screen.";
+            break;
+          }
+
+          const reason = (parsedArguments as { reason?: string }).reason;
+          fetch("/api/escalation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ conversationId: payload.conversation_id, reason }),
+            keepalive: true,
+          }).catch(() => {
+            // Best-effort logging only — never block the hand-off panel on this.
+          });
+
+          dispatch({
+            type: "SET_OVERLAY",
+            overlay: { kind: "content", contentItemKey: nextContentItemKey },
+          });
+          responseText = "Connecting the customer with a team member.";
           break;
         }
         case "dismiss_content": {
@@ -1360,6 +1422,8 @@ export function TavusDemo() {
     // previous session can never suppress a legitimate message in this one.
     processedToolCallsRef.current?.clear();
     processedUtterancesRef.current?.clear();
+    shownProductsRef.current.clear();
+    lastRateRef.current = null;
 
     let nextCallObject: DailyCall | null = null;
     let nextConversationId: string | null = null;
@@ -1549,6 +1613,28 @@ export function TavusDemo() {
   }, [callObject, cleanupAfterLeave]);
 
   // -------------------------------------------------------------------------
+  // Replica-ready watchdog — the customer has joined the room but the avatar
+  // hasn't shown up. Give it REPLICA_READY_TIMEOUT_MS, then fail loudly
+  // instead of leaving the customer staring at an empty call indefinitely.
+  // -------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (status !== "connected" || replicaReady) {
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      dispatch({
+        type: "ERROR",
+        message: "The agent didn't join in time. Please try again.",
+      });
+      void teardownDemo();
+    }, REPLICA_READY_TIMEOUT_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, [status, replicaReady, teardownDemo]);
+
+  // -------------------------------------------------------------------------
   // Page-hide & unmount cleanup
   // -------------------------------------------------------------------------
 
@@ -1615,8 +1701,23 @@ export function TavusDemo() {
   }, [handleStart]);
 
   const handleEndCall = useCallback(() => {
+    if (financeMode && (shownProductsRef.current.size > 0 || lastRateRef.current !== null)) {
+      const productLabels = Array.from(shownProductsRef.current)
+        .map((productKey) => {
+          const contentKey = resolveContentItemKey(`pricing_${productKey}`);
+          return contentKey ? CONTENT_ITEMS[contentKey].label : null;
+        })
+        .filter((label): label is string => Boolean(label));
+
+      setCallSummary({ productLabels, dailyRate: lastRateRef.current });
+    }
+
     void teardownDemo();
-  }, [teardownDemo]);
+  }, [financeMode, teardownDemo]);
+
+  const handleStartNewCallFromSummary = useCallback(() => {
+    setCallSummary(null);
+  }, []);
 
   const handleAudioBlockedChange = useCallback(
     (blocked: boolean) => dispatch({ type: "SET_AUDIO_BLOCKED", blocked }),
@@ -1646,20 +1747,58 @@ export function TavusDemo() {
 
   return (
     <div className="relative h-screen overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(41,80,200,0.35),_transparent_38%),linear-gradient(180deg,_#09101d_0%,_#060912_100%)] text-white">
-      <FloatingMicControl
-        isMuted={isMicMuted}
-        micName="Join to detect"
-        onToggle={handleToggleMicMute}
-        speakerName="Join to detect"
-      />
+      {callSummary ? (
+        <CallSummaryScreen
+          dailyRate={callSummary.dailyRate}
+          onStartNewCall={handleStartNewCallFromSummary}
+          productLabels={callSummary.productLabels}
+        />
+      ) : null}
 
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(120deg,rgba(255,255,255,0.04),transparent_38%),radial-gradient(circle_at_bottom,_rgba(123,204,163,0.2),_transparent_35%)]" />
 
+      {financeMode ? (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div
+            className="absolute -left-32 -top-32 size-[28rem] rounded-full bg-sky-500/25 blur-[100px]"
+            style={{ animation: "orb-drift-a 16s ease-in-out infinite" }}
+          />
+          <div
+            className="absolute -right-24 top-1/3 size-[24rem] rounded-full bg-violet-500/20 blur-[110px]"
+            style={{ animation: "orb-drift-b 20s ease-in-out infinite" }}
+          />
+          <div
+            className="absolute bottom-[-8rem] left-1/3 size-[26rem] rounded-full bg-emerald-400/15 blur-[110px]"
+            style={{ animation: "orb-drift-c 18s ease-in-out infinite" }}
+          />
+          <div
+            className="absolute inset-0 opacity-[0.07]"
+            style={{
+              backgroundImage:
+                "linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)",
+              backgroundSize: "48px 48px",
+              animation: "grid-pan 40s linear infinite",
+            }}
+          />
+        </div>
+      ) : null}
+
       <div className="relative z-10 mx-auto flex min-h-full w-full max-w-7xl flex-col px-6 py-8 md:px-10">
-        <header className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <header
+          className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between"
+          style={financeMode ? { animation: "fade-in-up 0.6s ease-out both" } : undefined}
+        >
           <div>
-            <p className="text-xs uppercase tracking-[0.4em] text-sky-200/80">
-              {financeMode ? "Digital Finance Manager" : "AWS Summit Sydney 2026"}
+            <p className="flex items-center gap-2 text-xs uppercase tracking-[0.4em] text-sky-200/80">
+              {financeMode ? (
+                <span
+                  className="size-2 rounded-full bg-emerald-400 shadow-[0_0_12px_2px_rgba(52,211,153,0.7)]"
+                  style={{ animation: "pulse-dot 2s ease-in-out infinite" }}
+                />
+              ) : null}
+              {financeMode
+                ? (process.env.DEALERSHIP_NAME || "Digital Finance Manager")
+                : "AWS Summit Sydney 2026"}
             </p>
             <h1 className="mt-2 text-2xl font-semibold tracking-tight md:text-4xl">
               {financeMode ? "F&I Pricing Walkthrough" : "Conversational Voice AI"}
@@ -1681,35 +1820,102 @@ export function TavusDemo() {
               </select>
             ) : null}
             <button
-              className="inline-flex min-h-12 items-center justify-center rounded-full bg-sky-400 px-6 py-3 text-base font-semibold text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300"
+              className={
+                financeMode
+                  ? "inline-flex min-h-12 items-center justify-center rounded-full bg-sky-400 px-6 py-3 text-base font-semibold text-slate-950 transition hover:scale-[1.03] hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300 disabled:hover:scale-100"
+                  : "inline-flex min-h-12 items-center justify-center rounded-full bg-sky-400 px-6 py-3 text-base font-semibold text-slate-950 transition hover:bg-sky-300 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300"
+              }
+              style={
+                financeMode && (status === "idle" || status === "error")
+                  ? { animation: "button-glow 2.5s ease-in-out infinite" }
+                  : undefined
+              }
               disabled={status !== "idle" && status !== "error"}
               onClick={handleManualStart}
               type="button"
             >
-              {START_BUTTON_LABELS[status as keyof typeof START_BUTTON_LABELS] ?? "Start demo"}
+              {(financeMode ? FINANCE_START_BUTTON_LABELS : START_BUTTON_LABELS)[
+                status as keyof typeof START_BUTTON_LABELS
+              ] ?? "Start demo"}
             </button>
           </div>
         </header>
 
         <section className="flex flex-1 items-center justify-center py-8">
-          <div className="grid w-full max-w-5xl gap-6 rounded-[2rem] border border-white/10 bg-slate-950/55 p-6 shadow-[0_30px_120px_rgba(0,0,0,0.35)] backdrop-blur md:grid-cols-[1.25fr_0.95fr] md:p-10">
+          <div
+            className={
+              financeMode
+                ? "grid w-full max-w-5xl gap-6 rounded-[2rem] border border-white/10 bg-slate-950/55 p-6 shadow-[0_30px_120px_rgba(0,0,0,0.35),0_0_80px_rgba(56,189,248,0.08)] backdrop-blur-xl md:grid-cols-[1.25fr_0.95fr] md:p-10"
+                : "grid w-full max-w-5xl gap-6 rounded-[2rem] border border-white/10 bg-slate-950/55 p-6 shadow-[0_30px_120px_rgba(0,0,0,0.35)] backdrop-blur md:grid-cols-[1.25fr_0.95fr] md:p-10"
+            }
+            style={financeMode ? { animation: "fade-in-up 0.7s ease-out 0.1s both" } : undefined}
+          >
             <div className="flex flex-col justify-between gap-8">
               <div className="space-y-5">
-                <span className="inline-flex w-fit rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.3em] text-emerald-200">
-                  {financeMode ? "Camera-aware F&I demo" : "Camera-aware voice AI demo"}
+                <span
+                  className="inline-flex w-fit rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.3em] text-emerald-200"
+                  style={financeMode ? { animation: "fade-in-up 0.6s ease-out 0.2s both" } : undefined}
+                >
+                  {financeMode ? "Video finance consultation" : "Camera-aware voice AI demo"}
                 </span>
                 <div className="space-y-4">
-                  <h2 className="max-w-2xl text-4xl font-semibold leading-tight text-white md:text-5xl">
+                  <h2
+                    className={
+                      financeMode
+                        ? "max-w-2xl bg-gradient-to-r from-sky-300 via-white to-emerald-300 bg-clip-text text-4xl font-semibold leading-tight text-transparent md:text-5xl"
+                        : "max-w-2xl text-4xl font-semibold leading-tight text-white md:text-5xl"
+                    }
+                    style={
+                      financeMode
+                        ? {
+                            backgroundSize: "200% auto",
+                            animation:
+                              "fade-in-up 0.6s ease-out 0.3s both, gradient-shift 6s ease-in-out infinite 0.9s",
+                          }
+                        : undefined
+                    }
+                  >
                     {financeMode
-                      ? "Start the finance manager walkthrough with a single click."
+                      ? "Meet Max, your digital finance manager."
                       : "Start the voice AI booth experience with a single click."}
                   </h2>
-                  <p className="max-w-2xl text-base leading-8 text-slate-300 md:text-lg">
+                  <p
+                    className="max-w-2xl text-base leading-8 text-slate-300 md:text-lg"
+                    style={financeMode ? { animation: "fade-in-up 0.6s ease-out 0.4s both" } : undefined}
+                  >
                     {financeMode
-                      ? "The demo requests camera and microphone access, creates an AI conversation, joins the session room, and listens for tool calls that show pricing panels while the avatar keeps talking."
+                      ? "Max will confirm a few details with you, walk through your protection options at your own pace, and answer any questions along the way — just like sitting down with a finance manager in person."
                       : "The demo requests camera and microphone access, creates an AI conversation, joins the session room, and listens for tool calls that can change the on-screen content while the avatar keeps speaking."}
                   </p>
                 </div>
+
+                {financeMode ? (
+                  <ul
+                    className="flex flex-wrap gap-3 text-xs text-slate-300"
+                    style={{ animation: "fade-in-up 0.6s ease-out 0.5s both" }}
+                  >
+                    <li className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2">
+                      <svg fill="none" height="14" viewBox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="#7dd3fc" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" />
+                      </svg>
+                      Private, one-on-one video call
+                    </li>
+                    <li className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2">
+                      <svg fill="none" height="14" viewBox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="12" cy="12" r="9" stroke="#7dd3fc" strokeWidth="1.75" />
+                        <path d="M12 7v5l3.5 2" stroke="#7dd3fc" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.75" />
+                      </svg>
+                      About 10–15 minutes
+                    </li>
+                    <li className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2">
+                      <svg fill="none" height="14" viewBox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg">
+                        <rect height="14" rx="2" stroke="#7dd3fc" strokeWidth="1.75" width="16" x="4" y="6" />
+                        <path d="M9 6V4h6v2" stroke="#7dd3fc" strokeLinecap="round" strokeWidth="1.75" />
+                      </svg>
+                      Recorded for your protection, same as in person
+                    </li>
+                  </ul>
+                ) : null}
               </div>
 
               {errorMessage ? (
@@ -1729,23 +1935,52 @@ export function TavusDemo() {
             </div>
 
             <div className="grid gap-4 text-sm text-slate-200">
-              <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
-                <p className="text-xs uppercase tracking-[0.3em] text-sky-200/70">Join Flow</p>
+              <div
+                className={
+                  financeMode
+                    ? "rounded-[1.5rem] border border-white/10 bg-white/5 p-5 transition hover:border-sky-300/30 hover:bg-white/[0.07]"
+                    : "rounded-[1.5rem] border border-white/10 bg-white/5 p-5"
+                }
+                style={financeMode ? { animation: "fade-in-up 0.6s ease-out 0.5s both" } : undefined}
+              >
+                <p className="text-xs uppercase tracking-[0.3em] text-sky-200/70">
+                  {financeMode ? "What to expect" : "Join Flow"}
+                </p>
                 <ol className="mt-4 space-y-3 text-slate-200">
-                  <li>1. Request camera and microphone permissions.</li>
-                  <li>2. Create an AI conversation via the API.</li>
-                  <li>3. Join the session room.</li>
-                  <li>4. Render avatar video and audio.</li>
+                  {financeMode ? (
+                    <>
+                      <li>1. Say hello to Max.</li>
+                      <li>2. Confirm a few details about you and your vehicle.</li>
+                      <li>3. Go through your protection options together, at your pace.</li>
+                      <li>4. Ask questions any time — Max will slow down or explain more.</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>1. Request camera and microphone permissions.</li>
+                      <li>2. Create an AI conversation via the API.</li>
+                      <li>3. Join the session room.</li>
+                      <li>4. Render avatar video and audio.</li>
+                    </>
+                  )}
                 </ol>
               </div>
-              <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
-                <p className="text-xs uppercase tracking-[0.3em] text-emerald-200/70">Tool Use Demo</p>
+              <div
+                className={
+                  financeMode
+                    ? "rounded-[1.5rem] border border-white/10 bg-white/5 p-5 transition hover:border-emerald-300/30 hover:bg-white/[0.07]"
+                    : "rounded-[1.5rem] border border-white/10 bg-white/5 p-5"
+                }
+                style={financeMode ? { animation: "fade-in-up 0.6s ease-out 0.6s both" } : undefined}
+              >
+                <p className="text-xs uppercase tracking-[0.3em] text-emerald-200/70">
+                  {financeMode ? "Try asking Max" : "Tool Use Demo"}
+                </p>
                 <p className="mt-4 leading-7 text-slate-300">
                   {financeMode ? (
                     <>
-                      Ask the agent to show pricing. Try{" "}
-                      <em>&ldquo;Can you show me the GAP pricing&rdquo;</em> or{" "}
-                      <em>&ldquo;What&apos;s the payment breakdown?&rdquo;</em>.
+                      <em>&ldquo;Can you show me the GAP coverage?&rdquo;</em> or{" "}
+                      <em>&ldquo;What&apos;s the payment breakdown?&rdquo;</em> — Max will bring up the
+                      right screen while explaining it.
                     </>
                   ) : (
                     <>
@@ -1756,23 +1991,78 @@ export function TavusDemo() {
                   )}
                 </p>
               </div>
-              <div className="rounded-[1.5rem] border border-white/10 bg-white/5 p-5">
-                <p className="text-xs uppercase tracking-[0.3em] text-violet-200/70">Visual Reasoning Check</p>
+              <div
+                className={
+                  financeMode
+                    ? "rounded-[1.5rem] border border-white/10 bg-white/5 p-5 transition hover:border-violet-300/30 hover:bg-white/[0.07]"
+                    : "rounded-[1.5rem] border border-white/10 bg-white/5 p-5"
+                }
+                style={financeMode ? { animation: "fade-in-up 0.6s ease-out 0.7s both" } : undefined}
+              >
+                <p className="text-xs uppercase tracking-[0.3em] text-violet-200/70">
+                  {financeMode ? "Have a document handy?" : "Visual Reasoning Check"}
+                </p>
                 <p className="mt-4 leading-7 text-slate-300">
-                  After the call connects, ask what the agent can see. The avatar should be able to answer
-                  questions about your camera feed.
+                  {financeMode
+                    ? "You can hold your ID or vehicle registration up to the camera, and Max can read it back to confirm the details with you."
+                    : "After the call connects, ask what the agent can see. The avatar should be able to answer questions about your camera feed."}
                 </p>
               </div>
             </div>
           </div>
         </section>
 
-        <footer className="flex items-center justify-center gap-8 pb-4">
-          <svg className="h-10 w-auto opacity-40" viewBox="0 0 304 182" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="AWS"><path d="M86.4 66.4c0 3.7.4 6.7 1.1 8.9.8 2.2 1.8 4.6 3.2 7.1.5.8.7 1.6.7 2.3 0 1-.6 2-1.9 3l-6.3 4.2c-.9.6-1.8.9-2.6.9-1 0-2-.5-3-1.4-1.4-1.5-2.6-3.1-3.6-4.7-1-1.7-2-3.6-3.1-5.9-7.8 9.2-17.6 13.8-29.4 13.8-8.4 0-15.1-2.4-20-7.2-4.9-4.8-7.4-11.2-7.4-19.2 0-8.5 3-15.4 9.1-20.6 6.1-5.2 14.2-7.8 24.5-7.8 3.4 0 6.9.3 10.6.8 3.7.5 7.5 1.3 11.5 2.2v-7.3c0-7.6-1.6-12.9-4.7-16-3.2-3.1-8.6-4.6-16.3-4.6-3.5 0-7.1.4-10.8 1.3-3.7.9-7.3 2-10.8 3.4-1.6.7-2.8 1.1-3.5 1.3-.7.2-1.2.3-1.6.3-1.4 0-2.1-1-2.1-3.1v-4.9c0-1.6.2-2.8.7-3.5.5-.7 1.4-1.4 2.8-2.1 3.5-1.8 7.7-3.3 12.6-4.5 4.9-1.3 10.1-1.9 15.6-1.9 11.9 0 20.6 2.7 26.2 8.1 5.5 5.4 8.3 13.6 8.3 24.6v32.4h.1zm-40.6 15.2c3.3 0 6.7-.6 10.3-1.8 3.6-1.2 6.8-3.4 9.5-6.4 1.6-1.9 2.8-4 3.4-6.4.6-2.4 1-5.3 1-8.7v-4.2c-2.8-.7-5.8-1.3-8.9-1.7-3.1-.4-6.1-.6-9.1-.6-6.7 0-11.6 1.3-14.9 4-3.3 2.7-4.9 6.5-4.9 11.5 0 4.7 1.2 8.2 3.7 10.6 2.4 2.5 5.9 3.7 9.9 3.7zm80.3 10.8c-1.8 0-3-.3-3.8-1-.8-.6-1.5-2-2.1-3.9L96.7 10.2c-.6-2-.9-3.3-.9-4 0-1.6.8-2.5 2.4-2.5h9.8c1.9 0 3.2.3 3.9 1 .8.6 1.4 2 2 3.9l16.8 66.2 15.6-66.2c.5-2 1.1-3.3 1.9-3.9.8-.6 2.2-1 4-1h8c1.9 0 3.2.3 4 1 .8.6 1.5 2 1.9 3.9l15.8 67 17.3-67c.6-2 1.3-3.3 2-3.9.8-.6 2.1-1 3.9-1h9.3c1.6 0 2.5.8 2.5 2.5 0 .5-.1 1-.2 1.6-.1.6-.3 1.4-.7 2.5l-24.1 77.3c-.6 2-1.3 3.3-2.1 3.9-.8.6-2.1 1-3.8 1h-8.6c-1.9 0-3.2-.3-4-1-.8-.7-1.5-2-1.9-4L156 23l-15.4 64.4c-.5 2-1.1 3.3-1.9 4-.8.7-2.2 1-4 1h-8.6zm128.5 2.7c-5.2 0-10.4-.6-15.4-1.8-5-1.2-8.9-2.5-11.5-4-1.6-.9-2.7-1.9-3.1-2.8-.4-.9-.6-1.9-.6-2.8v-5.1c0-2.1.8-3.1 2.3-3.1.6 0 1.2.1 1.8.3.6.2 1.5.6 2.5 1 3.4 1.5 7.1 2.7 11 3.5 4 .8 7.9 1.2 11.9 1.2 6.3 0 11.2-1.1 14.6-3.3 3.4-2.2 5.2-5.4 5.2-9.5 0-2.8-.9-5.1-2.7-7-1.8-1.9-5.2-3.6-10.1-5.2L246 52c-7.3-2.3-12.7-5.7-16-10.2-3.3-4.4-5-9.3-5-14.5 0-4.2.9-7.9 2.7-11.1 1.8-3.2 4.2-6 7.2-8.2 3-2.3 6.4-4 10.4-5.2 4-1.2 8.2-1.7 12.6-1.7 2.2 0 4.5.1 6.7.4 2.3.3 4.4.7 6.5 1.1 2 .5 3.9 1 5.7 1.6 1.8.6 3.2 1.2 4.2 1.8 1.4.8 2.4 1.6 3 2.5.6.8.9 1.8.9 3.3v4.7c0 2.1-.8 3.2-2.3 3.2-.8 0-2.1-.4-3.8-1.2-5.7-2.6-12.1-3.9-19.2-3.9-5.7 0-10.2.9-13.3 2.8-3.1 1.9-4.7 4.8-4.7 8.9 0 2.8 1 5.2 3 7.1 2 1.9 5.7 3.8 11 5.5l14.2 4.5c7.2 2.3 12.4 5.5 15.5 9.6 3.1 4.1 4.6 8.8 4.6 14 0 4.3-.9 8.2-2.6 11.6-1.8 3.4-4.2 6.4-7.3 8.8-3.1 2.5-6.8 4.3-11.1 5.6-4.5 1.4-9.2 2.1-14.3 2.1z" fill="white"/><path d="M273.5 143.7c-32.9 24.3-80.7 37.2-121.8 37.2-57.6 0-109.5-21.3-148.7-56.7-3.1-2.8-.3-6.6 3.4-4.4 42.4 24.6 94.7 39.5 148.8 39.5 36.5 0 76.6-7.6 113.5-23.2 5.6-2.3 10.2 3.7 4.8 7.6z" fill="white"/><path d="M287.2 128.1c-4.2-5.4-27.8-2.6-38.5-1.3-3.2.4-3.7-2.4-.8-4.5 18.8-13.2 49.7-9.4 53.3-5 3.6 4.5-1 35.4-18.6 50.2-2.7 2.3-5.3 1.1-4.1-1.9 4-9.9 12.9-32.2 8.7-37.5z" fill="white"/></svg>
-          <img className="h-10 w-auto opacity-40 invert" src="/deepgram-logo.png" alt="Deepgram" />
-          <img className="h-9 w-auto opacity-40 invert" src="/pipecat-logo.png" alt="Pipecat" />
-        </footer>
+        {!financeMode ? (
+          <footer className="flex items-center justify-center gap-8 pb-4">
+            <svg className="h-10 w-auto opacity-40" viewBox="0 0 304 182" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="AWS"><path d="M86.4 66.4c0 3.7.4 6.7 1.1 8.9.8 2.2 1.8 4.6 3.2 7.1.5.8.7 1.6.7 2.3 0 1-.6 2-1.9 3l-6.3 4.2c-.9.6-1.8.9-2.6.9-1 0-2-.5-3-1.4-1.4-1.5-2.6-3.1-3.6-4.7-1-1.7-2-3.6-3.1-5.9-7.8 9.2-17.6 13.8-29.4 13.8-8.4 0-15.1-2.4-20-7.2-4.9-4.8-7.4-11.2-7.4-19.2 0-8.5 3-15.4 9.1-20.6 6.1-5.2 14.2-7.8 24.5-7.8 3.4 0 6.9.3 10.6.8 3.7.5 7.5 1.3 11.5 2.2v-7.3c0-7.6-1.6-12.9-4.7-16-3.2-3.1-8.6-4.6-16.3-4.6-3.5 0-7.1.4-10.8 1.3-3.7.9-7.3 2-10.8 3.4-1.6.7-2.8 1.1-3.5 1.3-.7.2-1.2.3-1.6.3-1.4 0-2.1-1-2.1-3.1v-4.9c0-1.6.2-2.8.7-3.5.5-.7 1.4-1.4 2.8-2.1 3.5-1.8 7.7-3.3 12.6-4.5 4.9-1.3 10.1-1.9 15.6-1.9 11.9 0 20.6 2.7 26.2 8.1 5.5 5.4 8.3 13.6 8.3 24.6v32.4h.1zm-40.6 15.2c3.3 0 6.7-.6 10.3-1.8 3.6-1.2 6.8-3.4 9.5-6.4 1.6-1.9 2.8-4 3.4-6.4.6-2.4 1-5.3 1-8.7v-4.2c-2.8-.7-5.8-1.3-8.9-1.7-3.1-.4-6.1-.6-9.1-.6-6.7 0-11.6 1.3-14.9 4-3.3 2.7-4.9 6.5-4.9 11.5 0 4.7 1.2 8.2 3.7 10.6 2.4 2.5 5.9 3.7 9.9 3.7zm80.3 10.8c-1.8 0-3-.3-3.8-1-.8-.6-1.5-2-2.1-3.9L96.7 10.2c-.6-2-.9-3.3-.9-4 0-1.6.8-2.5 2.4-2.5h9.8c1.9 0 3.2.3 3.9 1 .8.6 1.4 2 2 3.9l16.8 66.2 15.6-66.2c.5-2 1.1-3.3 1.9-3.9.8-.6 2.2-1 4-1h8c1.9 0 3.2.3 4 1 .8.6 1.5 2 1.9 3.9l15.8 67 17.3-67c.6-2 1.3-3.3 2-3.9.8-.6 2.1-1 3.9-1h9.3c1.6 0 2.5.8 2.5 2.5 0 .5-.1 1-.2 1.6-.1.6-.3 1.4-.7 2.5l-24.1 77.3c-.6 2-1.3 3.3-2.1 3.9-.8.6-2.1 1-3.8 1h-8.6c-1.9 0-3.2-.3-4-1-.8-.7-1.5-2-1.9-4L156 23l-15.4 64.4c-.5 2-1.1 3.3-1.9 4-.8.7-2.2 1-4 1h-8.6zm128.5 2.7c-5.2 0-10.4-.6-15.4-1.8-5-1.2-8.9-2.5-11.5-4-1.6-.9-2.7-1.9-3.1-2.8-.4-.9-.6-1.9-.6-2.8v-5.1c0-2.1.8-3.1 2.3-3.1.6 0 1.2.1 1.8.3.6.2 1.5.6 2.5 1 3.4 1.5 7.1 2.7 11 3.5 4 .8 7.9 1.2 11.9 1.2 6.3 0 11.2-1.1 14.6-3.3 3.4-2.2 5.2-5.4 5.2-9.5 0-2.8-.9-5.1-2.7-7-1.8-1.9-5.2-3.6-10.1-5.2L246 52c-7.3-2.3-12.7-5.7-16-10.2-3.3-4.4-5-9.3-5-14.5 0-4.2.9-7.9 2.7-11.1 1.8-3.2 4.2-6 7.2-8.2 3-2.3 6.4-4 10.4-5.2 4-1.2 8.2-1.7 12.6-1.7 2.2 0 4.5.1 6.7.4 2.3.3 4.4.7 6.5 1.1 2 .5 3.9 1 5.7 1.6 1.8.6 3.2 1.2 4.2 1.8 1.4.8 2.4 1.6 3 2.5.6.8.9 1.8.9 3.3v4.7c0 2.1-.8 3.2-2.3 3.2-.8 0-2.1-.4-3.8-1.2-5.7-2.6-12.1-3.9-19.2-3.9-5.7 0-10.2.9-13.3 2.8-3.1 1.9-4.7 4.8-4.7 8.9 0 2.8 1 5.2 3 7.1 2 1.9 5.7 3.8 11 5.5l14.2 4.5c7.2 2.3 12.4 5.5 15.5 9.6 3.1 4.1 4.6 8.8 4.6 14 0 4.3-.9 8.2-2.6 11.6-1.8 3.4-4.2 6.4-7.3 8.8-3.1 2.5-6.8 4.3-11.1 5.6-4.5 1.4-9.2 2.1-14.3 2.1z" fill="white"/><path d="M273.5 143.7c-32.9 24.3-80.7 37.2-121.8 37.2-57.6 0-109.5-21.3-148.7-56.7-3.1-2.8-.3-6.6 3.4-4.4 42.4 24.6 94.7 39.5 148.8 39.5 36.5 0 76.6-7.6 113.5-23.2 5.6-2.3 10.2 3.7 4.8 7.6z" fill="white"/><path d="M287.2 128.1c-4.2-5.4-27.8-2.6-38.5-1.3-3.2.4-3.7-2.4-.8-4.5 18.8-13.2 49.7-9.4 53.3-5 3.6 4.5-1 35.4-18.6 50.2-2.7 2.3-5.3 1.1-4.1-1.9 4-9.9 12.9-32.2 8.7-37.5z" fill="white"/></svg>
+            <img className="h-10 w-auto opacity-40 invert" src="/deepgram-logo.png" alt="Deepgram" />
+            <img className="h-9 w-auto opacity-40 invert" src="/pipecat-logo.png" alt="Pipecat" />
+          </footer>
+        ) : null}
       </div>
+
+      {financeMode ? (
+        <style>{`
+          @keyframes fade-in-up {
+            0% { opacity: 0; transform: translateY(14px); }
+            100% { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes orb-drift-a {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(40px, 30px) scale(1.08); }
+          }
+          @keyframes orb-drift-b {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(-30px, 40px) scale(1.1); }
+          }
+          @keyframes orb-drift-c {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(20px, -35px) scale(1.06); }
+          }
+          @keyframes grid-pan {
+            0% { background-position: 0 0; }
+            100% { background-position: 48px 48px; }
+          }
+          @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+          }
+          @keyframes gradient-shift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+          }
+          @keyframes button-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.45); }
+            50% { box-shadow: 0 0 0 10px rgba(56, 189, 248, 0); }
+          }
+          @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+              animation-duration: 0.01ms !important;
+              animation-iteration-count: 1 !important;
+            }
+          }
+        `}</style>
+      ) : null}
     </div>
   );
 }

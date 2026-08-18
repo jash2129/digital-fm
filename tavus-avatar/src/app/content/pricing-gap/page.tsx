@@ -1,16 +1,28 @@
 import { PricingPanel } from "@/components/pricing-panel";
+import { getOrderedProductKeys, getPricingConfig } from "@/lib/pricing-config";
 
-export default function PricingGapPage() {
+type PageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function PricingGapPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const config = getPricingConfig();
+  const product = config.products.gap;
+  const completedRaw = params.completed;
+  const completedKeys = (Array.isArray(completedRaw) ? completedRaw[0] : completedRaw)?.split(",") ?? [];
+
   return (
     <PricingPanel
-      eyebrow="Protection Package · Part 4 of 4"
-      title="GAP Coverage"
-      description="If the vehicle is totaled, stolen, or destroyed and the insurance payout doesn't cover the full loan balance, GAP covers the difference — so you're not paying out of pocket on a vehicle you no longer own."
-      bullets={[
-        "Covers the gap between insurance payout and loan balance",
-        "Applies to accident, theft, hail, flood, and fire total losses",
-        "No out-of-pocket balance left on a vehicle you no longer have",
-      ]}
+      eyebrow={product.eyebrow}
+      title={product.title}
+      description={product.description}
+      bullets={product.bullets}
+      progress={{
+        steps: getOrderedProductKeys(config).map((key) => ({ key, label: config.products[key].label })),
+        completedKeys,
+        currentKey: "gap",
+      }}
     />
   );
 }

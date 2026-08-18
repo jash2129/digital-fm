@@ -1,21 +1,28 @@
 import { PricingPanel } from "@/components/pricing-panel";
+import { getOrderedProductKeys, getPricingConfig } from "@/lib/pricing-config";
 
-export default function PricingVscPage() {
+type PageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function PricingVscPage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const config = getPricingConfig();
+  const product = config.products.vsc;
+  const completedRaw = params.completed;
+  const completedKeys = (Array.isArray(completedRaw) ? completedRaw[0] : completedRaw)?.split(",") ?? [];
+
   return (
     <PricingPanel
-      eyebrow="Protection Package · Part 1 of 4"
-      title="10-Year, 100,000-Mile Bumper-to-Bumper"
-      description="Wraps a blanket-cover contract around the vehicle for wear-and-tear failures the factory warranty won't pay for — the same major components, but covered no matter what caused the breakdown."
-      bullets={[
-        "Engine and transmission",
-        "Drive axle and four-wheel drive components",
-        "Suspension and steering",
-        "Electrical system",
-        "Brakes",
-        "Air conditioning and cooling system",
-        "All high-tech accessories, including labor",
-        "Zero deductible out of pocket",
-      ]}
+      eyebrow={product.eyebrow}
+      title={product.title}
+      description={product.description}
+      bullets={product.bullets}
+      progress={{
+        steps: getOrderedProductKeys(config).map((key) => ({ key, label: config.products[key].label })),
+        completedKeys,
+        currentKey: "vsc",
+      }}
     />
   );
 }

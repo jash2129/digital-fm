@@ -1,17 +1,28 @@
 import { PricingPanel } from "@/components/pricing-panel";
+import { getOrderedProductKeys, getPricingConfig } from "@/lib/pricing-config";
 
-export default function PricingMaintenancePage() {
+type PageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
+
+export default async function PricingMaintenancePage({ searchParams }: PageProps) {
+  const params = await searchParams;
+  const config = getPricingConfig();
+  const product = config.products.maintenance;
+  const completedRaw = params.completed;
+  const completedKeys = (Array.isArray(completedRaw) ? completedRaw[0] : completedRaw)?.split(",") ?? [];
+
   return (
     <PricingPanel
-      eyebrow="Protection Package · Part 2 of 4"
-      title="5-Year Maintenance Cover"
-      description="Routine scheduled maintenance for the next five years, taken care of — no more paying out of pocket every time it's due."
-      bullets={[
-        "Full synthetic oil changes",
-        "Filters",
-        "Tire rotations",
-        "Covers the next 5 years of scheduled service",
-      ]}
+      eyebrow={product.eyebrow}
+      title={product.title}
+      description={product.description}
+      bullets={product.bullets}
+      progress={{
+        steps: getOrderedProductKeys(config).map((key) => ({ key, label: config.products[key].label })),
+        completedKeys,
+        currentKey: "maintenance",
+      }}
     />
   );
 }

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
+import { clearActiveConversation } from "@/lib/active-conversations";
+import { recordConversationEnded } from "@/lib/conversation-usage";
 import { getTavusErrorMessage, readResponsePayload, tavusFetch } from "@/lib/tavus-api";
+import { getVisitorId } from "@/lib/visitor";
 
 type RouteContext = {
   params: Promise<{
@@ -8,8 +11,14 @@ type RouteContext = {
   }>;
 };
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
   const { conversationId } = await context.params;
+  const visitorId = getVisitorId(request);
+
+  if (visitorId) {
+    clearActiveConversation(visitorId, conversationId);
+  }
+  recordConversationEnded(conversationId);
 
   try {
     const response = await tavusFetch(`/conversations/${conversationId}/end`, {

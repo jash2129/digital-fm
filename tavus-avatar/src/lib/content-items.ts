@@ -75,6 +75,10 @@ const FINANCE_CONTENT_ITEMS = {
     url: "/content/payment-breakdown",
     label: "Payment Breakdown",
   },
+  escalate_to_human: {
+    url: "/content/escalate",
+    label: "Connecting You With a Team Member",
+  },
 } as const;
 
 const FINANCE_CONTENT_ITEM_ALIASES: Record<keyof typeof FINANCE_CONTENT_ITEMS, string[]> = {
@@ -115,6 +119,15 @@ const FINANCE_CONTENT_ITEM_ALIASES: Record<keyof typeof FINANCE_CONTENT_ITEMS, s
     "show payments",
     "the offer",
     "show the price",
+  ],
+  escalate_to_human: [
+    "escalate_to_human",
+    "connect me with a team member",
+    "get a team member",
+    "talk to a human",
+    "talk to someone else",
+    "manager",
+    "speak to a person",
   ],
 };
 

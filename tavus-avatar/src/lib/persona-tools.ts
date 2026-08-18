@@ -1,4 +1,5 @@
 import { isFinanceEvent } from "@/lib/event";
+import { getApprovedDailyRates, getOrderedProductKeys, getPricingConfig } from "@/lib/pricing-config";
 
 const AWS_PERSONA_TOOL_PATCH = [
   {
@@ -87,65 +88,101 @@ const AWS_PERSONA_TOOL_PATCH = [
   },
 ] as const;
 
-const FINANCE_PERSONA_TOOL_PATCH = [
-  {
-    op: "replace",
-    path: "/layers/llm/tools",
-    value: [
-      {
-        type: "function",
-        function: {
-          name: "show_pricing",
-          description:
-            "Display the coverage panel for one of the four bundled products while you describe what it covers. These products are sold as one bundled package, not priced individually — this panel shows coverage details only, no dollar amount. Call it once per product during the Square 4 recap.",
-          parameters: {
-            type: "object",
-            properties: {
-              product: {
-                type: "string",
-                enum: ["vsc", "maintenance", "tire_wheel", "gap"],
-                description:
-                  "Which product's coverage panel to show: vsc = 10-year/100,000-mile bumper-to-bumper contract, maintenance = 5-year maintenance plan, tire_wheel = 5-year tire & wheel coverage, gap = GAP.",
-              },
-            },
-            required: ["product"],
-          },
-        },
-      },
-      {
-        type: "function",
-        function: {
-          name: "show_payment_breakdown",
-          description:
-            "Display the package price panel showing ONLY the specific daily rate you are currently saying out loud. Call this every time you state or change the price — first with the opening anchor, and again each time you move to a new rate during negotiation — so the screen always matches what you just said. Never call it with a rate you have not spoken yet, and never reveal the full discount ladder; only ever show the one number that is live in the conversation right now.",
-          parameters: {
-            type: "object",
-            properties: {
-              daily_rate: {
-                type: "number",
-                enum: [4, 3.5, 3.25, 3],
-                description:
-                  "The daily rate you just quoted, in dollars. Approved values only: 4 (opening anchor), 3.5, 3.25, or 3 (hard floor — do not go below this without a human team member).",
-              },
-            },
-            required: ["daily_rate"],
-          },
-        },
-      },
-      {
-        type: "function",
-        function: {
-          name: "dismiss_content",
-          description:
-            "Dismisses the currently displayed panel and returns the video conversation to full screen. Use when the customer is done looking at a panel or asks to go back.",
-          parameters: {
-            type: "object",
-            properties: {},
-          },
-        },
-      },
-    ],
-  },
-] as const;
+function buildFinancePersonaToolPatch() {
+  const config = getPricingConfig();
+  const productKeys = getOrderedProductKeys(config);
+  const dailyRates = getApprovedDailyRates(config);
+  const floorRate = config.negotiation.floorRateUsd;
+  const productEnumDescription = productKeys
+    .map((key) => `${key} = ${config.products[key].label}`)
+    .join(", ");
 
-export const PERSONA_TOOL_PATCH = isFinanceEvent() ? FINANCE_PERSONA_TOOL_PATCH : AWS_PERSONA_TOOL_PATCH;
+  return [
+    {
+      op: "replace",
+      path: "/layers/llm/tools",
+      value: [
+        {
+          type: "function",
+          function: {
+            name: "show_pricing",
+            description:
+              "Display the coverage panel for one of the bundled products while you describe what it covers. These products are sold as one bundled package, not priced individually — this panel shows coverage details only, no dollar amount. Call it once per product during the Square 4 recap.",
+            parameters: {
+              type: "object",
+              properties: {
+                product: {
+                  type: "string",
+                  enum: productKeys,
+                  description: `Which product's coverage panel to show: ${productEnumDescription}.`,
+                },
+              },
+              required: ["product"],
+            },
+          },
+        },
+        {
+          type: "function",
+          function: {
+            name: "show_payment_breakdown",
+            description:
+              "Display the package price panel showing ONLY the specific daily rate you are currently saying out loud. Call this every time you state or change the price — first with the opening anchor, and again each time you move to a new rate during negotiation — so the screen always matches what you just said. Never call it with a rate you have not spoken yet, and never reveal the full discount ladder; only ever show the one number that is live in the conversation right now.",
+            parameters: {
+              type: "object",
+              properties: {
+                daily_rate: {
+                  type: "number",
+                  enum: dailyRates,
+                  description: `The daily rate you just quoted, in dollars. Approved values only: ${dailyRates.join(", ")} (${floorRate} is the hard floor — do not go below this without a human team member).`,
+                },
+              },
+              required: ["daily_rate"],
+            },
+          },
+        },
+        {
+          type: "function",
+          function: {
+            name: "escalate_to_human",
+            description:
+              `Call this when a customer needs a real team member instead of you — most importantly when they ask for a price below the $${floorRate}/day floor, but also for anything else you cannot resolve yourself. Displays a panel confirming a team member has been notified. Say the hand-off line out loud in the same turn as calling this.`,
+            parameters: {
+              type: "object",
+              properties: {
+                reason: {
+                  type: "string",
+                  description: "Brief internal note on why you escalated, e.g. \"customer requested below price floor\". Not shown to the customer.",
+                },
+              },
+              required: [],
+            },
+          },
+        },
+        {
+          type: "function",
+          function: {
+            name: "dismiss_content",
+            description:
+              "Dismisses the currently displayed panel and returns the video conversation to full screen. Use when the customer is done looking at a panel or asks to go back.",
+            parameters: {
+              type: "object",
+              properties: {},
+            },
+          },
+        },
+      ],
+    },
+    {
+      op: "replace",
+      path: "/layers/perception/perception_tool_prompt",
+      value:
+        "If the customer holds up a document, ID, driver's license, registration, or any piece of " +
+        "paper to the camera, read whatever text is legible on it — especially a name — and say " +
+        "what you read back to the customer to confirm it's correct before using it. If the text " +
+        "isn't clearly legible (angle, lighting, distance, glare), say so plainly and ask them to " +
+        "hold it closer/steadier rather than guessing at what it says.",
+    },
+  ];
+}
+
+export const PERSONA_TOOL_PATCH = isFinanceEvent() ? buildFinancePersonaToolPatch() : AWS_PERSONA_TOOL_PATCH;

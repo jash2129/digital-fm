@@ -1,10 +1,13 @@
-const APPROVED_DAILY_RATES = [4, 3.5, 3.25, 3] as const;
-const DEFAULT_DAILY_RATE = 4;
+import { getOrderedProductKeys, getPricingConfig } from "@/lib/pricing-config";
 
-function parseDailyRate(rawRate: string | string[] | undefined): number {
+function parseDailyRate(
+  rawRate: string | string[] | undefined,
+  approvedRates: number[],
+  defaultRate: number,
+): number {
   const value = Array.isArray(rawRate) ? rawRate[0] : rawRate;
   const parsed = value ? Number.parseFloat(value) : NaN;
-  return (APPROVED_DAILY_RATES as readonly number[]).includes(parsed) ? parsed : DEFAULT_DAILY_RATE;
+  return approvedRates.includes(parsed) ? parsed : defaultRate;
 }
 
 function formatDollars(amount: number): string {
@@ -17,12 +20,21 @@ type PaymentBreakdownPageProps = {
 
 export default async function PaymentBreakdownPage({ searchParams }: PaymentBreakdownPageProps) {
   const params = await searchParams;
-  const dailyRate = parseDailyRate(params.rate);
+  const config = getPricingConfig();
+  const dailyRate = parseDailyRate(
+    params.rate,
+    config.negotiation.tiersUsd,
+    config.negotiation.openingRateUsd,
+  );
   const monthlyRate = dailyRate * 30.44;
+  const productLabels = getOrderedProductKeys(config).map((key) => config.products[key].label);
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),_transparent_34%),linear-gradient(180deg,_#f6fbff_0%,_#e7f1fb_100%)] px-8 py-10 text-slate-950">
-      <div className="mx-auto flex h-full max-w-3xl flex-col gap-6">
+      <div
+        className="mx-auto flex h-full max-w-3xl flex-col gap-6"
+        style={{ animation: "panel-in 0.45s ease-out" }}
+      >
         <div className="rounded-[2rem] border border-sky-200/80 bg-white/80 p-8 shadow-[0_24px_90px_rgba(7,15,43,0.12)] backdrop-blur">
           <p className="text-xs font-semibold uppercase tracking-[0.35em] text-sky-700">
             Full Protection Package
@@ -30,10 +42,20 @@ export default async function PaymentBreakdownPage({ searchParams }: PaymentBrea
           <h1 className="mt-4 text-4xl font-semibold leading-tight tracking-tight text-slate-950">
             Everything, for one price
           </h1>
-          <p className="mt-3 max-w-2xl text-lg leading-8 text-slate-600">
-            10-year bumper-to-bumper, 5-year maintenance, 5-year tire &amp; wheel, and GAP — all
-            bundled together.
-          </p>
+
+          <ul className="mt-5 flex flex-wrap gap-2">
+            {productLabels.map((label) => (
+              <li
+                className="flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700"
+                key={label}
+              >
+                <svg fill="none" height="14" viewBox="0 0 24 24" width="14" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20 6 9 17l-5-5" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
+                </svg>
+                {label}
+              </li>
+            ))}
+          </ul>
         </div>
 
         <div className="rounded-[1.5rem] border border-slate-200 bg-white/85 p-10 text-center shadow-[0_12px_48px_rgba(7,15,43,0.08)]">
@@ -49,6 +71,13 @@ export default async function PaymentBreakdownPage({ searchParams }: PaymentBrea
           </p>
         </div>
       </div>
+
+      <style>{`
+        @keyframes panel-in {
+          0% { opacity: 0; transform: translateY(10px) scale(0.98); }
+          100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
     </main>
   );
 }
