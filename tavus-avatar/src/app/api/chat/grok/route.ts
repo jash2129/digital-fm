@@ -29,10 +29,15 @@ export async function POST(request: Request) {
       isScriptComplete: decision.isScriptComplete,
     });
   } catch (error: any) {
-    console.error("[api/chat/grok error]:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to process turn in beat controller." },
-      { status: 500 }
-    );
+    console.error("[api/chat/grok error, returning safe fallback]:", error);
+    return NextResponse.json({
+      text: "Sorry, I didn't catch that.",
+      toolCalls: [],
+      role: "assistant",
+      currentBeatId: 1,
+      beatType: "wait",
+      intent: "garbled",
+      isScriptComplete: false,
+    });
   }
 }
