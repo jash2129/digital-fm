@@ -17,8 +17,8 @@ export const GARBLED_LINE = "Sorry, I didn't catch that.";
 export const DEFER_LINE = "I'm going to cover that in just a moment.";
 
 // Spoken when customer asks an out-of-script question before resuming next beat
-// Status: APPROVED (Suggested line: sets expectation for human colleague follow-up)
-export const OUT_OF_SCRIPT_LINE = "I'll have my colleague go over that with you right after we finish up here.";
+// Status: APPROVED
+export const OUT_OF_SCRIPT_LINE = "I'll make a note of that for my colleague to cover right after we finish your paperwork.";
 
 // Spoken when customer asks for a human, after 2 consecutive 'No's, or after Beat 22 completes
 // Status: APPROVED
