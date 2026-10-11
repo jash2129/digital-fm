@@ -67,7 +67,10 @@ export function shouldCutMaxOff(spoken: string): boolean {
   if (words.length === 0) return false;
 
   // 1. Explicit backchannel words do NOT cut Max off
-  if (words.length <= 2 && SPEED_AND_BARGE_IN_CONFIG.BACKCHANNEL_WORDS.includes(norm)) {
+  if (SPEED_AND_BARGE_IN_CONFIG.BACKCHANNEL_WORDS.includes(norm)) {
+    return false;
+  }
+  if (words.every((w) => SPEED_AND_BARGE_IN_CONFIG.BACKCHANNEL_WORDS.includes(w))) {
     return false;
   }
 
@@ -552,13 +555,20 @@ export function LiveAvatarDemo() {
   // ---------------------------------------------------------------------------
   // User Camera & Audio Preview Lifecycle
   // ---------------------------------------------------------------------------
+  // Hardware Audio Constraints for Studio Demos (anti-echo & speaker suppression)
+  const AUDIO_MEDIA_CONSTRAINTS: MediaTrackConstraints = {
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
+  };
+
   useEffect(() => {
     let isMounted = true;
     const startCameraPreview = async () => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
-          audio: true,
+          audio: AUDIO_MEDIA_CONSTRAINTS,
         });
         if (!isMounted) {
           stream.getTracks().forEach((track) => track.stop());
@@ -568,7 +578,7 @@ export function LiveAvatarDemo() {
       } catch (camErr) {
         console.warn("[webcam] Video permission denied or device not found, falling back to audio only:", camErr);
         try {
-          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_MEDIA_CONSTRAINTS });
           if (!isMounted) {
             audioStream.getTracks().forEach((track) => track.stop());
             return;
@@ -767,11 +777,11 @@ export function LiveAvatarDemo() {
             try {
               streamForRecording = await navigator.mediaDevices.getUserMedia({
                 video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
-                audio: true,
+                audio: AUDIO_MEDIA_CONSTRAINTS,
               });
               setLocalVideoStream(streamForRecording);
             } catch {
-              streamForRecording = await navigator.mediaDevices.getUserMedia({ audio: true });
+              streamForRecording = await navigator.mediaDevices.getUserMedia({ audio: AUDIO_MEDIA_CONSTRAINTS });
               setLocalVideoStream(streamForRecording);
               setIsCameraOff(true);
             }
@@ -841,7 +851,7 @@ export function LiveAvatarDemo() {
         if (greetingSent) return;
         greetingSent = true;
         setTimeout(() => {
-          const greeting = "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!";
+          const greeting = "Can you hear and see me alright?";
           setCurrentReplicaText(greeting);
           conversationHistoryRef.current = [{ role: "assistant", content: greeting }];
           setMessages([{ role: "assistant", content: greeting }]);
@@ -1591,6 +1601,14 @@ export function LiveAvatarDemo() {
                       </>
                     )}
                   </button>
+
+                  {/* Audio echo prevention note for tester */}
+                  <div className="flex items-center gap-2.5 rounded-xl border border-sky-400/25 bg-sky-500/10 px-3.5 py-2.5 text-xs text-sky-200 mt-3.5 shadow-sm">
+                    <span className="text-base select-none">🎧</span>
+                    <div className="leading-snug">
+                      <span className="font-semibold text-white">Tester Note:</span> Please wear headphones for demos to eliminate room speaker echo and ensure seamless barge-in.
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
