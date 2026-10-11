@@ -394,6 +394,115 @@ export async function generateStep0Turn(
   };
 }
 
+/**
+ * Dynamic off-script responder with strict negative constraints.
+ * Generates a concise, polite 1-sentence answer for general/dealership questions.
+ *
+ * Strict Negative Constraints:
+ * 1. NO PRICING OR RATE PROMISES: NEVER state, quote, estimate, or promise interest rates (APR),
+ *    monthly payments, loan term/duration, down payment, trade-in value, taxes, or discounts.
+ * 2. If the user asks about financing terms, interest rates, monthly payment, down payment, or trade-in value,
+ *    MUST defer to human colleague using OUT_OF_SCRIPT_LINE.
+ * 3. Max length: 1 single sentence, max 20 words.
+ * 4. Zero filler words ("Sure", "Awesome", "Great question", "Got it", "Of course").
+ * 5. If response violates constraints (e.g. mentions $, %, rate, apr, payment), immediately fallback to OUT_OF_SCRIPT_LINE.
+ */
+export async function generateConstrainedOffScriptResponse(
+  customerTranscript: string,
+  state: CallState
+): Promise<string> {
+  const norm = customerTranscript.toLowerCase();
+
+  // Hard safety filter: If asking about financial/rates/trade-in/payments, immediately use OUT_OF_SCRIPT_LINE
+  const financialKeywords = [
+    "rate",
+    "apr",
+    "interest",
+    "monthly payment",
+    "payment",
+    "down payment",
+    "trade in",
+    "trade-in",
+    "credit score",
+    "loan term",
+    "discount",
+    "rebate",
+    "invoice",
+    "msrp",
+  ];
+
+  if (financialKeywords.some((kw) => norm.includes(kw))) {
+    return OUT_OF_SCRIPT_LINE;
+  }
+
+  const apiKey = process.env.XAI_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) {
+    return OUT_OF_SCRIPT_LINE;
+  }
+
+  const isXai = Boolean(process.env.XAI_API_KEY);
+  const endpoint = isXai ? "https://api.x.ai/v1/chat/completions" : "https://api.openai.com/v1/chat/completions";
+  const model = process.env.GROK_MODEL?.trim() || (isXai ? "grok-4.20-0309-non-reasoning" : "gpt-4o-mini");
+
+  const systemPrompt = `You are Max, a polite, focused Digital Finance Manager at a car dealership.
+The customer asked an off-script question during their finance paperwork review.
+Respond with EXACTLY ONE short, professional sentence (max 20 words) answering or acknowledging their question.
+
+STRICT NEGATIVE CONSTRAINTS:
+- NEVER quote, promise, or discuss specific interest rates (APR), monthly payments, loan terms, down payments, discounts, or trade-in values.
+- NEVER make mechanical warranty guarantees beyond the manufacturer paperwork.
+- NO filler words (do NOT start with "Sure", "Awesome", "Great question", "Got it", "Certainly", "Of course").
+- Keep it natural, direct, and under 20 words.
+- Output ONLY the exact sentence to speak, no quotes, no markdown.`;
+
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.1,
+        max_tokens: 60,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Customer asked: "${customerTranscript}"` },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      return OUT_OF_SCRIPT_LINE;
+    }
+
+    const data = await res.json();
+    let reply = (data.choices?.[0]?.message?.content || "").trim();
+    reply = formatSpeechText(reply);
+
+    // Safety checks against rate/price promises in output
+    const replyNorm = reply.toLowerCase();
+    if (
+      !reply ||
+      replyNorm.includes("$") ||
+      replyNorm.includes("%") ||
+      replyNorm.includes("percent") ||
+      replyNorm.includes(" apr") ||
+      replyNorm.includes("interest rate") ||
+      replyNorm.includes("per month") ||
+      replyNorm.includes("a month")
+    ) {
+      return OUT_OF_SCRIPT_LINE;
+    }
+
+    return reply;
+  } catch (err) {
+    console.warn("[beat-controller] Dynamic off-script generation error, falling back to OUT_OF_SCRIPT_LINE:", err);
+    return OUT_OF_SCRIPT_LINE;
+  }
+}
+
 // -----------------------------------------------------------------------------
 // MAIN CONTROLLER DECISION FUNCTION
 // Evaluates customer input against current call state and outputs exact text to speak
@@ -533,18 +642,19 @@ export async function processControllerTurn(
     }
 
     case "question_out_of_script": {
-      // Speak OUT_OF_SCRIPT_LINE, then resume at the next undelivered beat
+      // Generate constrained dynamic response with strict negative constraints (no pricing/rate promises), then resume
+      const dynamicLeadIn = await generateConstrainedOffScriptResponse(customerTranscript, state);
       const nextBeatId = state.current_beat + 1;
       if (nextBeatId <= 22) {
         state.current_beat = nextBeatId;
         state.delivered_beats.push(nextBeatId);
         const nextBeat = BEATS.find((b) => b.id === nextBeatId)!;
         const nextUtterance = getFullBeatUtterance(nextBeat, state.dealConfig);
-        textToSpeak = `${OUT_OF_SCRIPT_LINE} ${nextUtterance}`;
+        textToSpeak = `${dynamicLeadIn} ${nextUtterance}`;
         beatType = nextBeat.type;
         toolCalls = getBeatToolCalls(nextBeatId);
       } else {
-        textToSpeak = `${OUT_OF_SCRIPT_LINE} ${HANDOFF_LINE}`;
+        textToSpeak = `${dynamicLeadIn} ${HANDOFF_LINE}`;
         state.is_stopped = true;
         beatType = "stop";
       }

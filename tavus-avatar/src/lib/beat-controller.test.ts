@@ -6,6 +6,7 @@ import {
   BEATS,
   renderBeatText,
   getFullBeatUtterance,
+  generateConstrainedOffScriptResponse,
 } from "./beat-controller";
 import { DEFAULT_DEAL_CONFIG } from "./deal-config";
 import {
@@ -269,5 +270,27 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       expect(finalTurn.isScriptComplete).toBe(true);
       expect(finalTurn.state.is_stopped).toBe(true);
     });
+
+    it("enforces strict negative constraints on off-script responses (never quotes rates or pricing)", async () => {
+      const state = getOrCreateCallState(sessionId);
+
+      // Financial / rate question MUST trigger hard safety filter returning OUT_OF_SCRIPT_LINE
+      const rateResponse = await generateConstrainedOffScriptResponse("What is the exact APR and interest rate on my car loan?", state);
+      expect(rateResponse).toBe(OUT_OF_SCRIPT_LINE);
+
+      const paymentResponse = await generateConstrainedOffScriptResponse("Can you lower my monthly payment by 50 dollars?", state);
+      expect(paymentResponse).toBe(OUT_OF_SCRIPT_LINE);
+
+      const tradeInResponse = await generateConstrainedOffScriptResponse("What is my trade in appraisal value?", state);
+      expect(tradeInResponse).toBe(OUT_OF_SCRIPT_LINE);
+
+      // General question should never contain dollar signs, interest rates, or percentages
+      const coffeeResponse = await generateConstrainedOffScriptResponse("Can I grab a cup of coffee while we do this?", state);
+      expect(coffeeResponse).not.toContain("$");
+      expect(coffeeResponse).not.toContain("%");
+      expect(coffeeResponse).not.toContain("apr");
+      expect(coffeeResponse).not.toContain("interest");
+    });
   });
 });
+
