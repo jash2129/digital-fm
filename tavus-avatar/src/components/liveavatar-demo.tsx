@@ -1767,39 +1767,8 @@ export function LiveAvatarDemo() {
         ) : (
           /* Live Consultation Stage - Full Screen Widescreen Immersion */
           <div className="absolute inset-0 h-full w-full overflow-hidden bg-black">
-            {/* 1. Dynamic On-Screen Presentation Layer */}
-            {activeOverlay ? (
-              <div className="absolute inset-0 z-10 h-full w-full overflow-y-auto no-scrollbar">
-                {activeOverlay === "warranty_terms" ? (
-                  <WarrantyTermsPage />
-                ) : activeOverlay === "cost_breakdown" ? (
-                  <CostBreakdownPage />
-                ) : activeOverlay === "pricing_ladder" ? (
-                  <PricingLadderPage />
-                ) : activeOverlay === "deal_summary" ? (
-                  <DealSummaryPage />
-                ) : activeOverlay === "escalate" ? (
-                  <EscalatePage />
-                ) : (
-                  <div className="absolute inset-0 h-full w-full bg-slate-950 p-4 sm:p-6 overflow-y-auto no-scrollbar">
-                    <DigitalFourSquareMenu
-                      shownProducts={shownProducts}
-                      activeProduct={activeProduct}
-                      dailyRate={dailyRate}
-                    />
-                  </div>
-                )}
-              </div>
-            ) : null}
-
-            {/* 2. Persistent Single Avatar Video Container - 100% Full Screen object-cover identical to Tavus */}
-            <div
-              className={
-                activeOverlay
-                  ? "absolute right-4 top-16 z-20 h-[110px] w-[150px] sm:h-[130px] sm:w-[175px] md:h-[145px] md:w-[195px] overflow-hidden rounded-2xl border-2 border-sky-400/50 bg-slate-950/95 shadow-2xl backdrop-blur transition-all duration-300"
-                  : "absolute inset-0 z-0 h-full w-full bg-black transition-all duration-300 overflow-hidden"
-              }
-            >
+            {/* 1. Persistent Single Avatar Video Container - 100% Edge-to-Edge Full Screen (NEVER SHRINKS) */}
+            <div className="absolute inset-0 z-0 h-full w-full bg-black overflow-hidden pointer-events-none">
               {/* Fallback portrait avatar before live video stream arrives */}
               {!remoteVideoTrack && avatarPreviewUrl && (
                 <img
@@ -1839,16 +1808,118 @@ export function LiveAvatarDemo() {
               </div>
             </div>
 
-            {/* Close Presentation Floating Button */}
+            {/* 2. Floating Luxury Glassmorphic Presentation HUD Badge (Non-obstructing, video stays 100% full screen) */}
             {activeOverlay && (
-              <button
-                type="button"
-                onClick={() => setActiveOverlay(null)}
-                className="absolute top-16 left-4 z-30 flex items-center gap-2 rounded-full border border-white/20 bg-slate-900/90 px-4 py-2 text-xs font-semibold text-slate-200 shadow-2xl backdrop-blur-xl hover:bg-slate-800 hover:scale-105 active:scale-95 transition"
-              >
-                <span className="text-sm font-bold">✕</span>
-                <span>Return to Full Video (Esc)</span>
-              </button>
+              <div className="absolute right-4 top-16 sm:right-6 sm:top-20 z-20 w-[92%] sm:w-[26rem] max-h-[72vh] overflow-y-auto no-scrollbar rounded-3xl border border-white/20 bg-slate-950/85 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.8)] backdrop-blur-2xl transition-all duration-300 animate-in fade-in slide-in-from-right-4">
+                <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <span className="size-2 rounded-full bg-sky-400 animate-pulse" />
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-sky-300">
+                      Finance Review HUD
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveOverlay(null)}
+                    className="flex size-7 items-center justify-center rounded-full bg-white/10 text-slate-300 hover:bg-white/20 hover:text-white transition"
+                    title="Dismiss HUD"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {activeOverlay === "warranty_terms" && (
+                  <div className="space-y-3">
+                    <div className="rounded-2xl border border-sky-500/20 bg-sky-500/10 p-3.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-sky-300 uppercase tracking-wide">Base Limited</span>
+                        <span className="text-[10px] font-semibold text-sky-400 bg-sky-400/20 px-2 py-0.5 rounded-full">Factory Defect</span>
+                      </div>
+                      <div className="mt-1 text-base font-extrabold text-white">3 Years / 36,000 Miles</div>
+                      <p className="mt-1 text-xs text-slate-300 leading-relaxed">
+                        Covers defects in design, build, or installation from the factory. Does not cover wear and tear.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-3.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-indigo-300 uppercase tracking-wide">Powertrain</span>
+                        <span className="text-[10px] font-semibold text-indigo-400 bg-indigo-400/20 px-2 py-0.5 rounded-full">Engine & Trans</span>
+                      </div>
+                      <div className="mt-1 text-base font-extrabold text-white">5 Years / 60,000 Miles</div>
+                      <p className="mt-1 text-xs text-slate-300 leading-relaxed">
+                        Strictly internal lubricated engine and transmission defect coverage.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {activeOverlay === "cost_breakdown" && (
+                  <div className="space-y-3">
+                    <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-3.5">
+                      <div className="text-xs font-bold text-amber-300 uppercase tracking-wide">Diagnostic & Labor</div>
+                      <div className="mt-1 text-xl font-extrabold text-white">$185.00 / hour</div>
+                      <p className="mt-1 text-xs text-slate-300 leading-relaxed">
+                        Master technician electronic & mechanical diagnostic labor rate.
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-slate-900/60 p-3.5">
+                      <div className="text-xs font-bold text-slate-300 uppercase tracking-wide">Average Electronic Repair</div>
+                      <div className="mt-1 text-xl font-extrabold text-emerald-400">$2,400 – $4,200</div>
+                      <p className="mt-1 text-xs text-slate-300 leading-relaxed">
+                        Radar sensors, adaptive cruise control modules, and touchscreen center consoles.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {activeOverlay === "four_square" && (
+                  <div className="space-y-3">
+                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-center">
+                      <span className="text-xs font-bold uppercase tracking-wider text-emerald-300">
+                        Total Protection Investment
+                      </span>
+                      <div className="mt-1 text-3xl font-black text-white">
+                        ${typeof dailyRate === "number" ? dailyRate.toFixed(2) : dailyRate || "4.00"}
+                        <span className="text-sm font-medium text-slate-400"> / day</span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-300">
+                        Added into your monthly payment with zero out-of-pocket today.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs">
+                        <span className="font-semibold text-white">✓ Vehicle Service Contract</span>
+                        <span className="text-sky-300">Bumper-to-Bumper</span>
+                      </div>
+                      <div className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs">
+                        <span className="font-semibold text-white">✓ Tire & Wheel Protection</span>
+                        <span className="text-sky-300">Road Hazard</span>
+                      </div>
+                      <div className="flex items-center justify-between rounded-xl border border-white/10 bg-slate-900/60 px-3 py-2 text-xs">
+                        <span className="font-semibold text-white">✓ Scheduled Maintenance</span>
+                        <span className="text-sky-300">OEM Service</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeOverlay !== "warranty_terms" &&
+                  activeOverlay !== "cost_breakdown" &&
+                  activeOverlay !== "four_square" && (
+                    <div className="space-y-3">
+                      <div className="rounded-2xl border border-sky-500/20 bg-sky-500/10 p-4">
+                        <div className="text-xs font-bold text-sky-300 uppercase tracking-wide">Deal Summary</div>
+                        <div className="mt-1 text-lg font-bold text-white">2026 Mazda CX-5</div>
+                        <p className="mt-1 text-xs text-slate-300 leading-relaxed">
+                          Finance manager review in progress. Your colleague will finalize your signature documents.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+              </div>
             )}
 
             {/* Non-Obstructing Live Dual-Speaker Subtitle Panel */}
