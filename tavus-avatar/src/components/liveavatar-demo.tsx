@@ -10,10 +10,105 @@ import DealSummaryPage from "@/app/content/deal-summary/page";
 import EscalatePage from "@/app/content/escalate/page";
 import { CallSummaryScreen } from "@/components/CallSummaryScreen";
 
+// =============================================================================
+// SPEED & BARGE-IN TUNING CONFIGURATION
+// All thresholds in one central object for easy tuning without hunting
+// =============================================================================
+export const SPEED_AND_BARGE_IN_CONFIG = {
+  // End of speech silence threshold in milliseconds (minimum 500ms, start at 650ms)
+  // Does not wait for Chrome's own final result.
+  END_OF_SPEECH_MS: 650,
+
+  // Single words / short phrases that immediately cut Max off:
+  BARGE_IN_CUTOFF_WORDS: [
+    "wait",
+    "stop",
+    "no",
+    "hold on",
+    "sorry",
+    "what",
+    "hang on",
+    "one second",
+  ],
+
+  // Minimum words of any reply to trigger cut-off (e.g. 3 or more words):
+  MIN_WORDS_ANY_BARGE_IN: 3,
+
+  // Words that do NOT cut Max off (treated as backchannel, letting him finish):
+  BACKCHANNEL_WORDS: [
+    "mhm",
+    "uh huh",
+    "yeah",
+    "yes",
+    "okay",
+    "ok",
+    "right",
+    "sure",
+    "go on",
+  ],
+
+  // Anti-echo ordered word match threshold (reject only if 80%+ matches avatar):
+  ANTI_ECHO_MATCH_RATIO: 0.8,
+  ANTI_ECHO_MIN_WORDS: 3,
+
+  // Safeguard: maximum ms audio can stay muted after turn ends
+  AUDIO_UNMUTE_SAFEGUARD_MS: 3000,
+};
+
 type Message = {
   role: "user" | "assistant";
   content: string;
 };
+
+// Helper to determine if incoming user speech should trigger instant barge-in cut-off
+export function shouldCutMaxOff(spoken: string): boolean {
+  const norm = spoken.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+  const words = norm.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return false;
+
+  // 1. Explicit backchannel words do NOT cut Max off
+  if (words.length <= 2 && SPEED_AND_BARGE_IN_CONFIG.BACKCHANNEL_WORDS.includes(norm)) {
+    return false;
+  }
+
+  // 2. Cutoff single words/phrases cut Max off immediately
+  for (const cutoff of SPEED_AND_BARGE_IN_CONFIG.BARGE_IN_CUTOFF_WORDS) {
+    if (norm === cutoff || norm.startsWith(`${cutoff} `) || norm.endsWith(` ${cutoff}`) || norm.includes(` ${cutoff} `)) {
+      return true;
+    }
+  }
+
+  // 3. Any reply of 3 or more words cuts Max off
+  if (words.length >= SPEED_AND_BARGE_IN_CONFIG.MIN_WORDS_ANY_BARGE_IN) {
+    return true;
+  }
+
+  return false;
+}
+
+// Anti-echo without dropping real questions: only reject when near-exact reflection (>= 80% ordered words match)
+export function isNearExactEcho(userTranscript: string, lastAvatarText: string): boolean {
+  if (!userTranscript || !lastAvatarText) return false;
+  const userWords = userTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim().split(/\s+/).filter(Boolean);
+  const avatarWords = lastAvatarText.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim().split(/\s+/).filter(Boolean);
+
+  if (userWords.length < SPEED_AND_BARGE_IN_CONFIG.ANTI_ECHO_MIN_WORDS) {
+    return false;
+  }
+
+  let matchCount = 0;
+  let searchIdx = 0;
+  for (const uWord of userWords) {
+    const foundIdx = avatarWords.indexOf(uWord, searchIdx);
+    if (foundIdx !== -1) {
+      matchCount++;
+      searchIdx = foundIdx + 1;
+    }
+  }
+
+  const ratio = matchCount / userWords.length;
+  return ratio >= SPEED_AND_BARGE_IN_CONFIG.ANTI_ECHO_MATCH_RATIO;
+}
 
 export function LiveAvatarDemo() {
   const [isConnected, setIsConnected] = useState(false);
@@ -40,6 +135,7 @@ export function LiveAvatarDemo() {
   const isGrokProcessingRef = useRef(false);
   const avatarWatchdogTimerRef = useRef<any>(null);
   const silenceEndTimerRef = useRef<any>(null);
+  const muteSafeguardTimerRef = useRef<any>(null);
   const audioActivityCtxRef = useRef<AudioContext | null>(null);
 
   // User Camera (Webcam Preview & In-Call PiP)
@@ -110,6 +206,41 @@ export function LiveAvatarDemo() {
   dailyRateRef.current = dailyRate;
 
   // ---------------------------------------------------------------------------
+  // Local Remote Audio Mute Controller (Instant Barge-in & Safeguard)
+  // ---------------------------------------------------------------------------
+  const setRemoteAudioMutedLocally = useCallback((muted: boolean) => {
+    if (audioRef.current) {
+      audioRef.current.volume = muted ? 0 : 1.0;
+      audioRef.current.muted = muted;
+    }
+    attachedAudioElsRef.current.forEach((el) => {
+      el.volume = muted ? 0 : 1.0;
+      el.muted = muted;
+    });
+
+    if (muted) {
+      if (muteSafeguardTimerRef.current) clearTimeout(muteSafeguardTimerRef.current);
+      muteSafeguardTimerRef.current = setTimeout(() => {
+        // Safeguard so volume can never stay at 0 after turn ends
+        console.warn("[liveavatar] Audio unmute safeguard triggered: restoring volume = 1.0");
+        if (audioRef.current) {
+          audioRef.current.volume = 1.0;
+          audioRef.current.muted = false;
+        }
+        attachedAudioElsRef.current.forEach((el) => {
+          el.volume = 1.0;
+          el.muted = false;
+        });
+      }, SPEED_AND_BARGE_IN_CONFIG.AUDIO_UNMUTE_SAFEGUARD_MS);
+    } else {
+      if (muteSafeguardTimerRef.current) {
+        clearTimeout(muteSafeguardTimerRef.current);
+        muteSafeguardTimerRef.current = null;
+      }
+    }
+  }, []);
+
+  // ---------------------------------------------------------------------------
   // Send speech command to LiveAvatar
   // ---------------------------------------------------------------------------
   const speakWithAvatar = useCallback(async (text: string) => {
@@ -125,6 +256,9 @@ export function LiveAvatarDemo() {
       }
       console.log("[liveavatar] avatar.speak_text:", clean);
 
+      // Restore volume before Max's next utterance starts
+      setRemoteAudioMutedLocally(false);
+
       // Immediately set speaking flag to prevent race condition before speak_started event
       setIsAvatarSpeaking(true);
       isAvatarSpeakingRef.current = true;
@@ -139,6 +273,7 @@ export function LiveAvatarDemo() {
           setIsAvatarSpeaking(false);
           isAvatarSpeakingRef.current = false;
           avatarFinishedAtRef.current = Date.now();
+          setRemoteAudioMutedLocally(false);
         }
       }, expectedDurationMs);
 
@@ -156,7 +291,7 @@ export function LiveAvatarDemo() {
     } catch (err) {
       console.error("[liveavatar] Failed to publish speak_text:", err);
     }
-  }, []);
+  }, [setRemoteAudioMutedLocally]);
 
   // ---------------------------------------------------------------------------
   // Interrupt Avatar (Barge-in / Cut-off)
@@ -171,6 +306,9 @@ export function LiveAvatarDemo() {
 
     try {
       console.log("[liveavatar] Sending avatar.interrupt (barge-in)");
+      // Instant local mute on barge-in
+      setRemoteAudioMutedLocally(true);
+
       const payload = new TextEncoder().encode(
         JSON.stringify({
           event_type: "avatar.interrupt",
@@ -185,7 +323,7 @@ export function LiveAvatarDemo() {
     } catch (err) {
       console.error("[liveavatar] Failed to interrupt avatar:", err);
     }
-  }, []);
+  }, [setRemoteAudioMutedLocally]);
 
   // ---------------------------------------------------------------------------
   // Handle Chat with Grok & Tool Execution
@@ -336,38 +474,50 @@ export function LiveAvatarDemo() {
       const currentSpoken = (interimText || finalTranscript).trim();
       if (!currentSpoken) return;
 
-      // Anti-echo filter: if what the microphone heard is just the avatar's own current sentence echoing, ignore it
-      const currentNorm = currentSpoken.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
-      const avatarNorm = (lastSpokenByAvatarRef.current || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
-      if (isAvatarSpeakingRef.current && avatarNorm.includes(currentNorm) && currentNorm.length > 5) {
+      // 1. Anti-echo without dropping real questions:
+      // Only reject when transcript is near-exact reflection of Max's last spoken text (>= 80% ordered words match)
+      if (
+        isAvatarSpeakingRef.current &&
+        isNearExactEcho(currentSpoken, lastSpokenByAvatarRef.current || "")
+      ) {
+        console.warn(
+          `[anti-echo] REJECTED transcript as echo (match >= ${
+            SPEED_AND_BARGE_IN_CONFIG.ANTI_ECHO_MATCH_RATIO * 100
+          }%): "${currentSpoken}" against avatar text: "${lastSpokenByAvatarRef.current}"`
+        );
         return;
       }
 
-      // If the avatar is speaking and user speaks their own words (> 1 word):
-      // IMMEDIATELY barge-in and interrupt the avatar (identical to Tavus)!
-      if (isAvatarSpeakingRef.current && currentNorm.split(" ").length >= 2) {
-        console.log("[liveavatar] Native barge-in triggered by user speech:", currentSpoken);
+      // 2. Barge-in on short words, with filter:
+      // Cutoff words immediately cut Max off; backchannel words let him finish
+      if (isAvatarSpeakingRef.current && shouldCutMaxOff(currentSpoken)) {
+        console.log("[liveavatar] Barge-in triggered by user speech:", currentSpoken);
+        setRemoteAudioMutedLocally(true);
         void interruptAvatar();
       }
 
       setLatestUserTranscript(currentSpoken);
 
-      const trimmed = finalTranscript.trim();
-      if (trimmed) {
+      // 3. Faster end-of-speech detection:
+      // Uses END_OF_SPEECH_MS (650ms), does not wait for Chrome's own final result.
+      if (silenceEndTimerRef.current) clearTimeout(silenceEndTimerRef.current);
+      silenceEndTimerRef.current = setTimeout(() => {
+        const spoken = (interimText || finalTranscript || currentSpoken).trim();
+        if (spoken.length > 0 && !isGrokProcessingRef.current) {
+          console.log(
+            `[speech-recognition] Fast silence timeout (${SPEED_AND_BARGE_IN_CONFIG.END_OF_SPEECH_MS}ms) fired turn dispatch:`,
+            spoken
+          );
+          setIsUserSpeaking(false);
+          void sendToGrok(spoken);
+        }
+      }, SPEED_AND_BARGE_IN_CONFIG.END_OF_SPEECH_MS);
+
+      // If finalTranscript arrives earlier, dispatch immediately
+      if (finalTranscript.trim() && !isGrokProcessingRef.current) {
         if (silenceEndTimerRef.current) clearTimeout(silenceEndTimerRef.current);
         setIsUserSpeaking(false);
-        void sendToGrok(trimmed);
-      } else if (interimText.trim()) {
-        // Fast VAD fallback: if user pauses speaking for 750ms, finalize immediately without waiting for browser delay
-        if (silenceEndTimerRef.current) clearTimeout(silenceEndTimerRef.current);
-        silenceEndTimerRef.current = setTimeout(() => {
-          const spoken = interimText.trim();
-          if (spoken.length > 2 && !isGrokProcessingRef.current) {
-            console.log("[speech-recognition] Silence timeout fired Grok dispatch:", spoken);
-            setIsUserSpeaking(false);
-            void sendToGrok(spoken);
-          }
-        }, 750);
+        void sendToGrok(finalTranscript.trim());
       }
     };
 
