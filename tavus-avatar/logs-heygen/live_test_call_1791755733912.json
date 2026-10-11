@@ -1,0 +1,196 @@
+{
+  "sessionId": "live_test_call_1791755733912",
+  "engine": "heygen-grok",
+  "avatarId": "0930fd59-c8ad-434d-ad53-b391a1768720",
+  "avatarName": "Max Reynolds (novus.ai6 - Beat Controller)",
+  "startTime": "2026-10-11T21:55:35.463Z",
+  "endTime": "2026-10-11T21:55:35.463Z",
+  "durationSeconds": 15,
+  "status": "completed",
+  "transcript": [
+    {
+      "role": "user",
+      "text": "Yes, I can hear and see you alright.",
+      "timestamp": "2026-10-11T21:55:33.912Z"
+    },
+    {
+      "role": "assistant",
+      "text": "Before I start I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.",
+      "timestamp": "2026-10-11T21:55:34.170Z"
+    },
+    {
+      "role": "user",
+      "text": "Sounds good Max, let's go over it.",
+      "timestamp": "2026-10-11T21:55:34.173Z"
+    },
+    {
+      "role": "assistant",
+      "text": "First I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork , have you got the chance to drive the vehicle that you are buying.",
+      "timestamp": "2026-10-11T21:55:34.434Z"
+    },
+    {
+      "role": "user",
+      "text": "How much is this going to cost?",
+      "timestamp": "2026-10-11T21:55:34.434Z"
+    },
+    {
+      "role": "assistant",
+      "text": "I'm going to cover that in just a moment. When you came back from the test drive, the sales person did the walkaround and showed you all the futures and builts and whistles in the car.",
+      "timestamp": "2026-10-11T21:55:34.699Z"
+    },
+    {
+      "role": "user",
+      "text": "Wait, hold on a second.",
+      "timestamp": "2026-10-11T21:55:34.699Z"
+    },
+    {
+      "role": "assistant",
+      "text": "What's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?",
+      "timestamp": "2026-10-11T21:55:34.949Z"
+    },
+    {
+      "role": "user",
+      "text": "Okay, I understand now.",
+      "timestamp": "2026-10-11T21:55:34.949Z"
+    },
+    {
+      "role": "assistant",
+      "text": "There is actually more information about the warranty i need to go over with you to make sure you do understand everything. Is that okay?",
+      "timestamp": "2026-10-11T21:55:35.199Z"
+    },
+    {
+      "role": "user",
+      "text": "Yes, the salesperson went over that with me.",
+      "timestamp": "2026-10-11T21:55:35.199Z"
+    },
+    {
+      "role": "assistant",
+      "text": "Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one. The first warranty is 3 years thirty six thousand mile Base limited warranty The second of is five years sixty thousand mile power train which is referring to the engine and the transmission , im sure you and i agree thats a very good complementary warranty from the manufacturer right?",
+      "timestamp": "2026-10-11T21:55:35.463Z"
+    }
+  ],
+  "timingLogs": [
+    {
+      "turnId": 1,
+      "userInput": "Yes, I can hear and see you alright.",
+      "avatarText": "Before I start I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.",
+      "timestamps": {
+        "user_speech_end": 1791755733912,
+        "final_transcript": 1791755733983,
+        "controller_decision": 1791755733986,
+        "speak_sent": 1791755734015,
+        "avatar_audio_start": 1791755734170
+      },
+      "gaps": {
+        "transcription_gap_ms": 71,
+        "controller_gap_ms": 3,
+        "speak_sent_gap_ms": 29,
+        "avatar_render_gap_ms": 155,
+        "total_latency_ms": 258
+      }
+    },
+    {
+      "turnId": 2,
+      "userInput": "Sounds good Max, let's go over it.",
+      "avatarText": "First I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork , have you got the chance to drive the vehicle that you are buying.",
+      "timestamps": {
+        "user_speech_end": 1791755734173,
+        "final_transcript": 1791755734249,
+        "controller_decision": 1791755734252,
+        "speak_sent": 1791755734279,
+        "avatar_audio_start": 1791755734434
+      },
+      "gaps": {
+        "transcription_gap_ms": 76,
+        "controller_gap_ms": 3,
+        "speak_sent_gap_ms": 27,
+        "avatar_render_gap_ms": 155,
+        "total_latency_ms": 261
+      }
+    },
+    {
+      "turnId": 3,
+      "userInput": "How much is this going to cost?",
+      "avatarText": "I'm going to cover that in just a moment. When you came back from the test drive, the sales person did the walkaround and showed you all the futures and builts and whistles in the car.",
+      "timestamps": {
+        "user_speech_end": 1791755734434,
+        "final_transcript": 1791755734513,
+        "controller_decision": 1791755734514,
+        "speak_sent": 1791755734544,
+        "avatar_audio_start": 1791755734699
+      },
+      "gaps": {
+        "transcription_gap_ms": 79,
+        "controller_gap_ms": 1,
+        "speak_sent_gap_ms": 30,
+        "avatar_render_gap_ms": 155,
+        "total_latency_ms": 265
+      }
+    },
+    {
+      "turnId": 4,
+      "userInput": "Wait, hold on a second.",
+      "avatarText": "What's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?",
+      "timestamps": {
+        "user_speech_end": 1791755734699,
+        "final_transcript": 1791755734778,
+        "controller_decision": 1791755734779,
+        "speak_sent": 1791755734807,
+        "avatar_audio_start": 1791755734949
+      },
+      "gaps": {
+        "transcription_gap_ms": 79,
+        "controller_gap_ms": 1,
+        "speak_sent_gap_ms": 28,
+        "avatar_render_gap_ms": 142,
+        "total_latency_ms": 250
+      }
+    },
+    {
+      "turnId": 5,
+      "userInput": "Okay, I understand now.",
+      "avatarText": "There is actually more information about the warranty i need to go over with you to make sure you do understand everything. Is that okay?",
+      "timestamps": {
+        "user_speech_end": 1791755734949,
+        "final_transcript": 1791755735026,
+        "controller_decision": 1791755735027,
+        "speak_sent": 1791755735058,
+        "avatar_audio_start": 1791755735199
+      },
+      "gaps": {
+        "transcription_gap_ms": 77,
+        "controller_gap_ms": 1,
+        "speak_sent_gap_ms": 31,
+        "avatar_render_gap_ms": 141,
+        "total_latency_ms": 250
+      }
+    },
+    {
+      "turnId": 6,
+      "userInput": "Yes, the salesperson went over that with me.",
+      "avatarText": "Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one. The first warranty is 3 years thirty six thousand mile Base limited warranty The second of is five years sixty thousand mile power train which is referring to the engine and the transmission , im sure you and i agree thats a very good complementary warranty from the manufacturer right?",
+      "timestamps": {
+        "user_speech_end": 1791755735199,
+        "final_transcript": 1791755735278,
+        "controller_decision": 1791755735279,
+        "speak_sent": 1791755735309,
+        "avatar_audio_start": 1791755735463
+      },
+      "gaps": {
+        "transcription_gap_ms": 79,
+        "controller_gap_ms": 1,
+        "speak_sent_gap_ms": 30,
+        "avatar_render_gap_ms": 154,
+        "total_latency_ms": 264
+      }
+    }
+  ],
+  "bargeIns": [
+    {
+      "timestamp": 1791755734949,
+      "spokenText": "wait, hold on",
+      "avatarTextWhenInterrupted": "What's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?",
+      "honored": true
+    }
+  ]
+}

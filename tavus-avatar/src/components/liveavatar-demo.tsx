@@ -141,6 +141,24 @@ export function LiveAvatarDemo() {
   const muteSafeguardTimerRef = useRef<any>(null);
   const audioActivityCtxRef = useRef<AudioContext | null>(null);
 
+  // Latency & Barge-In Instrumentation Refs
+  const userSpeechEndTimestampRef = useRef<number>(0);
+  const continuePauseTimerRef = useRef<any>(null);
+  const currentTurnTimingRef = useRef<{
+    turnId: number;
+    userInput: string;
+    avatarText: string;
+    user_speech_end: number;
+    final_transcript: number;
+    controller_decision: number;
+    speak_sent: number;
+    avatar_audio_start: number;
+  } | null>(null);
+  const turnCounterRef = useRef<number>(0);
+  const timingLogsRef = useRef<any[]>([]);
+  const bargeInsRef = useRef<any[]>([]);
+  const lastBeatTypeRef = useRef<"wait" | "continue" | "stop">("wait");
+
   // User Camera (Webcam Preview & In-Call PiP)
   const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
   const [isCameraOff, setIsCameraOff] = useState(false);
@@ -244,6 +262,67 @@ export function LiveAvatarDemo() {
   }, []);
 
   // ---------------------------------------------------------------------------
+  // Audio Playback / Latency Instrumentation Callback
+  // ---------------------------------------------------------------------------
+  const recordAvatarAudioStarted = useCallback(() => {
+    const audioStartTime = Date.now();
+    if (currentTurnTimingRef.current && !currentTurnTimingRef.current.avatar_audio_start) {
+      currentTurnTimingRef.current.avatar_audio_start = audioStartTime;
+      const timing = currentTurnTimingRef.current;
+      const transcriptionGapMs = Math.max(0, timing.final_transcript - timing.user_speech_end);
+      const controllerGapMs = Math.max(0, timing.controller_decision - timing.final_transcript);
+      const speakSentGapMs = Math.max(0, timing.speak_sent - timing.controller_decision);
+      const avatarRenderGapMs = Math.max(0, timing.avatar_audio_start - timing.speak_sent);
+      const totalLatencyMs = Math.max(0, timing.avatar_audio_start - timing.user_speech_end);
+
+      const completedTurnLog = {
+        turnId: timing.turnId,
+        userInput: timing.userInput,
+        avatarText: timing.avatarText,
+        timestamps: {
+          user_speech_end: timing.user_speech_end,
+          final_transcript: timing.final_transcript,
+          controller_decision: timing.controller_decision,
+          speak_sent: timing.speak_sent,
+          avatar_audio_start: timing.avatar_audio_start,
+        },
+        gaps: {
+          transcription_gap_ms: transcriptionGapMs,
+          controller_gap_ms: controllerGapMs,
+          speak_sent_gap_ms: speakSentGapMs,
+          avatar_render_gap_ms: avatarRenderGapMs,
+          total_latency_ms: totalLatencyMs,
+        },
+      };
+
+      timingLogsRef.current.push(completedTurnLog);
+
+      console.log(
+        `%c[TURN LATENCY REPORT #${timing.turnId}]\n` +
+          `• user_speech_end:      ${new Date(timing.user_speech_end).toISOString()}\n` +
+          `• final_transcript:     +${transcriptionGapMs}ms (silence VAD)\n` +
+          `• controller_decision:  +${controllerGapMs}ms (beat classification)\n` +
+          `• speak_sent:           +${speakSentGapMs}ms (WebRTC publish)\n` +
+          `• avatar_audio_start:   +${avatarRenderGapMs}ms (HeyGen render & WebRTC play)\n` +
+          `-------------------------------------------------\n` +
+          `TOTAL TURN LATENCY:     ${totalLatencyMs}ms (${(totalLatencyMs / 1000).toFixed(2)}s)`,
+        "color: #38bdf8; font-weight: bold;"
+      );
+
+      if (sessionIdRef.current) {
+        void fetch(`/api/heygen/logs/${sessionIdRef.current}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            timingLogs: timingLogsRef.current,
+            bargeIns: bargeInsRef.current,
+          }),
+        }).catch(() => {});
+      }
+    }
+  }, []);
+
+  // ---------------------------------------------------------------------------
   // Send speech command to LiveAvatar
   // ---------------------------------------------------------------------------
   const speakWithAvatar = useCallback(async (text: string) => {
@@ -291,6 +370,11 @@ export function LiveAvatarDemo() {
         })
       );
       await room.localParticipant.publishData(payload, { reliable: true, topic: "agent-control" });
+
+      // Record speak_sent timestamp for latency calculation
+      if (currentTurnTimingRef.current) {
+        currentTurnTimingRef.current.speak_sent = Date.now();
+      }
     } catch (err) {
       console.error("[liveavatar] Failed to publish speak_text:", err);
     }
@@ -355,6 +439,21 @@ export function LiveAvatarDemo() {
       setMessages(updatedHistory);
       setIsUserSpeaking(false);
 
+      // Initialize turn timing instrumentation
+      const speechEndTime = userSpeechEndTimestampRef.current || Date.now();
+      const finalTranscriptTime = Date.now();
+      const turnId = ++turnCounterRef.current;
+      currentTurnTimingRef.current = {
+        turnId,
+        userInput: userInput.trim(),
+        avatarText: "",
+        user_speech_end: speechEndTime,
+        final_transcript: finalTranscriptTime,
+        controller_decision: 0,
+        speak_sent: 0,
+        avatar_audio_start: 0,
+      };
+
       try {
         const res = await fetch("/api/chat/grok", {
           method: "POST",
@@ -373,10 +472,20 @@ export function LiveAvatarDemo() {
         const data = await res.json();
         const assistantText = data.text || "";
 
+        // Record controller decision timestamp
+        const decisionTime = Date.now();
+        if (currentTurnTimingRef.current) {
+          currentTurnTimingRef.current.controller_decision = decisionTime;
+          currentTurnTimingRef.current.avatarText = assistantText;
+        }
+        if (data.beatType) {
+          lastBeatTypeRef.current = data.beatType;
+        }
+
         if (data.currentBeatId !== undefined) {
           setCurrentBeat({
             id: data.currentBeatId,
-            label: data.beatLabel || `Step ${data.currentBeatId}`,
+            label: data.beatLabel || `Beat ${data.currentBeatId}`,
           });
         }
 
@@ -477,6 +586,12 @@ export function LiveAvatarDemo() {
       const currentSpoken = (interimText || finalTranscript).trim();
       if (!currentSpoken) return;
 
+      userSpeechEndTimestampRef.current = Date.now();
+      if (continuePauseTimerRef.current) {
+        clearTimeout(continuePauseTimerRef.current);
+        continuePauseTimerRef.current = null;
+      }
+
       // 1. Anti-echo without dropping real questions:
       // Only reject when transcript is near-exact reflection of Max's last spoken text (>= 80% ordered words match)
       if (
@@ -495,6 +610,22 @@ export function LiveAvatarDemo() {
       // Cutoff words immediately cut Max off; backchannel words let him finish
       if (isAvatarSpeakingRef.current && shouldCutMaxOff(currentSpoken)) {
         console.log("[liveavatar] Barge-in triggered by user speech:", currentSpoken);
+        bargeInsRef.current.push({
+          timestamp: Date.now(),
+          spokenText: currentSpoken,
+          avatarTextWhenInterrupted: lastSpokenByAvatarRef.current,
+          honored: true,
+        });
+        if (sessionIdRef.current) {
+          void fetch(`/api/heygen/logs/${sessionIdRef.current}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              timingLogs: timingLogsRef.current,
+              bargeIns: bargeInsRef.current,
+            }),
+          }).catch(() => {});
+        }
         setRemoteAudioMutedLocally(true);
         void interruptAvatar();
       }
@@ -653,6 +784,9 @@ export function LiveAvatarDemo() {
       try {
         audioRef.current.muted = false;
         audioRef.current.volume = 1.0;
+        audioRef.current.onplaying = () => {
+          recordAvatarAudioStarted();
+        };
         track.attach(audioRef.current);
         audioRef.current.play().catch((e) => console.warn("[liveavatar] Root audio play deferred by browser policy:", e));
       } catch (err) {
@@ -665,12 +799,15 @@ export function LiveAvatarDemo() {
       const autoEl = track.attach();
       autoEl.muted = false;
       autoEl.volume = 1.0;
+      autoEl.onplaying = () => {
+        recordAvatarAudioStarted();
+      };
       autoEl.play().catch((e) => console.warn("[liveavatar] LiveKit auto-managed audio play err:", e));
       attachedAudioElsRef.current.push(autoEl);
     } catch (err) {
       console.warn("[liveavatar] Failed auto track.attach():", err);
     }
-  }, []);
+  }, [recordAvatarAudioStarted]);
 
   // Re-attach remote tracks whenever video/audio elements mount or connection state changes
   useEffect(() => {
@@ -891,6 +1028,7 @@ export function LiveAvatarDemo() {
             ev.includes("started_speaking") ||
             ev.includes("speak_started")
           ) {
+            recordAvatarAudioStarted();
             setIsAvatarSpeaking(true);
             isAvatarSpeakingRef.current = true;
           } else if (
@@ -903,9 +1041,22 @@ export function LiveAvatarDemo() {
             setIsAvatarSpeaking(false);
             isAvatarSpeakingRef.current = false;
             avatarFinishedAtRef.current = Date.now();
+            setRemoteAudioMutedLocally(false);
             if (avatarWatchdogTimerRef.current) {
               clearTimeout(avatarWatchdogTimerRef.current);
               avatarWatchdogTimerRef.current = null;
+            }
+
+            // Section 3.3: continue beats pause 1000ms. If user does not speak, send next beat.
+            if (lastBeatTypeRef.current === "continue" && isConnectedRef.current && !isUserSpeakingRef.current) {
+              if (continuePauseTimerRef.current) clearTimeout(continuePauseTimerRef.current);
+              console.log("[beat-controller] Continue beat finished. Pausing 1000ms before auto-advancing to next beat...");
+              continuePauseTimerRef.current = setTimeout(() => {
+                if (isConnectedRef.current && !isUserSpeakingRef.current && !isGrokProcessingRef.current) {
+                  console.log("[beat-controller] 1000ms pause elapsed without user speech. Advancing to next beat!");
+                  void sendToGrok("proceed");
+                }
+              }, 1000);
             }
           }
         } catch {

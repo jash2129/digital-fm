@@ -8,6 +8,34 @@ export type HeygenUtteranceEntry = {
   timestamp: string;
 };
 
+export type TurnTimingLog = {
+  turnId: number;
+  userInput: string;
+  avatarText: string;
+  timestamps: {
+    user_speech_end: number;
+    final_transcript: number;
+    controller_decision: number;
+    speak_sent: number;
+    avatar_audio_start: number;
+  };
+  gaps: {
+    transcription_gap_ms: number;
+    controller_gap_ms: number;
+    speak_sent_gap_ms: number;
+    avatar_render_gap_ms: number;
+    total_latency_ms: number;
+  };
+};
+
+export type BargeInLog = {
+  timestamp: number;
+  spokenText: string;
+  avatarTextWhenInterrupted: string;
+  honored: boolean;
+  reason?: string;
+};
+
 export type HeygenCallLog = {
   sessionId: string;
   engine: "heygen-grok";
@@ -20,6 +48,8 @@ export type HeygenCallLog = {
   productsCovered?: string[];
   finalDailyRate?: number | string | null;
   transcript: HeygenUtteranceEntry[];
+  timingLogs?: TurnTimingLog[];
+  bargeIns?: BargeInLog[];
 };
 
 export function getHeygenLogsDir() {

@@ -12,18 +12,21 @@ export async function POST(
     }
 
     const body = await request.json();
+    const existingLog = getHeygenTranscript(sessionId) || ({} as any);
     const logData: HeygenCallLog = {
       sessionId,
       engine: "heygen-grok",
-      avatarId: body.avatarId || "liveavatar",
-      avatarName: body.avatarName || "Max (Finance Manager)",
-      startTime: body.startTime || new Date().toISOString(),
-      endTime: body.endTime || new Date().toISOString(),
-      durationSeconds: body.durationSeconds || null,
-      status: body.status || "completed",
-      productsCovered: body.productsCovered || [],
-      finalDailyRate: body.finalDailyRate ?? null,
-      transcript: body.transcript || [],
+      avatarId: body.avatarId || existingLog.avatarId || "liveavatar",
+      avatarName: body.avatarName || existingLog.avatarName || "Max (Finance Manager)",
+      startTime: body.startTime || existingLog.startTime || new Date().toISOString(),
+      endTime: body.endTime || existingLog.endTime || new Date().toISOString(),
+      durationSeconds: body.durationSeconds || existingLog.durationSeconds || null,
+      status: body.status || existingLog.status || "completed",
+      productsCovered: body.productsCovered || existingLog.productsCovered || [],
+      finalDailyRate: body.finalDailyRate ?? existingLog.finalDailyRate ?? null,
+      transcript: body.transcript || existingLog.transcript || [],
+      timingLogs: body.timingLogs || existingLog.timingLogs || [],
+      bargeIns: body.bargeIns || existingLog.bargeIns || [],
     };
 
     saveHeygenTranscript(logData);
