@@ -1,0 +1,113 @@
+{
+  "sessionId": "19b450cd-b219-4a45-894a-1379f157b8ba",
+  "engine": "heygen-grok",
+  "avatarId": "heygen-liveavatar",
+  "avatarName": "Max (Consultant Fallback - Custom Avatar Deploying)",
+  "startTime": "2026-10-08T14:15:24.881Z",
+  "endTime": "2026-10-08T14:16:20.865Z",
+  "durationSeconds": 56,
+  "status": "completed",
+  "productsCovered": [],
+  "finalDailyRate": 4,
+  "transcript": [
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "0-7s",
+      "text": "Hey there, can you hear and see me alright?",
+      "timestamp": "2026-10-08T14:36:47.167Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "7-10s",
+      "text": "Sup, Max.",
+      "timestamp": "2026-10-08T14:36:47.168Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "10-14s",
+      "text": "Hey there, yes, I can hear and see you perfectly.",
+      "timestamp": "2026-10-08T14:36:47.168Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "14-17s",
+      "text": "Hey, hey, hey, hey, listen, listen, listen.",
+      "timestamp": "2026-10-08T14:36:47.168Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "17-19s",
+      "text": "What's your name?",
+      "timestamp": "2026-10-08T14:36:47.168Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "19-21s",
+      "text": "Hey there, thanks for con...",
+      "timestamp": "2026-10-08T14:36:47.168Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "21-26s",
+      "text": "I'm Max, your digital finance manager here at the dealership. Does that sound good?",
+      "timestamp": "2026-10-08T14:36:47.168Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "26-31s",
+      "text": "Yeah.",
+      "timestamp": "2026-10-08T14:36:47.168Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "31-34s",
+      "text": "Mazda is like any other manufacturer when they build...",
+      "timestamp": "2026-10-08T14:36:47.168Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "34-38s",
+      "text": "Is this a sales call?",
+      "timestamp": "2026-10-08T14:36:47.168Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "38-44s",
+      "text": "Not at all. My role is just...",
+      "timestamp": "2026-10-08T14:36:47.168Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "44-45s",
+      "text": "Are you there?",
+      "timestamp": "2026-10-08T14:36:47.168Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "45-49s",
+      "text": "I'm Max, your digital finance...",
+      "timestamp": "2026-10-08T14:36:47.168Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "49-51s",
+      "text": "Hey there, can you hear and see me alright?",
+      "timestamp": "2026-10-08T14:36:47.168Z"
+    }
+  ],
+  "transcriptionModel": "openai-whisper-1 + grok-diarization"
+}

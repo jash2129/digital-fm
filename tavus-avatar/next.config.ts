@@ -3,6 +3,15 @@ import { fileURLToPath } from "url";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Allow ngrok tunnels and external hosts to connect to dev server / HMR
+  allowedDevOrigins: [
+    "localhost:3000",
+    "*.ngrok-free.dev",
+    "*.ngrok-free.app",
+    "*.ngrok.io",
+    "*.ngrok.app",
+    "mandatory-landlord-repeal.ngrok-free.dev",
+  ],
   // A stray D:\package-lock.json outside this project confuses Next's
   // monorepo-root inference, which intermittently causes it to resolve
   // dependencies (e.g. tailwindcss) from the wrong directory and crash.

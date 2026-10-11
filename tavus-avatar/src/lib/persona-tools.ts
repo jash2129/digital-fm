@@ -105,16 +105,115 @@ function buildFinancePersonaToolPatch() {
         {
           type: "function",
           function: {
+            name: "show_content",
+            description:
+              "Display a content panel or canvas view on screen while you talk through it. Options include warranty_terms, cost_breakdown, four_square, pricing_ladder, and deal_summary.",
+            parameters: {
+              type: "object",
+              properties: {
+                item: {
+                  type: "string",
+                  enum: [
+                    "warranty_terms",
+                    "cost_breakdown",
+                    "four_square",
+                    "pricing_ladder",
+                    "deal_summary",
+                    "welcome",
+                  ],
+                  description:
+                    "warranty_terms = factory warranty defect limit; cost_breakdown = repair costs; four_square = 2x2 presentation grid; pricing_ladder = negotiation ladder; deal_summary = verbal close summary.",
+                },
+                view: {
+                  type: "string",
+                  enum: [
+                    "warranty_terms",
+                    "cost_breakdown",
+                    "four_square",
+                    "pricing_ladder",
+                    "deal_summary",
+                    "welcome",
+                  ],
+                  description: "Alias for item.",
+                },
+              },
+            },
+          },
+        },
+        {
+          type: "function",
+          function: {
+            name: "propose_concession",
+            description:
+              "Evaluate price negotiation against the deterministic ladder outside LLM weights. Option 1 = $4.00, Option 2 = $3.50, Option 3 = $3.25, Option 4 = $3.00 (hard floor). Prices below $3.00 are rejected and require manager escalation.",
+            parameters: {
+              type: "object",
+              properties: {
+                stage: {
+                  type: "integer",
+                  enum: [1, 2, 3, 4],
+                  description: "The price option level: 1 = $4.00/day, 2 = $3.50/day, 3 = $3.25/day, 4 = $3.00/day floor.",
+                },
+              },
+              required: ["stage"],
+            },
+          },
+        },
+        {
+          type: "function",
+          function: {
+            name: "advance_stage",
+            description:
+              "Advance the call to the next conversational section. Enforces sequential pipeline order.",
+            parameters: {
+              type: "object",
+              properties: {
+                targetStep: {
+                  type: "string",
+                  enum: [
+                    "rapport",
+                    "greeting",
+                    "disclosure",
+                    "qualifying",
+                    "four_square",
+                    "objection",
+                    "close",
+                    "verification",
+                    "payment",
+                    "documents",
+                  ],
+                  description: "The target section in the conversation.",
+                },
+              },
+              required: ["targetStep"],
+            },
+          },
+        },
+        {
+          type: "function",
+          function: {
+            name: "draw_grid_outline",
+            description:
+              "Draw the empty four-box grid on screen, before any product has been filled in. Call this once, right as you begin the Square 4 recap, before the first show_pricing call.",
+            parameters: {
+              type: "object",
+              properties: {},
+            },
+          },
+        },
+        {
+          type: "function",
+          function: {
             name: "show_pricing",
             description:
-              "Display the coverage panel for one of the bundled products while you describe what it covers. These products are sold as one bundled package, not priced individually — this panel shows coverage details only, no dollar amount. Call it once per product during the Square 4 recap.",
+              "Fill in one box of the on-screen grid with the coverage for one of the bundled products, while you describe what it covers. These products are sold as one bundled package, not priced individually — the box shows coverage details only, no dollar amount. Call it once per product during the Square 4 recap, after draw_grid_outline.",
             parameters: {
               type: "object",
               properties: {
                 product: {
                   type: "string",
                   enum: productKeys,
-                  description: `Which product's coverage panel to show: ${productEnumDescription}.`,
+                  description: `Which product's box to fill in: ${productEnumDescription}.`,
                 },
               },
               required: ["product"],
@@ -126,7 +225,7 @@ function buildFinancePersonaToolPatch() {
           function: {
             name: "show_payment_breakdown",
             description:
-              "Display the package price panel showing ONLY the specific daily rate you are currently saying out loud. Call this every time you state or change the price — first with the opening anchor, and again each time you move to a new rate during negotiation — so the screen always matches what you just said. Never call it with a rate you have not spoken yet, and never reveal the full discount ladder; only ever show the one number that is live in the conversation right now.",
+              "Update the price banner on the grid to show ONLY the specific daily rate you are currently saying out loud. Call this every time you state or change the price — first with the opening anchor, and again each time you move to a new rate during negotiation — so the screen always matches what you just said. Never call it with a rate you have not spoken yet, and never reveal the full discount ladder; only ever show the one number that is live in the conversation right now.",
             parameters: {
               type: "object",
               properties: {
@@ -137,6 +236,18 @@ function buildFinancePersonaToolPatch() {
                 },
               },
               required: ["daily_rate"],
+            },
+          },
+        },
+        {
+          type: "function",
+          function: {
+            name: "clear_canvas",
+            description:
+              "Clear the grid completely and hide it. Use if the presentation restarts from scratch, or the customer asks to see it again from the beginning.",
+            parameters: {
+              type: "object",
+              properties: {},
             },
           },
         },
@@ -163,7 +274,7 @@ function buildFinancePersonaToolPatch() {
           function: {
             name: "dismiss_content",
             description:
-              "Dismisses the currently displayed panel and returns the video conversation to full screen. Use when the customer is done looking at a panel or asks to go back.",
+              "Dismisses the currently displayed panel or grid and returns the video conversation to full screen. Use when the customer is done looking at it or asks to go back.",
             parameters: {
               type: "object",
               properties: {},

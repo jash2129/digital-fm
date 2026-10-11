@@ -1,3 +1,4 @@
+import { finalizeCallLog } from "./call-logger";
 import "server-only";
 
 // Minimal cost-visibility logging: Tavus bills by conversation minutes, so duration is the
@@ -32,6 +33,7 @@ export function recordConversationEnded(conversationId: string) {
   store.delete(conversationId);
 
   const durationSeconds = startedAt ? Math.round((Date.now() - startedAt) / 1000) : null;
+  finalizeCallLog(conversationId, durationSeconds);
 
   console.log("[conversation.ended]", {
     conversationId,

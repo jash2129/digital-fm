@@ -1,0 +1,52 @@
+{
+  "conversationId": "cf1b32fe276d543f",
+  "personaId": "pedee15ef236",
+  "visitorId": "0e2c09ac-579a-4b12-b917-28a7af908c00",
+  "dealId": null,
+  "startTime": "2026-10-07T08:41:10.460Z",
+  "endTime": "2026-10-07T08:42:21.240Z",
+  "durationSeconds": null,
+  "status": "completed",
+  "transcript": [
+    {
+      "role": "pal",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-07T08:41:13.361Z"
+    },
+    {
+      "role": "replica",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-07T08:41:13.363Z"
+    },
+    {
+      "role": "pal",
+      "text": "Great! First, I see that you agreed to buy a new 2026 Mazda CX-5. A few questions before I prepare the paperwork. Have you got the chance to drive the vehicle that you are buying?",
+      "timestamp": "2026-10-07T08:41:28.722Z"
+    },
+    {
+      "role": "replica",
+      "text": "Great! First, I see that you agreed to buy a new 2026 Mazda CX-5. A few questions before I prepare the paperwork. Have you got the chance to drive the vehicle that you are buying?",
+      "timestamp": "2026-10-07T08:41:28.763Z"
+    },
+    {
+      "role": "user",
+      "text": "Hey Max, yes, I can see you all right.",
+      "timestamp": "2026-10-07T08:41:28.796Z"
+    },
+    {
+      "role": "replica",
+      "text": "When you came back from the test drive, the sales person did the walkaround and showed you all the features and bells and whistles in the car. Did they go over everything with you?",
+      "timestamp": "2026-10-07T08:41:43.371Z"
+    },
+    {
+      "role": "user",
+      "text": "Yes.",
+      "timestamp": "2026-10-07T08:41:43.415Z"
+    },
+    {
+      "role": "pal",
+      "text": "When you came back from the test drive, the sales person did the walkaround and showed you all the features and bells and whistles in the car. Did they go over everything with you?",
+      "timestamp": "2026-10-07T08:41:43.512Z"
+    }
+  ]
+}

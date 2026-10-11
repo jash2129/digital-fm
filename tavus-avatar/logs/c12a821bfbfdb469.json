@@ -1,0 +1,112 @@
+{
+  "conversationId": "c12a821bfbfdb469",
+  "personaId": "pedee15ef236",
+  "visitorId": "3989d84c-2140-4a04-b393-49cb7ff3ae99",
+  "dealId": null,
+  "startTime": "2026-10-06T11:48:03.812Z",
+  "endTime": "2026-10-06T11:58:43.480Z",
+  "durationSeconds": 640,
+  "status": "completed",
+  "transcript": [
+    {
+      "role": "pal",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-06T11:48:14.410Z"
+    },
+    {
+      "role": "replica",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-06T11:48:14.415Z"
+    },
+    {
+      "role": "user",
+      "text": "Hi, I'm Max. How are you?",
+      "timestamp": "2026-10-06T11:48:25.058Z"
+    },
+    {
+      "role": "replica",
+      "text": "I'm doing well, thank you! How about yourself? Just to clarify, I'm also Max, your finance manager for this session. What a coincidence, right?",
+      "timestamp": "2026-10-06T11:48:25.111Z"
+    },
+    {
+      "role": "pal",
+      "text": "I'm doing well, thank you! How about yourself? Just to clarify, I'm also Max, your finance manager for this session. What a coincidence, right?",
+      "timestamp": "2026-10-06T11:48:25.171Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah. Max, max, max square.",
+      "timestamp": "2026-10-06T11:48:47.687Z"
+    },
+    {
+      "role": "replica",
+      "text": "Got it, let's jump into things, shall we? How was your test drive with the 2026 Mazda CX-5?",
+      "timestamp": "2026-10-06T11:48:47.783Z"
+    },
+    {
+      "role": "pal",
+      "text": "Got it, let's jump into things, shall we? How was your test drive with the 2026 Mazda CX-5?",
+      "timestamp": "2026-10-06T11:48:48.011Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah, that was good.",
+      "timestamp": "2026-10-06T11:48:59.407Z"
+    },
+    {
+      "role": "replica",
+      "text": "Great to hear! It's a fantastic vehicle. Before we dive into the details, I just need to let you know that this transaction will be recorded on audio and video. This is required by law to ensure you understand everything before signing any paperwork, okay?",
+      "timestamp": "2026-10-06T11:48:59.475Z"
+    },
+    {
+      "role": "pal",
+      "text": "Great to hear! It's a fantastic vehicle. Before we dive into the details, I just need to let you know that this transaction will be recorded on audio and video. This is required by law to ensure you understand everything before signing any paperwork, okay?",
+      "timestamp": "2026-10-06T11:48:59.518Z"
+    },
+    {
+      "role": "user",
+      "text": "Okay.",
+      "timestamp": "2026-10-06T11:49:18.958Z"
+    },
+    {
+      "role": "replica",
+      "text": "Awesome! First, I see that you agreed to buy a new 2026 Mazda CX-5. A few questions before I prepare the paperwork: have you gotten the chance to drive the vehicle that you are buying?",
+      "timestamp": "2026-10-06T11:49:19.022Z"
+    },
+    {
+      "role": "pal",
+      "text": "Awesome! First, I see that you agreed to buy a new 2026 Mazda CX-5. A few questions before I prepare the paperwork: have you gotten the chance to drive the vehicle that you are buying?",
+      "timestamp": "2026-10-06T11:49:19.069Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah.",
+      "timestamp": "2026-10-06T11:49:34.119Z"
+    },
+    {
+      "role": "replica",
+      "text": "Awesome! When you came back from the test drive, did the sales person do a walk-around and show you all the features and bells and whistles in the car?",
+      "timestamp": "2026-10-06T11:49:34.170Z"
+    },
+    {
+      "role": "pal",
+      "text": "Awesome! When you came back from the test drive, did the sales person do a walk-around and show you all the features and bells and whistles in the car?",
+      "timestamp": "2026-10-06T11:49:34.211Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah, he did.",
+      "timestamp": "2026-10-06T11:49:48.122Z"
+    },
+    {
+      "role": "replica",
+      "text": "Perfect! Now, what's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?",
+      "timestamp": "2026-10-06T11:49:48.204Z"
+    },
+    {
+      "role": "pal",
+      "text": "Perfect! Now, what's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?",
+      "timestamp": "2026-10-06T11:49:48.260Z"
+    }
+  ]
+}

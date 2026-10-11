@@ -1,0 +1,22 @@
+{
+  "conversationId": "cb53cec4c220547f",
+  "personaId": "pedee15ef236",
+  "visitorId": "7aba74a9-2860-4bbc-b13a-b7e0328d49a1",
+  "dealId": null,
+  "startTime": "2026-09-27T22:07:45.083Z",
+  "endTime": "2026-09-27T22:08:01.315Z",
+  "durationSeconds": 16,
+  "status": "completed",
+  "transcript": [
+    {
+      "role": "pal",
+      "text": "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!",
+      "timestamp": "2026-09-27T22:07:51.549Z"
+    },
+    {
+      "role": "replica",
+      "text": "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!",
+      "timestamp": "2026-09-27T22:07:51.552Z"
+    }
+  ]
+}

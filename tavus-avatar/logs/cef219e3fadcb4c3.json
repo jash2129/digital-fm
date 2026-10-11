@@ -1,0 +1,22 @@
+{
+  "conversationId": "cef219e3fadcb4c3",
+  "personaId": "pedee15ef236",
+  "visitorId": "3989d84c-2140-4a04-b393-49cb7ff3ae99",
+  "dealId": null,
+  "startTime": "2026-10-06T20:40:33.985Z",
+  "endTime": "2026-10-06T20:40:49.758Z",
+  "durationSeconds": 16,
+  "status": "completed",
+  "transcript": [
+    {
+      "role": "pal",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-06T20:40:39.372Z"
+    },
+    {
+      "role": "replica",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-06T20:40:39.376Z"
+    }
+  ]
+}

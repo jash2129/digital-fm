@@ -10,8 +10,11 @@ import { formatDealContext, getDeal } from "@/lib/deal-context";
 import { getCustomTavusLlmConfig } from "@/lib/tavus-custom-llms";
 import { resolveConversationPersonaId } from "@/lib/tavus-personas";
 import { getTavusConfig, getTavusErrorMessage, readResponsePayload, tavusFetch } from "@/lib/tavus-api";
+import { isFinanceEvent } from "@/lib/event";
+import { getStateManager } from "@/lib/state-manager";
 import { attachVisitorCookie, getOrCreateVisitorId } from "@/lib/visitor";
 import type { TavusConversationCreateResponse } from "@/types/tavus";
+import { initCallLog } from "@/lib/call-logger";
 
 // Tavus knowledge base document for the AWS Summit Sydney schedule.
 const AWS_SUMMIT_SCHEDULE_DOCUMENT_ID = "d4-c663569fd55d";
@@ -119,26 +122,104 @@ export async function POST(request: Request) {
     // when no ?deal= param is given or the deal has expired.
     const dealId = params.get("deal");
     const dealContext = dealId ? getDeal(dealId) : undefined;
-    const conversationalContext = dealContext ? formatDealContext(dealContext) : null;
+    let conversationalContext = dealContext ? formatDealContext(dealContext) : null;
 
-    const response = await tavusFetch("/conversations", {
-      method: "POST",
-      body: JSON.stringify({
-        persona_id: conversationPersonaId,
-        ...(documentIds.length > 0 ? { document_ids: documentIds } : {}),
-        ...(conversationalContext ? { conversational_context: conversationalContext } : {}),
-        custom_greeting: getGreeting(),
-        properties: {
-          max_call_duration: 600,
-          participant_left_timeout: 30,
-          participant_absent_timeout: 600,
+    if (isFinanceEvent()) {
+      const activeDealId = dealId || `deal-${visitorId}`;
+      const stateManager = getStateManager(activeDealId, {
+        deal_metadata: {
+          deal_id: activeDealId,
+          customer_name: dealContext?.customerName || "Valued Customer",
+          customer_address: "123 Elm Street, Austin, TX",
+          customer_phone: "555-0199",
+          vehicle: {
+            year: Number(dealContext?.vehicle?.year) || 2026,
+            make: dealContext?.vehicle?.make || "Mazda",
+            model: dealContext?.vehicle?.model || "CX-5",
+            color: "Polymetal Gray",
+            vin: "JM3VA4BL0P1102941",
+          },
         },
-      }),
+      });
+
+      const pinnedAnchor = stateManager.getPinnedStateBlock();
+      conversationalContext = conversationalContext
+        ? `${conversationalContext}\n\n${pinnedAnchor}`
+        : pinnedAnchor;
+    }
+
+    const maxCallDuration = Number(process.env.MAX_CALL_DURATION_SECONDS) || 3600;
+    const participantLeftTimeout = Number(process.env.PARTICIPANT_LEFT_TIMEOUT_SECONDS) || 600;
+    const participantAbsentTimeout = Number(process.env.PARTICIPANT_ABSENT_TIMEOUT_SECONDS) || 3600;
+
+    const createPayload = {
+      persona_id: conversationPersonaId,
+      ...(documentIds.length > 0 ? { document_ids: documentIds } : {}),
+      ...(conversationalContext ? { conversational_context: conversationalContext } : {}),
+      custom_greeting: getGreeting(),
+      properties: {
+        max_call_duration: maxCallDuration,
+        participant_left_timeout: participantLeftTimeout,
+        participant_absent_timeout: participantAbsentTimeout,
+      },
+    };
+
+    let response = await tavusFetch("/conversations", {
+      method: "POST",
+      body: JSON.stringify(createPayload),
     });
 
-    const payload = await readResponsePayload<TavusConversationCreateResponse | { error?: string; message?: string }>(
+    let payload = await readResponsePayload<TavusConversationCreateResponse | { error?: string; message?: string }>(
       response,
     );
+
+    // Auto-heal Tavus concurrency limit:
+    // If Tavus responds with 400 "User has reached maximum concurrent conversations",
+    // query active conversations on Tavus, terminate the stale ones, and retry once.
+    const jsonPayload = payload.json as any;
+    const isConcurrentLimit =
+      !response.ok &&
+      (payload.text?.includes("maximum concurrent conversations") ||
+        jsonPayload?.message?.includes("maximum concurrent conversations") ||
+        jsonPayload?.error?.includes("maximum concurrent conversations"));
+
+    if (isConcurrentLimit) {
+      console.warn(
+        "[conversation.route] Maximum concurrent conversations reached on Tavus. Cleaning up stale sessions...",
+      );
+      try {
+        const listRes = await tavusFetch("/conversations?status=active&limit=100");
+        const listPayload = await readResponsePayload<{
+          data?: Array<{ conversation_id: string; status: string }>;
+        }>(listRes);
+        if (listPayload.json?.data && Array.isArray(listPayload.json.data)) {
+          const activeConvs = listPayload.json.data.filter((c) => c.status === "active");
+          for (const conv of activeConvs) {
+            console.log(`[conversation.route] Auto-terminating orphaned Tavus conversation: ${conv.conversation_id}`);
+            try {
+              await tavusFetch(`/conversations/${conv.conversation_id}/end`, { method: "POST" });
+              recordConversationEnded(conv.conversation_id);
+            } catch {
+              // Ignore failure for individual end
+            }
+          }
+        }
+      } catch (cleanupErr) {
+        console.warn("[conversation.route] Failed to list/end stale Tavus conversations:", cleanupErr);
+      }
+
+      // Small pause to allow Tavus state to settle, then retry conversation creation
+      await new Promise((resolve) => setTimeout(resolve, 600));
+
+      response = await tavusFetch("/conversations", {
+        method: "POST",
+        body: JSON.stringify(createPayload),
+      });
+
+      payload = await readResponsePayload<TavusConversationCreateResponse | { error?: string; message?: string }>(
+        response,
+      );
+    }
 
     if (!response.ok || !payload.json || !("conversation_id" in payload.json)) {
       return NextResponse.json(
@@ -161,6 +242,7 @@ export async function POST(request: Request) {
     // Track the new conversation against this visitor and record the creation time for
     // rate limiting.
     setActiveConversation(visitorId, payload.json.conversation_id);
+    initCallLog(payload.json.conversation_id, conversationPersonaId, visitorId, dealId || null);
     recordConversationStarted(payload.json.conversation_id, conversationPersonaId);
     if (dealContext) {
       linkDealToConversation(payload.json.conversation_id, dealContext);
@@ -181,8 +263,13 @@ export async function POST(request: Request) {
       },
     );
 
+    const isHttps =
+      request.headers.get("x-forwarded-proto") === "https" ||
+      new URL(request.url).protocol === "https:" ||
+      process.env.NODE_ENV === "production";
+
     if (isNewVisitor) {
-      attachVisitorCookie(successResponse, visitorId);
+      attachVisitorCookie(successResponse, visitorId, isHttps);
     }
 
     return successResponse;

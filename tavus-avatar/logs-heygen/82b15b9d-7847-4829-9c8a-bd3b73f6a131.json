@@ -1,0 +1,78 @@
+{
+  "sessionId": "82b15b9d-7847-4829-9c8a-bd3b73f6a131",
+  "engine": "heygen-grok",
+  "avatarId": "heygen-liveavatar",
+  "avatarName": "Max (novus.ai6 - Verified)",
+  "startTime": "2026-10-10T19:02:03.262Z",
+  "endTime": "2026-10-10T19:03:05.581Z",
+  "durationSeconds": 62,
+  "status": "completed",
+  "productsCovered": [],
+  "finalDailyRate": 4,
+  "transcript": [
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "0-6s",
+      "text": "Hey there, can you hear and see me alright?",
+      "timestamp": "2026-10-10T19:03:13.535Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "6-10s",
+      "text": "Welcome in, I'm Max, your finance manager today.",
+      "timestamp": "2026-10-10T19:03:13.535Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "10-13s",
+      "text": "Hi Max.",
+      "timestamp": "2026-10-10T19:03:13.535Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "13-20s",
+      "text": "Is this a sales call?",
+      "timestamp": "2026-10-10T19:03:13.535Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "20-26s",
+      "text": "What?",
+      "timestamp": "2026-10-10T19:03:13.535Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "26-35s",
+      "text": "Tell me something.",
+      "timestamp": "2026-10-10T19:03:13.535Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "35-53s",
+      "text": ".",
+      "timestamp": "2026-10-10T19:03:13.535Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "53-56s",
+      "text": "Can you speak?",
+      "timestamp": "2026-10-10T19:03:13.535Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "56-59s",
+      "text": "Can you speak?",
+      "timestamp": "2026-10-10T19:03:13.535Z"
+    }
+  ],
+  "transcriptionModel": "openai-whisper-1 + grok-diarization"
+}

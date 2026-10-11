@@ -1,0 +1,190 @@
+{
+  "sessionId": "8f78adc0-695d-4fe9-9e1b-d350a4e412be",
+  "engine": "heygen-grok",
+  "avatarId": "heygen-liveavatar",
+  "avatarName": "Max",
+  "startTime": "2026-10-11T07:56:35.166Z",
+  "endTime": "2026-10-11T07:56:35.166Z",
+  "durationSeconds": null,
+  "status": "completed",
+  "productsCovered": [],
+  "finalDailyRate": 4,
+  "transcript": [
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "0-6s",
+      "text": "Hey there, can you hear and see me all right?",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "6-7s",
+      "text": "Yeah.",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "7-11s",
+      "text": "Is this a sales call?",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "11-17s",
+      "text": "Yes, I can hear and see you perfectly, thank you.",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "17-20s",
+      "text": "Great, thanks for confirming.",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "20-22s",
+      "text": "You're coming through loud.",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "22-28s",
+      "text": "Thanks, glad we're both coming through clear.",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "29-32s",
+      "text": "Thanks, glad we're both coming through clear too.",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "35-38s",
+      "text": "Thanks, glad we're both coming through clear too.",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "41-42s",
+      "text": "Hey, hey, hey, hey, hey.",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "42-43s",
+      "text": "Thanks, glad we're both...",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "43-46s",
+      "text": "Listen what I'm saying, nigga.",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "46-48s",
+      "text": "Is this a sales call or not?",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "52-55s",
+      "text": "Not at all, my role is just to review your...",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "58-59s",
+      "text": "I got you, man.",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "59-61s",
+      "text": "Not at all, I'm just here to review your paperwork.",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "61-63s",
+      "text": "You know what I'm saying, nigga?",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "63-66s",
+      "text": "I ain't got shit on you, bitch.",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "66-68s",
+      "text": "Hey, I hear you...",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "70-72s",
+      "text": "Hey, I hear you loud and clear, man.",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "72-73s",
+      "text": "No...",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "74-76s",
+      "text": "Oh, bitch, get out of the way.",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "76-77s",
+      "text": "Great to connect with...",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "77-79s",
+      "text": "Get out of the way, bitch, get out of the way.",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "82-84s",
+      "text": "Hey, I hear you loud and clear, man.",
+      "timestamp": "2026-10-11T07:56:35.166Z"
+    }
+  ],
+  "transcriptionModel": "openai-whisper-1 + grok-diarization"
+}

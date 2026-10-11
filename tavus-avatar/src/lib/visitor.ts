@@ -32,12 +32,17 @@ export function getOrCreateVisitorId(request: Request): { visitorId: string; isN
   return { visitorId: randomUUID(), isNew: true };
 }
 
-export function attachVisitorCookie(response: NextResponse, visitorId: string) {
+export function attachVisitorCookie(
+  response: NextResponse,
+  visitorId: string,
+  isSecure = process.env.NODE_ENV === "production",
+) {
   response.cookies.set(VISITOR_COOKIE, visitorId, {
     httpOnly: true,
     maxAge: VISITOR_COOKIE_MAX_AGE,
     path: "/",
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecure,
   });
 }
+

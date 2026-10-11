@@ -1,0 +1,1864 @@
+"use client";
+
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Room, RoomEvent, Track, RemoteTrack, RemoteParticipant } from "livekit-client";
+import { DigitalFourSquareMenu } from "./digital-four-square-menu";
+import WarrantyTermsPage from "@/app/content/warranty-terms/page";
+import CostBreakdownPage from "@/app/content/cost-breakdown/page";
+import PricingLadderPage from "@/app/content/pricing-ladder/page";
+import DealSummaryPage from "@/app/content/deal-summary/page";
+import EscalatePage from "@/app/content/escalate/page";
+import { CallSummaryScreen } from "@/components/CallSummaryScreen";
+
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+export function LiveAvatarDemo() {
+  const [isConnected, setIsConnected] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [avatarName, setAvatarName] = useState<string>("Max (Finance Manager)");
+  const [isAvatarSpeaking, setIsAvatarSpeaking] = useState(false);
+  const [isUserSpeaking, setIsUserSpeaking] = useState(false);
+  const [isMicMuted, setIsMicMuted] = useState(false);
+  const [canPlaybackAudio, setCanPlaybackAudio] = useState(true);
+  const [isGrokThinking, setIsGrokThinking] = useState(false);
+
+  // Verified Avatar Preview URL (novus.ai6) & Remote Tracks
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(
+    "https://static.liveavatar.com/spaces/956ee8af13524a9684f952c54e4cb223/image_uploads/abdf763e-0460-4e16-b2ad-c1545fd63adf"
+  );
+  const [remoteVideoTrack, setRemoteVideoTrack] = useState<RemoteTrack | null>(null);
+  const [remoteAudioTrack, setRemoteAudioTrack] = useState<RemoteTrack | null>(null);
+  const remoteVideoTrackRef = useRef<RemoteTrack | null>(null);
+  const remoteAudioTrackRef = useRef<RemoteTrack | null>(null);
+  const attachedAudioElsRef = useRef<HTMLMediaElement[]>([]);
+  const isGrokProcessingRef = useRef(false);
+  const avatarWatchdogTimerRef = useRef<any>(null);
+  const silenceEndTimerRef = useRef<any>(null);
+  const audioActivityCtxRef = useRef<AudioContext | null>(null);
+
+  // User Camera (Webcam Preview & In-Call PiP)
+  const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
+  const [isCameraOff, setIsCameraOff] = useState(false);
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const preJoinVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  // Call End / Recording Summary state
+  const [callFinished, setCallFinished] = useState(false);
+  const [savedAudioUrl, setSavedAudioUrl] = useState<string | null>(null);
+  const startTimeRef = useRef<string | null>(null);
+  const audioRecorderRef = useRef<{
+    stopAndUpload: (id: string) => Promise<string | null>;
+  } | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const audioDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+
+  // Transcript
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [currentReplicaText, setCurrentReplicaText] = useState("");
+  const [latestUserTranscript, setLatestUserTranscript] = useState("");
+  const [textInput, setTextInput] = useState("");
+
+  // Presentation & Overlay State
+  const [activeOverlay, setActiveOverlay] = useState<
+    "warranty_terms" | "cost_breakdown" | "four_square" | "pricing_ladder" | "deal_summary" | "escalate" | null
+  >(null);
+  const [shownProducts, setShownProducts] = useState<string[]>([]);
+  const [activeProduct, setActiveProduct] = useState<string | null>(null);
+  const [dailyRate, setDailyRate] = useState<number | string | null>(4.0);
+  const [currentBeat, setCurrentBeat] = useState<{ id: number; label: string }>({
+    id: 0,
+    label: "Tech Check & Greeting",
+  });
+  const lastSpokenByAvatarRef = useRef<string>("");
+  const recentAvatarTextsRef = useRef<Array<{ text: string; timestamp: number }>>([]);
+  const avatarFinishedAtRef = useRef<number>(0);
+
+  // LiveKit WebRTC references
+  const roomRef = useRef<Room | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const speechRecognitionRef = useRef<any>(null);
+
+  // Sync state into refs for async events
+  const isConnectedRef = useRef(isConnected);
+  isConnectedRef.current = isConnected;
+
+  const isMicMutedRef = useRef(isMicMuted);
+  isMicMutedRef.current = isMicMuted;
+
+  const isAvatarSpeakingRef = useRef(isAvatarSpeaking);
+  isAvatarSpeakingRef.current = isAvatarSpeaking;
+
+  const sessionIdRef = useRef(sessionId);
+  sessionIdRef.current = sessionId;
+
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+
+  const conversationHistoryRef = useRef<Message[]>([]);
+
+  const shownProductsRef = useRef(shownProducts);
+  shownProductsRef.current = shownProducts;
+
+  const dailyRateRef = useRef(dailyRate);
+  dailyRateRef.current = dailyRate;
+
+  // ---------------------------------------------------------------------------
+  // Send speech command to LiveAvatar
+  // ---------------------------------------------------------------------------
+  const speakWithAvatar = useCallback(async (text: string) => {
+    const room = roomRef.current;
+    if (!room || !text.trim()) return;
+
+    try {
+      const clean = text.trim();
+      lastSpokenByAvatarRef.current = clean;
+      recentAvatarTextsRef.current.push({ text: clean, timestamp: Date.now() });
+      if (recentAvatarTextsRef.current.length > 15) {
+        recentAvatarTextsRef.current.shift();
+      }
+      console.log("[liveavatar] avatar.speak_text:", clean);
+
+      // Immediately set speaking flag to prevent race condition before speak_started event
+      setIsAvatarSpeaking(true);
+      isAvatarSpeakingRef.current = true;
+
+      // Start safety watchdog: in case stop event is delayed, auto-reset based on speech rate (~2.8 words/sec)
+      const wordCount = clean.split(/\s+/).length;
+      const expectedDurationMs = Math.min(10000, Math.max(1800, (wordCount / 2.8) * 1000 + 1200));
+      if (avatarWatchdogTimerRef.current) clearTimeout(avatarWatchdogTimerRef.current);
+      avatarWatchdogTimerRef.current = setTimeout(() => {
+        if (isAvatarSpeakingRef.current) {
+          console.warn("[liveavatar] Watchdog timer fired: auto-resetting isAvatarSpeaking");
+          setIsAvatarSpeaking(false);
+          isAvatarSpeakingRef.current = false;
+          avatarFinishedAtRef.current = Date.now();
+        }
+      }, expectedDurationMs);
+
+      // Dual-compatible payload to support all LiveAvatar API schema revisions
+      const payload = new TextEncoder().encode(
+        JSON.stringify({
+          event_type: "avatar.speak_text",
+          event: "avatar.speak_text",
+          text: clean,
+          data: { text: clean },
+          payload: { text: clean },
+        })
+      );
+      await room.localParticipant.publishData(payload, { reliable: true, topic: "agent-control" });
+    } catch (err) {
+      console.error("[liveavatar] Failed to publish speak_text:", err);
+    }
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Interrupt Avatar (Barge-in / Cut-off)
+  // ---------------------------------------------------------------------------
+  const interruptAvatar = useCallback(async () => {
+    const room = roomRef.current;
+    if (!room) return;
+
+    if (avatarWatchdogTimerRef.current) {
+      clearTimeout(avatarWatchdogTimerRef.current);
+    }
+
+    try {
+      console.log("[liveavatar] Sending avatar.interrupt (barge-in)");
+      const payload = new TextEncoder().encode(
+        JSON.stringify({
+          event_type: "avatar.interrupt",
+          event: "avatar.interrupt",
+        })
+      );
+      await room.localParticipant.publishData(payload, { reliable: true, topic: "agent-control" });
+      setIsAvatarSpeaking(false);
+      isAvatarSpeakingRef.current = false;
+      avatarFinishedAtRef.current = Date.now();
+      setCurrentReplicaText((prev) => (prev ? `${prev} — [Interrupted]` : ""));
+    } catch (err) {
+      console.error("[liveavatar] Failed to interrupt avatar:", err);
+    }
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Handle Chat with Grok & Tool Execution
+  // ---------------------------------------------------------------------------
+  const sendToGrok = useCallback(
+    async (userInput: string) => {
+      if (!userInput.trim()) return;
+
+      if (isGrokProcessingRef.current) {
+        console.log("[sendToGrok] Request already in flight, skipping duplicate call");
+        return;
+      }
+      isGrokProcessingRef.current = true;
+      setIsGrokThinking(true);
+
+      // Cut off avatar immediately if it was speaking when user spoke
+      if (isAvatarSpeakingRef.current) {
+        void interruptAvatar();
+      }
+
+      const updatedHistory: Message[] = [
+        ...conversationHistoryRef.current,
+        { role: "user", content: userInput.trim() },
+      ];
+      conversationHistoryRef.current = updatedHistory;
+      setMessages(updatedHistory);
+      setIsUserSpeaking(false);
+
+      try {
+        const res = await fetch("/api/chat/grok", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            messages: updatedHistory,
+            sessionId: sessionIdRef.current || sessionId || "live_session",
+          }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Grok error (${res.status})`);
+        }
+
+        const data = await res.json();
+        const assistantText = data.text || "";
+
+        if (data.currentBeatId !== undefined) {
+          setCurrentBeat({
+            id: data.currentBeatId,
+            label: data.beatLabel || `Step ${data.currentBeatId}`,
+          });
+        }
+
+        // Process function calls
+        if (data.toolCalls?.length) {
+          for (const tc of data.toolCalls) {
+            console.log("[grok tool execution]:", tc.name, tc.args);
+            if (tc.name === "show_content") {
+              if (tc.args.item === "warranty_terms") {
+                setActiveOverlay("warranty_terms");
+              } else if (tc.args.item === "cost_breakdown") {
+                setActiveOverlay("cost_breakdown");
+              } else if (tc.args.item === "four_square") {
+                setActiveOverlay("four_square");
+              } else if (tc.args.item === "pricing_ladder") {
+                setActiveOverlay("pricing_ladder");
+              } else if (tc.args.item === "deal_summary") {
+                setActiveOverlay("deal_summary");
+              } else if (tc.args.item === "escalate") {
+                setActiveOverlay("escalate");
+              } else if (tc.args.item === "welcome") {
+                setActiveOverlay(null);
+              }
+            } else if (tc.name === "draw_grid_outline") {
+              setActiveOverlay("four_square");
+            } else if (tc.name === "show_pricing") {
+              setActiveOverlay("four_square");
+              if (tc.args.product) {
+                setShownProducts((prev) => Array.from(new Set([...prev, tc.args.product])));
+                setActiveProduct(tc.args.product);
+              }
+            } else if (tc.name === "show_payment_breakdown") {
+              setActiveOverlay("four_square");
+              if (tc.args.daily_rate) {
+                setDailyRate(tc.args.daily_rate);
+              }
+            } else if (tc.name === "propose_concession") {
+              setActiveOverlay("pricing_ladder");
+              if (tc.args.stage) {
+                const stageRates: Record<number, number> = { 1: 4.0, 2: 3.5, 3: 3.25, 4: 3.0 };
+                setDailyRate(stageRates[tc.args.stage] || 3.5);
+              }
+            } else if (tc.name === "escalate_to_human") {
+              setActiveOverlay("escalate");
+            } else if (tc.name === "dismiss_content" || tc.name === "clear_canvas") {
+              setActiveOverlay(null);
+            }
+          }
+        }
+
+        if (assistantText) {
+          conversationHistoryRef.current = [
+            ...conversationHistoryRef.current,
+            { role: "assistant", content: assistantText },
+          ];
+          setMessages([...conversationHistoryRef.current]);
+          setCurrentReplicaText(assistantText);
+          await speakWithAvatar(assistantText);
+        }
+      } catch (err: any) {
+        console.error("[chat/grok error]:", err);
+        setError(err.message || "Failed to communicate with Grok.");
+      } finally {
+        isGrokProcessingRef.current = false;
+        setIsGrokThinking(false);
+      }
+    },
+    [speakWithAvatar, interruptAvatar]
+  );
+
+  // ---------------------------------------------------------------------------
+  // Speech Recognition (Web Speech API) with Auto-Recovery & Echo Guard
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    const recognizer = new SpeechRecognition();
+    recognizer.continuous = true;
+    recognizer.interimResults = true;
+    recognizer.lang = "en-US";
+
+    recognizer.onresult = (event: any) => {
+      let interimText = "";
+      let finalTranscript = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimText += transcript;
+          setIsUserSpeaking(true);
+        }
+      }
+
+      const currentSpoken = (interimText || finalTranscript).trim();
+      if (!currentSpoken) return;
+
+      // Anti-echo filter: if what the microphone heard is just the avatar's own current sentence echoing, ignore it
+      const currentNorm = currentSpoken.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+      const avatarNorm = (lastSpokenByAvatarRef.current || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+      if (isAvatarSpeakingRef.current && avatarNorm.includes(currentNorm) && currentNorm.length > 5) {
+        return;
+      }
+
+      // If the avatar is speaking and user speaks their own words (> 1 word):
+      // IMMEDIATELY barge-in and interrupt the avatar (identical to Tavus)!
+      if (isAvatarSpeakingRef.current && currentNorm.split(" ").length >= 2) {
+        console.log("[liveavatar] Native barge-in triggered by user speech:", currentSpoken);
+        void interruptAvatar();
+      }
+
+      setLatestUserTranscript(currentSpoken);
+
+      const trimmed = finalTranscript.trim();
+      if (trimmed) {
+        if (silenceEndTimerRef.current) clearTimeout(silenceEndTimerRef.current);
+        setIsUserSpeaking(false);
+        void sendToGrok(trimmed);
+      } else if (interimText.trim()) {
+        // Fast VAD fallback: if user pauses speaking for 750ms, finalize immediately without waiting for browser delay
+        if (silenceEndTimerRef.current) clearTimeout(silenceEndTimerRef.current);
+        silenceEndTimerRef.current = setTimeout(() => {
+          const spoken = interimText.trim();
+          if (spoken.length > 2 && !isGrokProcessingRef.current) {
+            console.log("[speech-recognition] Silence timeout fired Grok dispatch:", spoken);
+            setIsUserSpeaking(false);
+            void sendToGrok(spoken);
+          }
+        }, 750);
+      }
+    };
+
+    let restartTimer: any = null;
+    const scheduleRestart = (delay = 400) => {
+      if (restartTimer) clearTimeout(restartTimer);
+      restartTimer = setTimeout(() => {
+        if (isConnectedRef.current && !isMicMutedRef.current) {
+          try {
+            recognizer.start();
+          } catch {}
+        }
+      }, delay);
+    };
+
+    recognizer.onerror = (e: any) => {
+      if (e.error !== "no-speech" && e.error !== "aborted") {
+        console.warn("[speech-recognition warning]:", e.error);
+      }
+      setIsUserSpeaking(false);
+      scheduleRestart(600);
+    };
+
+    recognizer.onend = () => {
+      setIsUserSpeaking(false);
+      scheduleRestart(300);
+    };
+
+    speechRecognitionRef.current = recognizer;
+  }, [sendToGrok]);
+
+  // ---------------------------------------------------------------------------
+  // User Camera & Audio Preview Lifecycle
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    let isMounted = true;
+    const startCameraPreview = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+          audio: true,
+        });
+        if (!isMounted) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
+        setLocalVideoStream(stream);
+      } catch (camErr) {
+        console.warn("[webcam] Video permission denied or device not found, falling back to audio only:", camErr);
+        try {
+          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          if (!isMounted) {
+            audioStream.getTracks().forEach((track) => track.stop());
+            return;
+          }
+          setLocalVideoStream(audioStream);
+          setIsCameraOff(true);
+        } catch (audioErr) {
+          console.warn("[webcam] Neither camera nor microphone accessible:", audioErr);
+        }
+      }
+    };
+
+    void startCameraPreview();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  // Stop camera tracks on component unmount
+  useEffect(() => {
+    return () => {
+      if (localVideoStream) {
+        localVideoStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [localVideoStream]);
+
+  // Attach local video stream to preview elements
+  useEffect(() => {
+    if (preJoinVideoRef.current) {
+      if (localVideoStream && !isCameraOff && localVideoStream.getVideoTracks().some((t) => t.enabled)) {
+        preJoinVideoRef.current.srcObject = localVideoStream;
+        preJoinVideoRef.current.play().catch(() => {});
+      } else {
+        preJoinVideoRef.current.srcObject = null;
+      }
+    }
+
+    if (localVideoRef.current) {
+      if (localVideoStream && !isCameraOff && localVideoStream.getVideoTracks().some((t) => t.enabled)) {
+        localVideoRef.current.srcObject = localVideoStream;
+        localVideoRef.current.play().catch(() => {});
+      } else {
+        localVideoRef.current.srcObject = null;
+      }
+    }
+  }, [localVideoStream, isCameraOff, isConnected]);
+
+  // Robust Track Attachment helpers for WebRTC
+  const attachRemoteVideo = useCallback((track: RemoteTrack | null) => {
+    if (!track) return;
+    remoteVideoTrackRef.current = track;
+    setRemoteVideoTrack(track);
+    if (videoRef.current) {
+      try {
+        track.attach(videoRef.current);
+        videoRef.current.play().catch((e) => console.warn("[liveavatar] Video play err:", e));
+      } catch (err) {
+        console.warn("[liveavatar] Video attach err:", err);
+      }
+    }
+  }, []);
+
+  const attachRemoteAudio = useCallback((track: RemoteTrack | null) => {
+    if (!track) return;
+    remoteAudioTrackRef.current = track;
+    setRemoteAudioTrack(track);
+
+    // 1. Attach directly to persistent root HTMLAudioElement
+    if (audioRef.current) {
+      try {
+        audioRef.current.muted = false;
+        audioRef.current.volume = 1.0;
+        track.attach(audioRef.current);
+        audioRef.current.play().catch((e) => console.warn("[liveavatar] Root audio play deferred by browser policy:", e));
+      } catch (err) {
+        console.warn("[liveavatar] Root audio attach err:", err);
+      }
+    }
+
+    // 2. Secondary guarantee: let LiveKit attach its own managed audio element
+    try {
+      const autoEl = track.attach();
+      autoEl.muted = false;
+      autoEl.volume = 1.0;
+      autoEl.play().catch((e) => console.warn("[liveavatar] LiveKit auto-managed audio play err:", e));
+      attachedAudioElsRef.current.push(autoEl);
+    } catch (err) {
+      console.warn("[liveavatar] Failed auto track.attach():", err);
+    }
+  }, []);
+
+  // Re-attach remote tracks whenever video/audio elements mount or connection state changes
+  useEffect(() => {
+    if (isConnected) {
+      if (videoRef.current && remoteVideoTrackRef.current) {
+        try {
+          remoteVideoTrackRef.current.attach(videoRef.current);
+          videoRef.current.play().catch((e) => console.warn("[liveavatar] Video play caught:", e));
+        } catch (e) {
+          console.warn("[liveavatar] Video reattach error:", e);
+        }
+      }
+      if (audioRef.current && remoteAudioTrackRef.current) {
+        try {
+          audioRef.current.muted = false;
+          audioRef.current.volume = 1.0;
+          remoteAudioTrackRef.current.attach(audioRef.current);
+          audioRef.current.play().catch((e) => console.warn("[liveavatar] Audio play caught:", e));
+        } catch (e) {
+          console.warn("[liveavatar] Audio reattach error:", e);
+        }
+      }
+    }
+  }, [isConnected, remoteVideoTrack, remoteAudioTrack]);
+
+  // Global user interaction listener to unlock WebRTC audio if blocked by browser autoplay
+  useEffect(() => {
+    if (!isConnected) return;
+    const unlockAudio = async () => {
+      const room = roomRef.current;
+      if (room && !room.canPlaybackAudio) {
+        try {
+          await room.startAudio();
+          setCanPlaybackAudio(room.canPlaybackAudio);
+          console.log("[liveavatar] Audio unlocked via user interaction. canPlaybackAudio:", room.canPlaybackAudio);
+        } catch (e) {
+          console.warn("[liveavatar] Audio unlock on click failed:", e);
+        }
+      }
+      if (audioRef.current && audioRef.current.paused) {
+        audioRef.current.play().catch(() => {});
+      }
+      attachedAudioElsRef.current.forEach((el) => {
+        if (el.paused) {
+          el.play().catch(() => {});
+        }
+      });
+    };
+
+    window.addEventListener("click", unlockAudio);
+    window.addEventListener("keydown", unlockAudio);
+    window.addEventListener("touchstart", unlockAudio);
+    return () => {
+      window.removeEventListener("click", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+      window.removeEventListener("touchstart", unlockAudio);
+    };
+  }, [isConnected]);
+
+  // ---------------------------------------------------------------------------
+  // Start Consultation Session
+  // ---------------------------------------------------------------------------
+  const handleStart = async () => {
+    // 0. Prime root HTMLAudioElement immediately within user click gesture
+    if (audioRef.current) {
+      audioRef.current.muted = false;
+      audioRef.current.volume = 1.0;
+      audioRef.current.play().catch(() => {});
+    }
+
+    setIsConnecting(true);
+    setError(null);
+
+    try {
+      // Step 1: Create session via our server route
+      const res = await fetch("/api/heygen/session", { method: "POST" });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Failed to initialize HeyGen LiveAvatar session.");
+      }
+
+      const session = await res.json();
+      setSessionToken(session.sessionToken);
+      const activeSessionId = session.sessionId || `heygen_${Date.now()}`;
+      setSessionId(activeSessionId);
+      setAvatarName(session.avatarName);
+      if (session.avatarPreviewUrl) {
+        setAvatarPreviewUrl(session.avatarPreviewUrl);
+      }
+      startTimeRef.current = new Date().toISOString();
+
+      // Initialize Call Audio Recorder (saving to logs-heygen/)
+      try {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        const audioCtx = new AudioContextClass();
+        const destNode = audioCtx.createMediaStreamDestination();
+        audioCtxRef.current = audioCtx;
+        audioDestRef.current = destNode;
+
+        // Capture local microphone for recording
+        try {
+          let streamForRecording = localVideoStream;
+          if (!streamForRecording || streamForRecording.getAudioTracks().length === 0) {
+            try {
+              streamForRecording = await navigator.mediaDevices.getUserMedia({
+                video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: "user" },
+                audio: true,
+              });
+              setLocalVideoStream(streamForRecording);
+            } catch {
+              streamForRecording = await navigator.mediaDevices.getUserMedia({ audio: true });
+              setLocalVideoStream(streamForRecording);
+              setIsCameraOff(true);
+            }
+          }
+          if (streamForRecording && streamForRecording.getAudioTracks().length > 0) {
+            const micSource = audioCtx.createMediaStreamSource(streamForRecording);
+            micSource.connect(destNode);
+          }
+        } catch (micErr) {
+          console.warn("[audio-rec] Could not attach local mic to call recorder:", micErr);
+        }
+
+        const audioChunks: Blob[] = [];
+        const recorder = new MediaRecorder(destNode.stream, {
+          mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+            ? "audio/webm;codecs=opus"
+            : "audio/webm",
+        });
+
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) audioChunks.push(e.data);
+        };
+        recorder.start(500);
+
+        audioRecorderRef.current = {
+          stopAndUpload: async (sid: string) => {
+            return new Promise((resolvePromise) => {
+              if (recorder.state !== "inactive") {
+                recorder.onstop = async () => {
+                  audioCtx.close().catch(() => {});
+                  const blob = new Blob(audioChunks, { type: "audio/webm" });
+                  if (blob.size > 0) {
+                    try {
+                      await fetch(`/api/heygen/logs/${sid}/audio`, {
+                        method: "POST",
+                        body: blob,
+                      });
+                      resolvePromise(`/api/heygen/logs/${sid}/audio`);
+                      return;
+                    } catch (uploadErr) {
+                      console.error("[audio-rec] Upload error:", uploadErr);
+                    }
+                  }
+                  resolvePromise(null);
+                };
+                recorder.stop();
+              } else {
+                audioCtx.close().catch(() => {});
+                resolvePromise(null);
+              }
+            });
+          },
+        };
+      } catch (recErr) {
+        console.warn("[audio-rec] AudioRecorder init warning:", recErr);
+      }
+
+      // Step 2: Connect LiveKit Room
+      const room = new Room({
+        adaptiveStream: true,
+        dynacast: true,
+      });
+      roomRef.current = room;
+
+      let greetingSent = false;
+      const triggerSpokenGreeting = (delay = 1800) => {
+        if (greetingSent) return;
+        greetingSent = true;
+        setTimeout(() => {
+          const greeting = "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!";
+          setCurrentReplicaText(greeting);
+          conversationHistoryRef.current = [{ role: "assistant", content: greeting }];
+          setMessages([{ role: "assistant", content: greeting }]);
+          void speakWithAvatar(greeting);
+        }, delay);
+      };
+
+      room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
+        console.log("[liveavatar] TrackSubscribed event fired:", track.kind);
+        if (track.kind === Track.Kind.Video) {
+          attachRemoteVideo(track);
+          triggerSpokenGreeting(1800);
+        }
+        if (track.kind === Track.Kind.Audio) {
+          attachRemoteAudio(track);
+
+          // Pipe avatar's speech into the call audio recorder
+          if (audioCtxRef.current && audioDestRef.current && (track as any).mediaStreamTrack) {
+            try {
+              const remoteStream = new MediaStream([(track as any).mediaStreamTrack]);
+              const remoteSource = audioCtxRef.current.createMediaStreamSource(remoteStream);
+              remoteSource.connect(audioDestRef.current);
+            } catch (pipeErr) {
+              console.warn("[audio-rec] Failed to pipe remote avatar audio:", pipeErr);
+            }
+          }
+        }
+      });
+
+      room.on(RoomEvent.DataReceived, (payload: Uint8Array, _, __, topic?: string) => {
+        try {
+          const parsed = JSON.parse(new TextDecoder().decode(payload));
+          console.log("[liveavatar event]", topic, parsed);
+          const ev = (parsed.event_type || parsed.event || parsed.type || "").toLowerCase();
+          if (
+            ev.includes("start_talking") ||
+            ev.includes("started_speaking") ||
+            ev.includes("speak_started")
+          ) {
+            setIsAvatarSpeaking(true);
+            isAvatarSpeakingRef.current = true;
+          } else if (
+            ev.includes("stop_talking") ||
+            ev.includes("stopped_speaking") ||
+            ev.includes("finished_speaking") ||
+            ev.includes("speak_ended") ||
+            ev.includes("talking_stop")
+          ) {
+            setIsAvatarSpeaking(false);
+            isAvatarSpeakingRef.current = false;
+            avatarFinishedAtRef.current = Date.now();
+            if (avatarWatchdogTimerRef.current) {
+              clearTimeout(avatarWatchdogTimerRef.current);
+              avatarWatchdogTimerRef.current = null;
+            }
+          }
+        } catch {
+          // non-json
+        }
+      });
+
+      // Handle browser autoplay policy events for WebRTC audio
+      room.on(RoomEvent.AudioPlaybackStatusChanged, () => {
+        const canPlay = room.canPlaybackAudio;
+        console.log("[liveavatar] AudioPlaybackStatusChanged -> canPlaybackAudio:", canPlay);
+        setCanPlaybackAudio(canPlay);
+        if (!canPlay) {
+          room.startAudio().catch(() => {});
+        }
+      });
+
+      await room.connect(session.livekitUrl, session.livekitClientToken);
+      setIsConnected(true);
+      isConnectedRef.current = true;
+      setIsConnecting(false);
+
+      // Explicitly authorize LiveKit WebRTC audio playback
+      try {
+        await room.startAudio();
+        console.log("[liveavatar] room.startAudio() succeeded, canPlaybackAudio:", room.canPlaybackAudio);
+        setCanPlaybackAudio(room.canPlaybackAudio);
+      } catch (audioErr) {
+        console.warn("[liveavatar] room.startAudio() deferred:", audioErr);
+      }
+
+      // Stop LiveAvatar's internal chatbot from listening to mic audio (Grok handles dialog exclusively)
+      try {
+        const stopListeningPayload = new TextEncoder().encode(
+          JSON.stringify({
+            event_type: "avatar.stop_listening",
+            event: "avatar.stop_listening",
+          })
+        );
+        await room.localParticipant.publishData(stopListeningPayload, { reliable: true, topic: "agent-control" });
+        console.log("[liveavatar] Published avatar.stop_listening to agent-control");
+      } catch (stopErr) {
+        console.warn("[liveavatar] Failed to publish stop_listening:", stopErr);
+      }
+
+      // Immediately scan remote participants for tracks that subscribed during room connection
+      room.remoteParticipants.forEach((participant) => {
+        participant.trackPublications.forEach((pub) => {
+          if (pub.track) {
+            if (pub.track.kind === Track.Kind.Video) {
+              attachRemoteVideo(pub.track);
+              triggerSpokenGreeting(1800);
+            }
+            if (pub.track.kind === Track.Kind.Audio) {
+              attachRemoteAudio(pub.track);
+            }
+          }
+        });
+      });
+
+      // Safety fallback: if track subscription takes longer, ensure initial greeting is delivered
+      setTimeout(() => {
+        if (!greetingSent && isConnectedRef.current) {
+          console.log("[liveavatar] Fallback trigger for initial greeting");
+          triggerSpokenGreeting(500);
+        }
+      }, 4000);
+
+      // Start listening with mic
+      if (speechRecognitionRef.current && !isMicMuted) {
+        try {
+          speechRecognitionRef.current.start();
+        } catch {
+          // already started
+        }
+      }
+    } catch (err: any) {
+      console.error("[LiveAvatar handleStart error]:", err);
+      setError(err.message || "Failed to start consultation.");
+      setIsConnecting(false);
+    }
+  };
+
+  // ---------------------------------------------------------------------------
+  // End Consultation Session
+  // ---------------------------------------------------------------------------
+  const handleEnd = async () => {
+    const currentSessionId = sessionIdRef.current;
+
+    // 1. Upload audio recording to logs-heygen/
+    let audioUrl: string | null = null;
+    if (audioRecorderRef.current && currentSessionId) {
+      try {
+        audioUrl = await audioRecorderRef.current.stopAndUpload(currentSessionId);
+      } catch (e) {
+        console.error("[handleEnd] Audio upload failed:", e);
+      }
+      audioRecorderRef.current = null;
+    }
+
+    // 2. Save full transcript JSON to logs-heygen/
+    if (currentSessionId) {
+      const now = new Date().toISOString();
+      const start = startTimeRef.current || now;
+      const durationSeconds = Math.round(
+        (new Date(now).getTime() - new Date(start).getTime()) / 1000
+      );
+
+      const allMessages =
+        conversationHistoryRef.current.length > 0
+          ? conversationHistoryRef.current
+          : messagesRef.current;
+      try {
+        await fetch(`/api/heygen/logs/${currentSessionId}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            avatarId: "heygen-liveavatar",
+            avatarName,
+            startTime: start,
+            endTime: now,
+            durationSeconds,
+            status: "completed",
+            productsCovered: shownProductsRef.current,
+            finalDailyRate: dailyRateRef.current,
+            transcript: allMessages.map((m) => ({
+              role: m.role,
+              text: m.content,
+              timestamp: new Date().toISOString(),
+            })),
+          }),
+        });
+        console.log(`[heygen-logger] Transcript saved to logs-heygen/${currentSessionId}.json (${allMessages.length} entries)`);
+      } catch (logErr) {
+        console.error("[heygen-logger] Failed to save transcript:", logErr);
+      }
+    }
+
+    if (speechRecognitionRef.current) {
+      try {
+        speechRecognitionRef.current.stop();
+      } catch {}
+    }
+
+    if (roomRef.current) {
+      roomRef.current.disconnect();
+      roomRef.current = null;
+    }
+
+    // Clean up all dynamically attached audio elements
+    attachedAudioElsRef.current.forEach((el) => {
+      try {
+        el.pause();
+        el.srcObject = null;
+        el.remove();
+      } catch {}
+    });
+    attachedAudioElsRef.current = [];
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.srcObject = null;
+      } catch {}
+    }
+
+    if (audioActivityCtxRef.current && audioActivityCtxRef.current.state !== "closed") {
+      audioActivityCtxRef.current.close().catch(() => {});
+      audioActivityCtxRef.current = null;
+    }
+    if (silenceEndTimerRef.current) {
+      clearTimeout(silenceEndTimerRef.current);
+      silenceEndTimerRef.current = null;
+    }
+
+    if (sessionToken) {
+      void fetch("/api/heygen/session", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionToken }),
+      });
+    }
+
+    setIsConnected(false);
+    isConnectedRef.current = false;
+    remoteVideoTrackRef.current = null;
+    remoteAudioTrackRef.current = null;
+    setRemoteVideoTrack(null);
+    setRemoteAudioTrack(null);
+    setSessionToken(null);
+    setCurrentReplicaText("");
+    setActiveOverlay(null);
+
+    // 3. Show Call Summary Screen
+    setSavedAudioUrl(audioUrl);
+    setCallFinished(true);
+  };
+
+  // ---------------------------------------------------------------------------
+  // Call UX Enhancements: Duration, Captions, Mic Volume Meter, Shortcuts
+  // ---------------------------------------------------------------------------
+  const [showCaptions, setShowCaptions] = useState(true);
+  const [callDuration, setCallDuration] = useState(0);
+  const [micVolume, setMicVolume] = useState(0);
+
+  // Call duration counter
+  useEffect(() => {
+    if (!isConnected) {
+      setCallDuration(0);
+      return;
+    }
+    const interval = setInterval(() => {
+      setCallDuration((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isConnected]);
+
+  const formatDuration = (totalSeconds: number) => {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  // Real-time microphone audio volume analyser for reactive UI feedback
+  useEffect(() => {
+    if (!localVideoStream || isMicMuted) {
+      setMicVolume(0);
+      return;
+    }
+    const audioTracks = localVideoStream.getAudioTracks();
+    if (audioTracks.length === 0 || !audioTracks[0].enabled) {
+      setMicVolume(0);
+      return;
+    }
+
+    let animationFrameId: number;
+    let audioContext: AudioContext | null = null;
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      audioContext = new AudioContextClass();
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 32;
+      analyser.smoothingTimeConstant = 0.4;
+      const source = audioContext.createMediaStreamSource(localVideoStream);
+      source.connect(analyser);
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const updateVolume = () => {
+        analyser.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        const avg = sum / dataArray.length;
+        const normalized = Math.min(100, Math.round((avg / 128) * 100));
+        setMicVolume(normalized);
+        animationFrameId = requestAnimationFrame(updateVolume);
+      };
+      updateVolume();
+    } catch {
+      // AudioContext autoplay or permission fallback
+    }
+
+    return () => {
+      if (animationFrameId) cancelAnimationFrame(animationFrameId);
+      if (audioContext && audioContext.state !== "closed") {
+        audioContext.close().catch(() => {});
+      }
+    };
+  }, [localVideoStream, isMicMuted]);
+
+  const handleToggleMic = () => {
+    setIsMicMuted((prev) => {
+      const next = !prev;
+      isMicMutedRef.current = next;
+      if (speechRecognitionRef.current) {
+        if (next) {
+          try {
+            speechRecognitionRef.current.stop();
+          } catch {}
+        } else {
+          try {
+            speechRecognitionRef.current.start();
+          } catch {}
+        }
+      }
+      return next;
+    });
+  };
+
+  const handleToggleCamera = () => {
+    setIsCameraOff((prev) => {
+      const next = !prev;
+      if (localVideoStream) {
+        localVideoStream.getVideoTracks().forEach((track) => {
+          track.enabled = !next;
+        });
+      }
+      return next;
+    });
+  };
+
+  // Power user keyboard shortcuts: Space/M (Mute), Esc (Close Slide), C (Captions), B (Interrupt)
+  useEffect(() => {
+    if (!isConnected) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const targetTag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (targetTag === "input" || targetTag === "textarea") return;
+
+      if (e.code === "Space" || e.key.toLowerCase() === "m") {
+        e.preventDefault();
+        handleToggleMic();
+      } else if (e.key === "Escape") {
+        if (activeOverlay) {
+          e.preventDefault();
+          setActiveOverlay(null);
+        }
+      } else if (e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        setShowCaptions((prev) => !prev);
+      } else if (e.key.toLowerCase() === "b") {
+        if (isAvatarSpeakingRef.current) {
+          e.preventDefault();
+          void interruptAvatar();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isConnected, activeOverlay, interruptAvatar]);
+
+  const handleManualTextSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!textInput.trim()) return;
+    const txt = textInput.trim();
+    setTextInput("");
+    setLatestUserTranscript(txt);
+    if (isAvatarSpeakingRef.current) {
+      void interruptAvatar();
+    }
+    void sendToGrok(txt);
+  };
+
+  if (callFinished) {
+    const productLabelMap: Record<string, string> = {
+      vsc: "7-Year / 100,000-Mile Bumper-to-Bumper ($0 Deductible)",
+      tire_wheel: "5-Year Tire and Wheel Protection",
+      maintenance: "4-Year Scheduled Maintenance Package",
+      gap: "Total GAP Deficiency Balance Waiver",
+    };
+
+    return (
+      <CallSummaryScreen
+        conversationId={sessionId || "call"}
+        audioUrl={savedAudioUrl}
+        folderName="logs-heygen"
+        dailyRate={typeof dailyRate === "number" ? dailyRate : parseFloat(dailyRate || "4.0")}
+        productLabels={shownProducts.map((p) => productLabelMap[p] || p)}
+        transcriptCount={messages.length}
+        onStartNewCall={() => {
+          setCallFinished(false);
+          setSavedAudioUrl(null);
+          setMessages([]);
+          setShownProducts([]);
+          setActiveProduct(null);
+          setDailyRate(4.0);
+          setSessionId(null);
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="relative h-screen w-full bg-slate-950 font-sans text-slate-100 overflow-hidden flex flex-col select-none">
+      {/* Permanent, Always-Mounted Audio Element for LiveKit Remote Audio Track */}
+      <audio ref={audioRef} autoPlay playsInline className="hidden" />
+
+      {/* Browser Autoplay Blocked Banner */}
+      {isConnected && !canPlaybackAudio && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50">
+          <button
+            type="button"
+            onClick={async () => {
+              if (roomRef.current) {
+                await roomRef.current.startAudio();
+                setCanPlaybackAudio(roomRef.current.canPlaybackAudio);
+              }
+              if (audioRef.current) {
+                audioRef.current.play().catch(() => {});
+              }
+            }}
+            className="flex items-center gap-2 rounded-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs px-4 py-2 shadow-2xl animate-pulse cursor-pointer"
+          >
+            <span>🔊</span>
+            <span>Click to Unmute Max&apos;s Voice (Browser Blocked Audio)</span>
+          </button>
+        </div>
+      )}
+
+      {/* Background Gradient */}
+      <div className="pointer-events-none absolute -left-32 -top-32 size-[28rem] rounded-full bg-sky-500/20 blur-[100px]" />
+      <div className="pointer-events-none absolute -right-24 top-1/3 size-[24rem] rounded-full bg-violet-500/15 blur-[110px]" />
+
+      {/* Header Bar - Floats over video in-call just like Tavus */}
+      <header
+        className={`${
+          isConnected ? "absolute top-0 inset-x-0 z-30 bg-slate-950/60" : "relative z-30 bg-slate-950/75 shrink-0"
+        } flex items-center justify-between border-b border-white/10 px-5 py-2.5 backdrop-blur-xl`}
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex size-9 items-center justify-center rounded-xl border border-sky-400/40 bg-gradient-to-br from-sky-500/20 to-indigo-600/30 text-sky-300 font-black shadow-[0_0_15px_rgba(56,189,248,0.25)]">
+            N
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm font-bold tracking-tight text-white">Novus Digital Finance Suite</h1>
+              <span className="rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-sky-300">
+                LiveAvatar Ultra-HD
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
+              <span>{avatarName}</span>
+              <span className="size-1 rounded-full bg-slate-600" />
+              <span className="text-emerald-400 font-medium">xAI Grok (~150ms TTFT)</span>
+            </p>
+          </div>
+        </div>
+
+        {isConnected && (
+          <div className="flex items-center gap-2.5">
+            {/* Live Call Duration Stopwatch */}
+            <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs font-mono text-slate-200 backdrop-blur-md shadow-inner">
+              <span className="size-2 rounded-full bg-rose-500 animate-pulse" />
+              <span className="font-semibold">{formatDuration(callDuration)}</span>
+            </div>
+
+            {/* Deterministic Beat Controller Progress Badge */}
+            <div className="hidden md:flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-950/60 px-3 py-1 text-xs text-sky-200 backdrop-blur-md">
+              <span className="size-1.5 rounded-full bg-sky-400 animate-pulse" />
+              <span className="font-semibold text-sky-300">Beat {currentBeat.id}/16:</span>
+              <span className="max-w-[180px] truncate text-slate-300">{currentBeat.label}</span>
+            </div>
+
+            {/* Closed Captions Toggle */}
+            <button
+              onClick={() => setShowCaptions((prev) => !prev)}
+              type="button"
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition ${
+                showCaptions
+                  ? "border border-sky-400/40 bg-sky-500/20 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.25)]"
+                  : "border border-white/15 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200"
+              }`}
+              title="Toggle Subtitles / Closed Captions (Shortcut: C)"
+            >
+              <span>CC</span>
+              <span className="text-[10px] uppercase font-mono">{showCaptions ? "ON" : "OFF"}</span>
+            </button>
+
+            {/* Camera Quick Toggle */}
+            <button
+              onClick={handleToggleCamera}
+              type="button"
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+                isCameraOff
+                  ? "border border-rose-500/40 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30"
+                  : "border border-white/20 bg-white/5 text-slate-200 hover:bg-white/10"
+              }`}
+              title="Toggle Camera (Shortcut: V)"
+            >
+              <span className={`size-2 rounded-full ${isCameraOff ? "bg-rose-400" : "bg-emerald-400"}`} />
+              <span className="hidden sm:inline">{isCameraOff ? "Cam Off" : "Cam On"}</span>
+            </button>
+
+            {/* Mic Quick Toggle */}
+            <button
+              onClick={handleToggleMic}
+              type="button"
+              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+                isMicMuted
+                  ? "border border-rose-500/40 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30"
+                  : "border border-emerald-500/40 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
+              }`}
+              title="Toggle Microphone (Shortcut: Space or M)"
+            >
+              <span className={`size-2 rounded-full ${isMicMuted ? "bg-rose-400" : "bg-emerald-400 animate-pulse"}`} />
+              <span className="hidden sm:inline">{isMicMuted ? "Muted" : "Mic Live"}</span>
+            </button>
+
+            {/* Canonical Red End Consultation Button */}
+            <button
+              onClick={handleEnd}
+              type="button"
+              className="flex items-center gap-1.5 rounded-full border border-rose-500 bg-rose-600 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(225,29,72,0.4)] transition hover:bg-rose-500 hover:scale-105 active:scale-95"
+              title="End consultation and generate summary"
+            >
+              <span>🔴</span>
+              <span>End Call</span>
+            </button>
+          </div>
+        )}
+      </header>
+
+      {/* Main Presentation Stage - Full screen viewport when in-call */}
+      <main
+        className={`${
+          isConnected ? "absolute inset-0 z-0 h-full w-full" : "relative flex-1 w-full min-h-0"
+        } overflow-hidden`}
+      >
+        {!isConnected ? (
+          /* Pre-Join Luxury Dealership Virtual Suite Lobby */
+          <div className="h-full w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-y-auto no-scrollbar">
+            <div className="z-10 w-full max-w-5xl rounded-3xl border border-white/10 bg-slate-900/70 p-6 sm:p-8 lg:p-10 shadow-2xl backdrop-blur-2xl">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                {/* Left Column: Real-time Video Mirror & Live Audio Meter */}
+                <div className="lg:col-span-6 flex flex-col items-center">
+                  <div className="relative h-60 sm:h-72 w-full overflow-hidden rounded-2xl border border-white/15 bg-slate-950 shadow-2xl flex items-center justify-center group">
+                    <video
+                      ref={preJoinVideoRef}
+                      autoPlay
+                      playsInline
+                      muted
+                      className={`h-full w-full object-cover scale-x-[-1] transition-opacity duration-300 ${
+                        !isCameraOff && localVideoStream?.getVideoTracks().some((t) => t.enabled)
+                          ? "opacity-100"
+                          : "opacity-0"
+                      }`}
+                    />
+                    {(!localVideoStream ||
+                      isCameraOff ||
+                      !localVideoStream.getVideoTracks().some((t) => t.enabled)) && (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 text-slate-400">
+                        <span className="text-4xl mb-2">📷</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+                          Camera is inactive
+                        </span>
+                        <span className="text-[11px] text-slate-600 mt-1">Audio-only consultation enabled</span>
+                      </div>
+                    )}
+
+                    {/* Top Status Pill: 1080p WebRTC Ready */}
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 rounded-full bg-black/60 px-3 py-1 text-[10px] font-semibold text-white/90 backdrop-blur-md border border-white/10">
+                      <span className="size-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span>1080p Ultra-HD Direct Stream</span>
+                    </div>
+
+                    {/* Bottom Controls & Reactive Audio Equalizer */}
+                    <div className="absolute bottom-3 inset-x-3 flex items-center justify-between">
+                      {/* Live 5-Bar Reactive Audio Equalizer */}
+                      <div className="flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 border border-white/10 backdrop-blur-md">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300">Mic</span>
+                        <div className="flex items-end gap-1 h-3.5">
+                          {[0.3, 0.7, 1.0, 0.8, 0.4].map((mult, i) => (
+                            <span
+                              key={i}
+                              className={`w-1 rounded-full transition-all duration-75 ${
+                                isMicMuted
+                                  ? "bg-rose-500 h-1 opacity-60"
+                                  : micVolume > 5
+                                  ? "bg-emerald-400"
+                                  : "bg-slate-600 h-1 opacity-40"
+                              }`}
+                              style={{
+                                height: isMicMuted
+                                  ? "4px"
+                                  : `${Math.max(4, Math.min(14, (micVolume / 100) * 14 * mult))}px`,
+                              }}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-[10px] font-mono text-emerald-400">
+                          {isMicMuted ? "MUTED" : micVolume > 5 ? `${micVolume}%` : "READY"}
+                        </span>
+                      </div>
+
+                      {/* Hardware Toggles */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={handleToggleCamera}
+                          className={`rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-md transition ${
+                            isCameraOff
+                              ? "bg-rose-500/80 text-white hover:bg-rose-500 shadow-md"
+                              : "bg-black/60 text-white/90 hover:bg-black/80 border border-white/10"
+                          }`}
+                        >
+                          {isCameraOff ? "📷 Cam Off" : "📷 Cam On"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleToggleMic}
+                          className={`rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-md transition ${
+                            isMicMuted
+                              ? "bg-rose-500/80 text-white hover:bg-rose-500 shadow-md"
+                              : "bg-black/60 text-white/90 hover:bg-black/80 border border-white/10"
+                          }`}
+                        >
+                          {isMicMuted ? "🎤 Muted" : "🎤 Mic On"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-slate-400 mt-2.5 text-center">
+                    Speak into your microphone to verify audio metering before entering.
+                  </p>
+                </div>
+
+                {/* Right Column: Executive Consultation Brief & CTA */}
+                <div className="lg:col-span-6 flex flex-col justify-center text-left">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-sky-300 w-fit mb-3">
+                    <span className="size-1.5 rounded-full bg-sky-400 animate-pulse" />
+                    <span>Novus Luxury Automotive Group • F&I Advisory</span>
+                  </div>
+
+                  <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white mb-2">
+                    Executive Digital Finance Consultation
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-300 mb-5 leading-relaxed">
+                    Meet with <strong>Max Reynolds</strong>, Senior Director of Financial Services, for an interactive review of vehicle protection, warranty tiers, and personalized financing structures.
+                  </p>
+
+                  {/* Advisor Verified Profile Card */}
+                  <div className="flex items-center gap-3.5 p-3.5 rounded-2xl bg-white/[0.04] border border-white/10 mb-5">
+                    <div className="size-12 rounded-xl overflow-hidden border border-emerald-400/50 relative bg-slate-800 shrink-0 shadow-lg">
+                      {avatarPreviewUrl ? (
+                        <img
+                          src={avatarPreviewUrl}
+                          alt="Verified Avatar Max"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="flex items-center justify-center h-full text-2xl">👤</span>
+                      )}
+                      <span className="absolute bottom-0 right-0 size-3 rounded-full bg-emerald-400 border-2 border-slate-900" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-bold text-white flex items-center gap-2">
+                        <span>Max Reynolds (novus.ai6)</span>
+                        <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-300 border border-emerald-500/30">
+                          VERIFIED ADVISOR
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-400 truncate mt-0.5">
+                        Senior F&I Director • LiveAvatar Low-Latency WebRTC
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Appointment Specs Pill Card */}
+                  <div className="grid grid-cols-2 gap-2.5 p-3 rounded-xl bg-slate-950/60 border border-white/10 text-xs mb-6">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Vehicle</span>
+                      <span className="text-white font-medium">2026 Mazda CX-5 Carbon</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Base Price</span>
+                      <span className="text-emerald-400 font-semibold">$34,850 Agreed</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">Financing</span>
+                      <span className="text-white font-medium">60 Mo • Tier 1 Prime</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] uppercase font-bold text-slate-500 block">AI Intelligence</span>
+                      <span className="text-sky-300 font-medium">Grok (~150ms TTFT)</span>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div className="w-full mb-4 rounded-xl border border-rose-500/30 bg-rose-500/15 p-3 text-xs text-rose-200">
+                      {error}
+                    </div>
+                  )}
+
+                  {/* Glowing Start Button */}
+                  <button
+                    onClick={handleStart}
+                    disabled={isConnecting}
+                    type="button"
+                    className="w-full rounded-2xl bg-gradient-to-r from-sky-500 via-indigo-600 to-sky-500 bg-[length:200%_auto] hover:bg-[position:right_center] px-6 py-4 text-base font-bold text-white shadow-[0_0_35px_rgba(56,189,248,0.4)] transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {isConnecting ? (
+                      <>
+                        <span className="size-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                        <span>Initializing Secure Stream...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>Enter Consultation Suite</span>
+                        <span className="text-lg">→</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Live Consultation Stage - Full Screen Widescreen Immersion */
+          <div className="absolute inset-0 h-full w-full overflow-hidden bg-black">
+            {/* 1. Dynamic On-Screen Presentation Layer */}
+            {activeOverlay ? (
+              <div className="absolute inset-0 z-10 h-full w-full overflow-y-auto no-scrollbar">
+                {activeOverlay === "warranty_terms" ? (
+                  <WarrantyTermsPage />
+                ) : activeOverlay === "cost_breakdown" ? (
+                  <CostBreakdownPage />
+                ) : activeOverlay === "pricing_ladder" ? (
+                  <PricingLadderPage />
+                ) : activeOverlay === "deal_summary" ? (
+                  <DealSummaryPage />
+                ) : activeOverlay === "escalate" ? (
+                  <EscalatePage />
+                ) : (
+                  <div className="absolute inset-0 h-full w-full bg-slate-950 p-4 sm:p-6 overflow-y-auto no-scrollbar">
+                    <DigitalFourSquareMenu
+                      shownProducts={shownProducts}
+                      activeProduct={activeProduct}
+                      dailyRate={dailyRate}
+                    />
+                  </div>
+                )}
+              </div>
+            ) : null}
+
+            {/* 2. Persistent Single Avatar Video Container - 100% Full Screen object-cover identical to Tavus */}
+            <div
+              className={
+                activeOverlay
+                  ? "absolute right-4 top-16 z-20 h-[110px] w-[150px] sm:h-[130px] sm:w-[175px] md:h-[145px] md:w-[195px] overflow-hidden rounded-2xl border-2 border-sky-400/50 bg-slate-950/95 shadow-2xl backdrop-blur transition-all duration-300"
+                  : "absolute inset-0 z-0 h-full w-full bg-black transition-all duration-300 overflow-hidden"
+              }
+            >
+              {/* Fallback portrait avatar before live video stream arrives */}
+              {!remoteVideoTrack && avatarPreviewUrl && (
+                <img
+                  src={avatarPreviewUrl}
+                  alt={avatarName}
+                  className="h-full w-full object-cover"
+                />
+              )}
+
+              <video
+                ref={(el) => {
+                  videoRef.current = el;
+                  if (el && remoteVideoTrackRef.current) {
+                    try {
+                      remoteVideoTrackRef.current.attach(el);
+                      el.play().catch(() => {});
+                    } catch (e) {}
+                  }
+                }}
+                autoPlay
+                playsInline
+                muted
+                poster={avatarPreviewUrl || undefined}
+                className="h-full w-full object-cover"
+              />
+
+              {/* Status Indicator */}
+              <div className="absolute bottom-2 left-2 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-950/80 px-2.5 py-1 backdrop-blur-md">
+                <span
+                  className={`size-1.5 rounded-full ${
+                    isAvatarSpeaking ? "bg-sky-400 animate-ping" : "bg-emerald-400"
+                  }`}
+                />
+                <span className="text-[10px] font-semibold tracking-wider uppercase text-slate-300">
+                  {isAvatarSpeaking ? "Speaking" : "Live"}
+                </span>
+              </div>
+            </div>
+
+            {/* Close Presentation Floating Button */}
+            {activeOverlay && (
+              <button
+                type="button"
+                onClick={() => setActiveOverlay(null)}
+                className="absolute top-16 left-4 z-30 flex items-center gap-2 rounded-full border border-white/20 bg-slate-900/90 px-4 py-2 text-xs font-semibold text-slate-200 shadow-2xl backdrop-blur-xl hover:bg-slate-800 hover:scale-105 active:scale-95 transition"
+              >
+                <span className="text-sm font-bold">✕</span>
+                <span>Return to Full Video (Esc)</span>
+              </button>
+            )}
+
+            {/* Non-Obstructing Live Dual-Speaker Subtitle Panel */}
+            <TranscriptPanel
+              latestReplicaTranscript={currentReplicaText}
+              latestUserTranscript={latestUserTranscript}
+              replicaSpeaking={isAvatarSpeaking}
+              userSpeaking={isUserSpeaking}
+              isOverlayActive={Boolean(activeOverlay)}
+              showCaptions={showCaptions}
+              isThinking={isGrokThinking}
+            />
+
+            {/* 3. Floating User Camera PiP Box */}
+            <div className="absolute bottom-24 right-4 z-20 h-[100px] w-[140px] sm:h-[120px] sm:w-[160px] md:h-[135px] md:w-[180px] overflow-hidden rounded-2xl border border-white/20 bg-slate-950/90 shadow-2xl backdrop-blur transition-all duration-300">
+              <video
+                ref={localVideoRef}
+                autoPlay
+                playsInline
+                muted
+                className={`h-full w-full object-cover scale-x-[-1] transition-opacity duration-300 ${
+                  !isCameraOff && localVideoStream?.getVideoTracks().some((t) => t.enabled)
+                    ? "opacity-100"
+                    : "opacity-0"
+                }`}
+              />
+              {(!localVideoStream ||
+                isCameraOff ||
+                !localVideoStream.getVideoTracks().some((t) => t.enabled)) && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 text-slate-500">
+                  <span className="text-xl mb-0.5">📷</span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider">Camera off</span>
+                </div>
+              )}
+              <span className="absolute bottom-1.5 left-2 rounded-md bg-black/60 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white/90 backdrop-blur-md">
+                You
+              </span>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Bottom Bar: Manual Controls & Text Chat Input - Floats over video in-call just like Tavus */}
+      {isConnected && (
+        <footer className="absolute bottom-0 inset-x-0 z-30 border-t border-white/10 bg-slate-950/75 px-4 py-2.5 backdrop-blur-xl">
+          <div className="max-w-4xl mx-auto flex flex-col gap-2">
+            {/* Stage Stepper Navigation Pills */}
+            <div className="flex items-center justify-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-xs font-semibold text-slate-300">
+              <span className="text-slate-500 uppercase tracking-widest text-[9px] mr-1 hidden sm:inline">
+                Stage:
+              </span>
+              <button
+                type="button"
+                onClick={() => setActiveOverlay("warranty_terms")}
+                className={`rounded-full px-3 py-1 border transition ${
+                  activeOverlay === "warranty_terms"
+                    ? "bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.3)]"
+                    : "border-white/10 bg-slate-900/60 hover:bg-slate-800 text-slate-300"
+                }`}
+              >
+                1. Warranty
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveOverlay("cost_breakdown")}
+                className={`rounded-full px-3 py-1 border transition ${
+                  activeOverlay === "cost_breakdown"
+                    ? "bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.3)]"
+                    : "border-white/10 bg-slate-900/60 hover:bg-slate-800 text-slate-300"
+                }`}
+              >
+                2. Wear & Costs
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveOverlay("four_square");
+                  setShownProducts(["vsc", "tire_wheel", "maintenance", "gap"]);
+                }}
+                className={`rounded-full px-3 py-1 border transition ${
+                  activeOverlay === "four_square"
+                    ? "bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.3)]"
+                    : "border-white/10 bg-slate-900/60 hover:bg-slate-800 text-slate-300"
+                }`}
+              >
+                3. Four Square
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveOverlay("pricing_ladder")}
+                className={`rounded-full px-3 py-1 border transition ${
+                  activeOverlay === "pricing_ladder"
+                    ? "bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.3)]"
+                    : "border-white/10 bg-slate-900/60 hover:bg-slate-800 text-slate-300"
+                }`}
+              >
+                4. Concessions
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveOverlay("deal_summary")}
+                className={`rounded-full px-3 py-1 border transition ${
+                  activeOverlay === "deal_summary"
+                    ? "bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.3)]"
+                    : "border-white/10 bg-slate-900/60 hover:bg-slate-800 text-slate-300"
+                }`}
+              >
+                5. Close
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveOverlay("escalate")}
+                className={`rounded-full px-3 py-1 border transition ${
+                  activeOverlay === "escalate"
+                    ? "bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.3)]"
+                    : "border-white/10 bg-slate-900/60 hover:bg-slate-800 text-slate-300"
+                }`}
+              >
+                6. Escalate
+              </button>
+              {activeOverlay && (
+                <button
+                  type="button"
+                  onClick={() => setActiveOverlay(null)}
+                  className="rounded-full px-3 py-1 border border-rose-500/40 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 transition"
+                  title="Return to full screen avatar video"
+                >
+                  ✕ Close Slide
+                </button>
+              )}
+            </div>
+
+            {/* Bottom Row: Controls, Barge-In, Text Chat */}
+            <div className="flex items-center gap-3">
+              {/* Mic Toggle with Live Speaking / Reactive Glow */}
+              <button
+                type="button"
+                onClick={handleToggleMic}
+                className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold border transition shrink-0 ${
+                  isMicMuted
+                    ? "border-rose-500/40 bg-rose-500/15 text-rose-300 hover:bg-rose-500/25"
+                    : isUserSpeaking
+                    ? "border-emerald-400 bg-emerald-500/25 text-emerald-300 shadow-[0_0_15px_rgba(52,211,153,0.3)] animate-pulse"
+                    : "border-white/15 bg-white/5 text-slate-300 hover:bg-white/10"
+                }`}
+                title="Toggle Mic (Space / M)"
+              >
+                <span
+                  className={`size-2 rounded-full ${
+                    isMicMuted ? "bg-rose-400" : isUserSpeaking ? "bg-emerald-400" : "bg-sky-400"
+                  }`}
+                />
+                <span>{isMicMuted ? "Mic Muted" : isUserSpeaking ? "Listening..." : "Mic On"}</span>
+              </button>
+
+              {/* Instant Barge-in / Interrupt Button */}
+              {isAvatarSpeaking && (
+                <button
+                  type="button"
+                  onClick={() => void interruptAvatar()}
+                  className="flex items-center gap-1.5 rounded-full border border-amber-400/50 bg-amber-500/20 px-3 py-1.5 text-xs font-bold text-amber-200 hover:bg-amber-500/30 transition shadow-lg animate-pulse shrink-0"
+                  title="Interrupt Max mid-sentence (Keyboard: B)"
+                >
+                  <span>🛑</span>
+                  <span>Interrupt (B)</span>
+                </button>
+              )}
+
+              {/* Input Message Form */}
+              <form onSubmit={handleManualTextSubmit} className="flex-1 min-w-0 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={textInput}
+                  onChange={(e) => setTextInput(e.target.value)}
+                  placeholder="Speak into your mic or type to Max..."
+                  className="flex-1 min-w-0 rounded-full border border-white/15 bg-slate-900/90 px-4 py-2 text-xs text-white placeholder-slate-400 focus:border-sky-400 focus:outline-none transition"
+                />
+                <button
+                  type="submit"
+                  disabled={isGrokThinking}
+                  className="rounded-full bg-gradient-to-r from-sky-500 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-lg transition hover:scale-105 active:scale-95 disabled:opacity-60 shrink-0 flex items-center gap-1.5"
+                >
+                  {isGrokThinking ? (
+                    <>
+                      <span className="size-1.5 rounded-full bg-amber-300 animate-ping" />
+                      <span>Thinking...</span>
+                    </>
+                  ) : (
+                    <span>Send</span>
+                  )}
+                </button>
+              </form>
+            </div>
+          </div>
+        </footer>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Non-Obstructing Live Dual-Speaker Subtitle Component
+// ---------------------------------------------------------------------------
+
+type TranscriptPanelProps = {
+  latestReplicaTranscript: string | null;
+  latestUserTranscript: string | null;
+  replicaSpeaking: boolean;
+  userSpeaking: boolean;
+  isOverlayActive: boolean;
+  showCaptions?: boolean;
+  isThinking?: boolean;
+};
+
+function TranscriptPanel({
+  latestReplicaTranscript,
+  latestUserTranscript,
+  replicaSpeaking,
+  userSpeaking,
+  isOverlayActive,
+  showCaptions = true,
+  isThinking = false,
+}: TranscriptPanelProps) {
+  if (!showCaptions) return null;
+
+  const showPanel =
+    userSpeaking || replicaSpeaking || isThinking || Boolean(latestUserTranscript || latestReplicaTranscript);
+
+  if (!showPanel) return null;
+
+  const userText =
+    userSpeaking && !latestUserTranscript
+      ? "Listening to you..."
+      : latestUserTranscript || "Waiting for your question...";
+  const replicaText =
+    isThinking
+      ? "Max is formulating a response..."
+      : replicaSpeaking && !latestReplicaTranscript
+      ? "Max is speaking..."
+      : latestReplicaTranscript || "Max's responses appear here.";
+
+  return (
+    <div
+      className={`absolute z-30 transition-all duration-300 pointer-events-none ${
+        isOverlayActive
+          ? "bottom-20 left-1/2 -translate-x-1/2 max-w-2xl w-[92%] sm:w-[34rem]"
+          : "bottom-24 left-4 sm:left-6 max-w-xl w-[calc(100vw-2rem)] sm:w-[32rem]"
+      } rounded-[1.75rem] border border-white/10 bg-slate-950/80 p-3 shadow-[0_24px_80px_rgba(0,0,0,0.6)] backdrop-blur-2xl`}
+    >
+      <div className="space-y-1.5 pointer-events-auto">
+        <TranscriptPanelRow active={userSpeaking} label="You" text={userText} role="user" />
+        <TranscriptPanelRow
+          active={replicaSpeaking || isThinking}
+          isThinking={isThinking}
+          label="Max (Finance Manager)"
+          text={replicaText}
+          role="assistant"
+        />
+      </div>
+    </div>
+  );
+}
+
+function TranscriptPanelRow({
+  active,
+  label,
+  text,
+  role,
+  isThinking = false,
+}: {
+  active: boolean;
+  label: string;
+  text: string;
+  role: "user" | "assistant";
+  isThinking?: boolean;
+}) {
+  return (
+    <div
+      className={
+        isThinking
+          ? "rounded-2xl border border-amber-400/40 bg-amber-500/10 px-3 py-1.5 shadow-lg backdrop-blur-md transition-all"
+          : active
+          ? "rounded-2xl border border-sky-400/30 bg-sky-500/15 px-3 py-1.5 shadow-lg backdrop-blur-md transition-all"
+          : "rounded-2xl border border-white/5 bg-slate-900/60 px-3 py-1.5 backdrop-blur-md transition-all"
+      }
+    >
+      <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+        <span
+          className={`size-2 rounded-full ${
+            isThinking
+              ? "bg-amber-400 animate-pulse"
+              : active
+              ? role === "user"
+                ? "bg-emerald-400 animate-ping"
+                : "bg-sky-400 animate-ping"
+              : "bg-slate-600"
+          }`}
+        />
+        <span
+          className={
+            isThinking
+              ? "text-amber-300 font-semibold"
+              : active
+              ? role === "user"
+                ? "text-emerald-300 font-semibold"
+                : "text-sky-300 font-semibold"
+              : "text-slate-400"
+          }
+        >
+          {label}
+        </span>
+        {isThinking && (
+          <span className="ml-auto flex items-center gap-1 text-[10px] text-amber-300 font-normal lowercase tracking-normal">
+            <span className="size-1 rounded-full bg-amber-400 animate-ping" />
+            thinking...
+          </span>
+        )}
+      </div>
+      <p
+        className={
+          isThinking
+            ? "mt-0.5 text-xs sm:text-sm leading-relaxed text-amber-200/90 font-medium italic animate-pulse"
+            : active
+            ? "mt-0.5 text-xs sm:text-sm leading-relaxed text-white font-medium"
+            : "mt-0.5 text-xs sm:text-sm leading-relaxed text-slate-300"
+        }
+      >
+        {text}
+      </p>
+    </div>
+  );
+}

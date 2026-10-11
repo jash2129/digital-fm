@@ -1,0 +1,52 @@
+{
+  "conversationId": "c4d68faf7a275442",
+  "personaId": "pedee15ef236",
+  "visitorId": "3989d84c-2140-4a04-b393-49cb7ff3ae99",
+  "dealId": null,
+  "startTime": "2026-10-07T09:34:02.488Z",
+  "endTime": "2026-10-07T10:37:17.400Z",
+  "durationSeconds": null,
+  "status": "completed",
+  "transcript": [
+    {
+      "role": "pal",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-07T09:34:07.946Z"
+    },
+    {
+      "role": "replica",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-07T09:34:07.950Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah, I can— able to see you. Thank you.",
+      "timestamp": "2026-10-07T09:34:22.029Z"
+    },
+    {
+      "role": "replica",
+      "text": "That's great to hear! How was the drive? Did you enjoy the vehicle?",
+      "timestamp": "2026-10-07T09:34:22.068Z"
+    },
+    {
+      "role": "pal",
+      "text": "That's great to hear! How was the drive? Did you enjoy the vehicle?",
+      "timestamp": "2026-10-07T09:34:22.102Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah.",
+      "timestamp": "2026-10-07T09:34:30.991Z"
+    },
+    {
+      "role": "replica",
+      "text": "Before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-10-07T09:34:31.033Z"
+    },
+    {
+      "role": "pal",
+      "text": "Before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-10-07T09:34:31.070Z"
+    }
+  ]
+}

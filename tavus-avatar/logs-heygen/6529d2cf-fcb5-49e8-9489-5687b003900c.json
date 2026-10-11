@@ -1,0 +1,59 @@
+{
+  "sessionId": "6529d2cf-fcb5-49e8-9489-5687b003900c",
+  "engine": "heygen-grok",
+  "avatarId": "heygen-liveavatar",
+  "avatarName": "Max (Consultant Fallback - Custom Avatar Deploying)",
+  "startTime": "2026-10-08T18:13:06.188Z",
+  "endTime": "2026-10-08T18:14:19.815Z",
+  "durationSeconds": 74,
+  "status": "completed",
+  "productsCovered": [],
+  "finalDailyRate": 4,
+  "transcript": [
+    {
+      "role": "assistant",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-08T18:14:19.815Z"
+    },
+    {
+      "role": "user",
+      "text": "Hey there, can you hear and see me Alright? Welcome in. I'm Max, your finance manager today.",
+      "timestamp": "2026-10-08T18:14:19.815Z"
+    },
+    {
+      "role": "assistant",
+      "text": "Before I start I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.",
+      "timestamp": "2026-10-08T18:14:19.815Z"
+    },
+    {
+      "role": "user",
+      "text": "Before I start, I just want to let you know this transaction is recorded audio and video also unrequired by the law to go over everything with you before you sign any paperwork to make sure you understand first, OK?",
+      "timestamp": "2026-10-08T18:14:19.815Z"
+    },
+    {
+      "role": "assistant",
+      "text": "That's a great point—yes, this is all recorded for your protection and I'm required by law to walk through everything clearly before you sign. \n\nBefore I start I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.",
+      "timestamp": "2026-10-08T18:14:19.815Z"
+    },
+    {
+      "role": "user",
+      "text": "That's a great point. Yes, this is all recorded for your protection and I'm required by law to walk through everything clearly before you sign. Before I start, I just want to let you know this transaction is recorded audio and video. Also, I'm required by the law to go over everything with you before you sign Any paperwork to make sure you understand first, OK.",
+      "timestamp": "2026-10-08T18:14:19.815Z"
+    },
+    {
+      "role": "assistant",
+      "text": "First I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork , have you got the chance to drive the vehicle that you are buying.",
+      "timestamp": "2026-10-08T18:14:19.815Z"
+    },
+    {
+      "role": "user",
+      "text": "1st I see that you agreed to buy a new 20.",
+      "timestamp": "2026-10-08T18:14:19.815Z"
+    },
+    {
+      "role": "assistant",
+      "text": "I'm sorry, I didn't quite catch that last part—could you repeat it for me? \n\nFirst I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork , have you got the chance to drive the vehicle that you are buying.",
+      "timestamp": "2026-10-08T18:14:19.815Z"
+    }
+  ]
+}

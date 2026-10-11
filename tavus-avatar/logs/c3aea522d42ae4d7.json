@@ -1,0 +1,47 @@
+{
+  "conversationId": "c3aea522d42ae4d7",
+  "personaId": "pedee15ef236",
+  "visitorId": "dce05946-43dc-4ad7-b6f3-8ea81207472b",
+  "dealId": null,
+  "startTime": "2026-09-29T21:12:20.352Z",
+  "endTime": "2026-09-29T21:18:50.552Z",
+  "durationSeconds": null,
+  "status": "completed",
+  "transcript": [
+    {
+      "role": "replica",
+      "text": "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!",
+      "timestamp": "2026-09-29T21:12:22.504Z"
+    },
+    {
+      "role": "pal",
+      "text": "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!",
+      "timestamp": "2026-09-29T21:12:22.760Z"
+    },
+    {
+      "role": "user",
+      "text": "Just something going on, even the—",
+      "timestamp": "2026-09-29T21:12:36.206Z"
+    },
+    {
+      "role": "user",
+      "text": "Just something going on, even the— The screen keeps flashing.",
+      "timestamp": "2026-09-29T21:12:38.508Z"
+    },
+    {
+      "role": "user",
+      "text": "Just something going on, even the— The screen keeps flashing. Yeah, blinking like crazy.",
+      "timestamp": "2026-09-29T21:12:40.469Z"
+    },
+    {
+      "role": "replica",
+      "text": "I hear you, it sounds like technology can be frustrating at times. If there's anything I can do to help get things running smoothly, just let me know. In the meantime, are you ready to move forward with the finance discussion for your new Mazda?",
+      "timestamp": "2026-09-29T21:12:42.169Z"
+    },
+    {
+      "role": "pal",
+      "text": "I hear you, it sounds like technology can be frustrating at times. If there's anything I can do to help get things running smoothly, just let me know. In the meantime, are you ready to move forward with the finance discussion for your new Mazda?",
+      "timestamp": "2026-09-29T21:12:42.195Z"
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "sessionId": "bbb3dd78-92de-4e79-a19a-d7996766a58f",
+  "engine": "heygen-grok",
+  "avatarId": "heygen-liveavatar",
+  "avatarName": "Max (Custom Avatar - novus.ai6)",
+  "startTime": "2026-10-09T06:26:59.803Z",
+  "endTime": "2026-10-09T06:27:43.583Z",
+  "durationSeconds": 44,
+  "status": "completed",
+  "productsCovered": [],
+  "finalDailyRate": 4,
+  "transcript": [
+    {
+      "role": "assistant",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-09T06:27:43.583Z"
+    },
+    {
+      "role": "user",
+      "text": "My.",
+      "timestamp": "2026-10-09T06:27:43.583Z"
+    },
+    {
+      "role": "assistant",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-09T06:27:43.583Z"
+    }
+  ]
+}

@@ -88,3 +88,12 @@ export function formatDealContext(context: DealContext): string | null {
 
   return `Known deal information (confirm with the customer, don't assume it's unchanged):\n${lines.join("\n")}`;
 }
+
+export function formatDealContextWithAnchor(context: DealContext, pinnedStateBlock?: string): string {
+  const base = formatDealContext(context) || "";
+  if (!pinnedStateBlock) {
+    return base;
+  }
+  return base ? `${base}\n\n${pinnedStateBlock}` : pinnedStateBlock;
+}
+

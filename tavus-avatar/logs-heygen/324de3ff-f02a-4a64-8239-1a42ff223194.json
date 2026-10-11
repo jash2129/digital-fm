@@ -1,0 +1,114 @@
+{
+  "sessionId": "324de3ff-f02a-4a64-8239-1a42ff223194",
+  "engine": "heygen-grok",
+  "avatarId": "heygen-liveavatar",
+  "avatarName": "Max (novus.ai6 - Verified)",
+  "startTime": "2026-10-11T10:14:35.667Z",
+  "endTime": "2026-10-11T10:20:10.888Z",
+  "durationSeconds": 335,
+  "status": "completed",
+  "productsCovered": [
+    "vsc",
+    "tire_wheel",
+    "maintenance",
+    "gap"
+  ],
+  "finalDailyRate": 4,
+  "transcript": [
+    {
+      "role": "assistant",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "user",
+      "text": "Hi Maxi",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "assistant",
+      "text": "Great to connect with you! Before I start I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay. Does that sound good?",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "user",
+      "text": "Hey is this a sales call or what",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "assistant",
+      "text": "Not at all! My role is just to review your paperwork and warranty details for your new Mazda CX-5 before you sign anything. Before I start I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay. Does that sound good?",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "user",
+      "text": "Hello",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "assistant",
+      "text": "Great to connect with you! First I see that you agreed to buy a new 2026 Mazda CX five. Does that match the vehicle you picked out?",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "assistant",
+      "text": "Yeah, perfect. A few questions before I prepare the paperwork, have you got the chance to drive the vehicle that you are buying.",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "user",
+      "text": "I do",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "assistant",
+      "text": "Awesome, glad to hear that. When you came back from the test drive, the sales person did the walkaround and showed you all the futures and builts and whistles in the car?",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "user",
+      "text": "Ah yes he did",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "assistant",
+      "text": "Got it, thanks for confirming. What's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah he did",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "assistant",
+      "text": "There is actually more information about the warranty i need to go over with you to make sure you do understand everything. Fair enough?",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "user",
+      "text": "That's fair let's go",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "assistant",
+      "text": "That's fair, let's dive right in then. There is actually more information about the warranty i need to go over with you to make sure you do understand everything. Is that okay?",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "user",
+      "text": "Just go with the warranty things",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    },
+    {
+      "role": "assistant",
+      "text": "Got it, let's roll right into it. Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one. The first warranty is 3 years thirty six thousand mile Base limited warranty. The second of is five years sixty thousand mile power train which is referring to the engine and the transmission , im sure you and i agree thats a very good complementary warranty from the manufacturer right?",
+      "timestamp": "2026-10-11T10:20:10.888Z"
+    }
+  ]
+}

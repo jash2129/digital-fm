@@ -1,1 +1,1 @@
-Hi there, congratulations on your new vehicle! I'm Max, the finance manager here — my job today is to walk you through a few protection options for your car and make sure you have all the information you need before anything gets signed. Before we get into that, what's your name?
+Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!

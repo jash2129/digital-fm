@@ -1,0 +1,62 @@
+{
+  "conversationId": "c7f444f1f5f8449a",
+  "personaId": "pedee15ef236",
+  "visitorId": "fd26284a-8adb-47ff-a7fd-4bd39ac8ed9e",
+  "dealId": null,
+  "startTime": "2026-09-29T21:07:14.622Z",
+  "endTime": null,
+  "durationSeconds": null,
+  "status": "active",
+  "transcript": [
+    {
+      "role": "replica",
+      "text": "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!",
+      "timestamp": "2026-09-29T21:07:16.967Z"
+    },
+    {
+      "role": "pal",
+      "text": "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!",
+      "timestamp": "2026-09-29T21:07:17.072Z"
+    },
+    {
+      "role": "user",
+      "text": "Enable audio.",
+      "timestamp": "2026-09-29T21:07:31.340Z"
+    },
+    {
+      "role": "pal",
+      "text": "Got it, I can hear you. Just a quick reminder before we dive in. Before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-09-29T21:07:34.162Z"
+    },
+    {
+      "role": "replica",
+      "text": "Got it, I can hear you. Just a quick reminder before we dive in. Before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-09-29T21:07:34.201Z"
+    },
+    {
+      "role": "user",
+      "text": "I can hear anything from her.",
+      "timestamp": "2026-09-29T21:07:41.125Z"
+    },
+    {
+      "role": "pal",
+      "text": "Understood. If you're having trouble with the audio, please check your device's volume settings or try adjusting your connection. I'm here to help you with the finance process for your new vehicle, so just let me know when you're ready to continue!",
+      "timestamp": "2026-09-29T21:07:42.956Z"
+    },
+    {
+      "role": "replica",
+      "text": "Understood. If you're having trouble with the audio, please check your device's volume settings or try adjusting your connection. I'm here to help you with the finance process for your new vehicle, so just let me know when you're ready to continue!",
+      "timestamp": "2026-09-29T21:07:42.992Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah, I see that, but every time—",
+      "timestamp": "2026-09-29T21:08:00.421Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah, I see that, but every time— Hide this one.",
+      "timestamp": "2026-09-29T21:08:00.666Z"
+    }
+  ]
+}

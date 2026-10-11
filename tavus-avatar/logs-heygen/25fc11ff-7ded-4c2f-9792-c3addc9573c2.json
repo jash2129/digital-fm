@@ -1,0 +1,113 @@
+{
+  "sessionId": "25fc11ff-7ded-4c2f-9792-c3addc9573c2",
+  "engine": "heygen-grok",
+  "avatarId": "heygen-liveavatar",
+  "avatarName": "Max (novus.ai6 - Verified)",
+  "startTime": "2026-10-10T18:56:30.958Z",
+  "endTime": "2026-10-10T18:57:57.103Z",
+  "durationSeconds": 86,
+  "status": "completed",
+  "productsCovered": [],
+  "finalDailyRate": 4,
+  "transcript": [
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "0-7s",
+      "text": "Hey there, can you hear and see me all right?",
+      "timestamp": "2026-10-10T18:57:59.102Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "7-8s",
+      "text": "Welcome in.",
+      "timestamp": "2026-10-10T18:57:59.102Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "8-11s",
+      "text": "I'm Max, your finance manager today.",
+      "timestamp": "2026-10-10T18:57:59.102Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "11-13s",
+      "text": "Hello.",
+      "timestamp": "2026-10-10T18:57:59.102Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "13-22s",
+      "text": "Hey there, can you hear and see me all right?",
+      "timestamp": "2026-10-10T18:57:59.102Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "22-23s",
+      "text": "Welcome in.",
+      "timestamp": "2026-10-10T18:57:59.102Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "23-29s",
+      "text": "I'm Max, your finance manager today.",
+      "timestamp": "2026-10-10T18:57:59.102Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "29-35s",
+      "text": "I can't hear you.",
+      "timestamp": "2026-10-10T18:57:59.102Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "35-40s",
+      "text": "Are you there?",
+      "timestamp": "2026-10-10T18:57:59.102Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "40-43s",
+      "text": "I can't hear you.",
+      "timestamp": "2026-10-10T18:57:59.102Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "43-46s",
+      "text": "What is happening?",
+      "timestamp": "2026-10-10T18:57:59.102Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "46-60s",
+      "text": "I can't hear you.",
+      "timestamp": "2026-10-10T18:57:59.102Z"
+    },
+    {
+      "role": "user",
+      "speaker": "Caller",
+      "time": "60-61s",
+      "text": "Oh let me fix that right away.",
+      "timestamp": "2026-10-10T18:57:59.102Z"
+    },
+    {
+      "role": "assistant",
+      "speaker": "Max (AI)",
+      "time": "61-62s",
+      "text": "Can you hear me clearly now?",
+      "timestamp": "2026-10-10T18:57:59.102Z"
+    }
+  ],
+  "transcriptionModel": "openai-whisper-1 + grok-diarization"
+}

@@ -1,0 +1,142 @@
+{
+  "conversationId": "c97a9e466db3541c",
+  "personaId": "pedee15ef236",
+  "visitorId": "5606676e-b2b9-409f-abbe-cf9d8b00dc20",
+  "dealId": null,
+  "startTime": "2026-10-02T06:22:53.742Z",
+  "endTime": "2026-10-02T06:26:37.358Z",
+  "durationSeconds": 224,
+  "status": "completed",
+  "transcript": [
+    {
+      "role": "replica",
+      "text": "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!",
+      "timestamp": "2026-10-02T06:22:55.728Z"
+    },
+    {
+      "role": "pal",
+      "text": "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!",
+      "timestamp": "2026-10-02T06:22:55.823Z"
+    },
+    {
+      "role": "user",
+      "text": "What's up, Max? Yeah, I had a good time. It was a fun ride, you know?",
+      "timestamp": "2026-10-02T06:23:19.910Z"
+    },
+    {
+      "role": "replica",
+      "text": "Awesome, really glad to hear that! Before I start, I just want to let you know this transaction is recorded audio and video. Also, I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-10-02T06:23:19.936Z"
+    },
+    {
+      "role": "pal",
+      "text": "Awesome, really glad to hear that! Before I start, I just want to let you know this transaction is recorded audio and video. Also, I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-10-02T06:23:19.969Z"
+    },
+    {
+      "role": "pal",
+      "text": "First, I see that you agreed to buy a new two thousand twenty-six Mazda CX-5.",
+      "timestamp": "2026-10-02T06:23:39.573Z"
+    },
+    {
+      "role": "user",
+      "text": "Thank you.",
+      "timestamp": "2026-10-02T06:23:39.608Z"
+    },
+    {
+      "role": "replica",
+      "text": "First, I see that you agreed to buy a new two thousand twenty-six Mazda CX-5.",
+      "timestamp": "2026-10-02T06:23:39.644Z"
+    },
+    {
+      "role": "replica",
+      "text": "Great! A few questions before I prepare the paperwork — have you got the chance to drive the vehicle that you are buying?",
+      "timestamp": "2026-10-02T06:23:52.843Z"
+    },
+    {
+      "role": "pal",
+      "text": "Great! A few questions before I prepare the paperwork — have you got the chance to drive the vehicle that you are buying?",
+      "timestamp": "2026-10-02T06:23:52.872Z"
+    },
+    {
+      "role": "user",
+      "text": "Uh, yes. I agreed to buy that car.",
+      "timestamp": "2026-10-02T06:23:52.906Z"
+    },
+    {
+      "role": "replica",
+      "text": "Awesome! When you came back from the test drive, did the salesperson do the walk-around and show you all the features and bells and whistles in the car?",
+      "timestamp": "2026-10-02T06:24:05.303Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah, I did.",
+      "timestamp": "2026-10-02T06:24:05.364Z"
+    },
+    {
+      "role": "pal",
+      "text": "Awesome! When you came back from the test drive, did the salesperson do the walk-around and show you all the features and bells and whistles in the car?",
+      "timestamp": "2026-10-02T06:24:05.393Z"
+    },
+    {
+      "role": "replica",
+      "text": "Got it, no problem at all — I'll personally make sure our team does a complete walk-around and shows you all those tech features before you leave with the keys today. Now, what's your understanding of the warranty that comes with the vehicle? Did the salesperson go over everything with you?",
+      "timestamp": "2026-10-02T06:24:18.418Z"
+    },
+    {
+      "role": "pal",
+      "text": "Got it, no problem at all — I'll personally make sure our team does a complete walk-around and shows you all those tech features before you leave with the keys today. Now, what's your understanding of the warranty that comes with the vehicle? Did the salesperson go over everything with you?",
+      "timestamp": "2026-10-02T06:24:18.447Z"
+    },
+    {
+      "role": "user",
+      "text": "No, he didn't.",
+      "timestamp": "2026-10-02T06:24:18.477Z"
+    },
+    {
+      "role": "replica",
+      "text": "Awesome! There is actually more information about the warranty that I need to go over with you to make sure you do understand everything. Let me share my screen with you so you can follow along as I walk through it. Mazda is like any other manufacturer — when they build a vehicle, they put warranty in it. In your case, you get two different warranties, not one. \n\nLet me pull that right up on screen for you...",
+      "timestamp": "2026-10-02T06:24:47.597Z"
+    },
+    {
+      "role": "pal",
+      "text": "Awesome! There is actually more information about the warranty that I need to go over with you to make sure you do understand everything. Let me share my screen with you so you can follow along as I walk through it. Mazda is like any other manufacturer — when they build a vehicle, they put warranty in it. In your case, you get two different warranties, not one. \n\nLet me pull that right up on screen for you...",
+      "timestamp": "2026-10-02T06:24:47.634Z"
+    },
+    {
+      "role": "user",
+      "text": "I love that answer. That was a good answer. Okay. Um, yeah, he gave me a little bit of information about the warranty, uh, I think he did a good job.",
+      "timestamp": "2026-10-02T06:24:47.664Z"
+    },
+    {
+      "role": "replica",
+      "text": "I completely understand and I respect your time! Let’s dive into the details of the warranty. \n\nThe first warranty is three years thirty-six thousand mile base limited warranty. The second is five years sixty thousand mile powertrain, which refers to the engine and the transmission. I'm sure you and I agree that's a very good complementary warranty from the manufacturer. But what you might not know is that this warranty is a defect only warranty, as stated in the manual book of the vehicle on page number four. This warranty from the manufacturer is against anything that is mis-designed, mis-built, or mis-installed. \n\nAre you with me so far?",
+      "timestamp": "2026-10-02T06:25:35.103Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah, you pulled this on screen very early. You should have told me— Uh, well, great, just allow me to provide more information. I'm going depths a little bit with the— with the warranty that you're getting from the manufacturer. But yeah. Carry on, please.",
+      "timestamp": "2026-10-02T06:25:35.132Z"
+    },
+    {
+      "role": "pal",
+      "text": "I completely understand and I respect your time! Let’s dive into the details of the warranty. \n\nThe first warranty is three years thirty-six thousand mile base limited warranty. The second is five years sixty thousand mile powertrain, which refers to the engine and the transmission. I'm sure you and I agree that's a very good complementary warranty from the manufacturer. But what you might not know is that this warranty is a defect only warranty, as stated in the manual book of the vehicle on page number four. This warranty from the manufacturer is against anything that is mis-designed, mis-built, or mis-installed. \n\nAre you with me so far?",
+      "timestamp": "2026-10-02T06:25:35.163Z"
+    },
+    {
+      "role": "user",
+      "text": "Uh, yes, I'm with you, but I have one question about the 3-year 36,000 miles base-limited warranty. What base-limited warranty means? Is that the bumper-to-bumper, or is it something else? What is that?",
+      "timestamp": "2026-10-02T06:26:31.384Z"
+    },
+    {
+      "role": "pal",
+      "text": "Great question! The three years thirty-six thousand mile base limited warranty typically covers most parts of the vehicle, but it does have some exclusions compared to a bumper-to-bumper warranty. \n\nThis warranty generally covers defects in material or workmanship, so if something goes wrong because of a manufacturing defect, it would be covered. However, wear and tear items like brake pads, tires, and batteries are typically not covered. The bumper-to-bumper warranty would provide more extensive coverage, which leads us to the additional five years sixty thousand mile powertrain warranty. This includes major components like the engine and transmission. \n\nDoes that help clarify it?",
+      "timestamp": "2026-10-02T06:26:31.417Z"
+    },
+    {
+      "role": "replica",
+      "text": "Great question! The three years thirty-six thousand mile base limited warranty typically covers most parts of the vehicle, but it does have some exclusions compared to a bumper-to-bumper warranty. \n\nThis warranty generally covers defects in material or workmanship, so if something goes wrong because of a manufacturing defect, it would be covered. However, wear and tear items like brake pads, tires, and batteries are typically not covered. The bumper-to-bumper warranty would provide more extensive coverage, which leads us to the additional five years sixty thousand mile powertrain warranty. This includes major components like the engine and transmission. \n\nDoes that help clarify it?",
+      "timestamp": "2026-10-02T06:26:31.484Z"
+    }
+  ]
+}

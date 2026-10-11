@@ -1,0 +1,24 @@
+{
+  "sessionId": "b19e124f-90a7-4420-966a-b314844e7f01",
+  "engine": "heygen-grok",
+  "avatarId": "heygen-liveavatar",
+  "avatarName": "Max (novus.ai6 - Deploying)",
+  "startTime": "2026-10-09T22:03:36.937Z",
+  "endTime": "2026-10-09T22:07:44.918Z",
+  "durationSeconds": 248,
+  "status": "completed",
+  "productsCovered": [
+    "vsc",
+    "tire_wheel",
+    "maintenance",
+    "gap"
+  ],
+  "finalDailyRate": 4,
+  "transcript": [
+    {
+      "role": "assistant",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-09T22:07:44.919Z"
+    }
+  ]
+}

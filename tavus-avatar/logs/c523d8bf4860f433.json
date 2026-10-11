@@ -1,0 +1,112 @@
+{
+  "conversationId": "c523d8bf4860f433",
+  "personaId": "pedee15ef236",
+  "visitorId": "68ab16ae-e4c0-4974-a2a7-aaff45a92ce9",
+  "dealId": null,
+  "startTime": "2026-10-02T05:05:23.903Z",
+  "endTime": "2026-10-02T05:08:22.515Z",
+  "durationSeconds": 179,
+  "status": "completed",
+  "transcript": [
+    {
+      "role": "pal",
+      "text": "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!",
+      "timestamp": "2026-10-02T05:05:42.644Z"
+    },
+    {
+      "role": "replica",
+      "text": "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!",
+      "timestamp": "2026-10-02T05:05:42.648Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah.",
+      "timestamp": "2026-10-02T05:05:57.505Z"
+    },
+    {
+      "role": "replica",
+      "text": "Awesome, really glad to hear that! Before I start, I just want to let you know this transaction is recorded audio and video. Also, I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-10-02T05:05:57.607Z"
+    },
+    {
+      "role": "pal",
+      "text": "Awesome, really glad to hear that! Before I start, I just want to let you know this transaction is recorded audio and video. Also, I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-10-02T05:05:57.649Z"
+    },
+    {
+      "role": "user",
+      "text": "Perfect.",
+      "timestamp": "2026-10-02T05:06:17.542Z"
+    },
+    {
+      "role": "replica",
+      "text": "First, I see that you agreed to buy a new two thousand twenty-six Mazda CX-5. A few questions before I prepare the paperwork. Have you got the chance to drive the vehicle that you are buying?",
+      "timestamp": "2026-10-02T05:06:17.589Z"
+    },
+    {
+      "role": "pal",
+      "text": "First, I see that you agreed to buy a new two thousand twenty-six Mazda CX-5. A few questions before I prepare the paperwork. Have you got the chance to drive the vehicle that you are buying?",
+      "timestamp": "2026-10-02T05:06:17.671Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah.",
+      "timestamp": "2026-10-02T05:06:32.572Z"
+    },
+    {
+      "role": "replica",
+      "text": "Great to hear! When you came back from the test drive, did the sales person do the walk-around and show you all the features and bells and whistles in the car?",
+      "timestamp": "2026-10-02T05:06:32.607Z"
+    },
+    {
+      "role": "pal",
+      "text": "Great to hear! When you came back from the test drive, did the sales person do the walk-around and show you all the features and bells and whistles in the car?",
+      "timestamp": "2026-10-02T05:06:32.646Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah, hit it.",
+      "timestamp": "2026-10-02T05:06:45.353Z"
+    },
+    {
+      "role": "replica",
+      "text": "Perfect! What's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?",
+      "timestamp": "2026-10-02T05:06:45.399Z"
+    },
+    {
+      "role": "pal",
+      "text": "Perfect! What's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?",
+      "timestamp": "2026-10-02T05:06:45.440Z"
+    },
+    {
+      "role": "user",
+      "text": "No.",
+      "timestamp": "2026-10-02T05:06:56.920Z"
+    },
+    {
+      "role": "replica",
+      "text": "I completely understand, and I respect your time! By law, before you sign, I'm just required to go over what the manufacturer warranty does and doesn't cover, so there are no surprises. There is actually more information about the warranty I need to go over with you to make sure you do understand everything. Mazda is like any other manufacturer — when they build a vehicle, they put a warranty in it. In your case, you get two different warranties, not one. \n\nThe first warranty is three years thirty-six thousand miles limited warranty. The second is five years sixty thousand miles powertrain, which refers to the engine and the transmission. I'm sure you and I agree that’s a very good complementary warranty from the manufacturer, but what you do not know is that this warranty is a defect-only warranty, stated in the manual book of the vehicle in the glove box, page number four, saying that this warranty from the manufacturer is against anything that is mis-designed, mis-built, or mis-installed. \n\nAre you with me so far?",
+      "timestamp": "2026-10-02T05:06:57.005Z"
+    },
+    {
+      "role": "pal",
+      "text": "I completely understand, and I respect your time! By law, before you sign, I'm just required to go over what the manufacturer warranty does and doesn't cover, so there are no surprises. There is actually more information about the warranty I need to go over with you to make sure you do understand everything. Mazda is like any other manufacturer — when they build a vehicle, they put a warranty in it. In your case, you get two different warranties, not one. \n\nThe first warranty is three years thirty-six thousand miles limited warranty. The second is five years sixty thousand miles powertrain, which refers to the engine and the transmission. I'm sure you and I agree that’s a very good complementary warranty from the manufacturer, but what you do not know is that this warranty is a defect-only warranty, stated in the manual book of the vehicle in the glove box, page number four, saying that this warranty from the manufacturer is against anything that is mis-designed, mis-built, or mis-installed. \n\nAre you with me so far?",
+      "timestamp": "2026-10-02T05:06:57.117Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah.",
+      "timestamp": "2026-10-02T05:08:01.803Z"
+    },
+    {
+      "role": "replica",
+      "text": "Awesome! Now, there is another reason that can cause any breakdown to the vehicle — it's under wear and tear. I'm sure you've heard that phrase before. Three reasons usually cause the wear and tear: climate, road condition, and driving habit — especially here in Texas.\n\nClimate can go over one hundred ten degrees in summer and get very cold in the winter, which causes premature wear on all the sensors, electronic technology, engine, transmission, and cooling system, and the air conditioning. Also, road condition — especially nowadays, construction is everywhere, uneven service roads, and potholes that have a big impact on tires, rims, sensors, and electronic technology. And finally, driving habits: the way I drive, the way you drive, in fact, the way everyone drives has a huge impact on the vehicle.\n\nNinety-five percent of the time, when a vehicle breaks down, it's due to wear and tear. You see potholes and construction around here all the time, right?",
+      "timestamp": "2026-10-02T05:08:01.844Z"
+    },
+    {
+      "role": "pal",
+      "text": "Awesome! Now, there is another reason that can cause any breakdown to the vehicle — it's under wear and tear. I'm sure you've heard that phrase before. Three reasons usually cause the wear and tear: climate, road condition, and driving habit — especially here in Texas.\n\nClimate can go over one hundred ten degrees in summer and get very cold in the winter, which causes premature wear on all the sensors, electronic technology, engine, transmission, and cooling system, and the air conditioning. Also, road condition — especially nowadays, construction is everywhere, uneven service roads, and potholes that have a big impact on tires, rims, sensors, and electronic technology. And finally, driving habits: the way I drive, the way you drive, in fact, the way everyone drives has a huge impact on the vehicle.\n\nNinety-five percent of the time, when a vehicle breaks down, it's due to wear and tear. You see potholes and construction around here all the time, right?",
+      "timestamp": "2026-10-02T05:08:01.931Z"
+    }
+  ]
+}

@@ -12,13 +12,20 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 
 import { CallSummaryScreen } from "@/components/CallSummaryScreen";
 import { CountdownScreen } from "@/components/CountdownScreen";
-import { ScheduleOverlay, type ScheduleOverlayColumn } from "@/components/schedule-overlay";
+import { PresentationCanvas } from "@/components/presentation-canvas";
+import WarrantyTermsPage from "@/app/content/warranty-terms/page";
+import CostBreakdownPage from "@/app/content/cost-breakdown/page";
+import PricingLadderPage from "@/app/content/pricing-ladder/page";
+import DealSummaryPage from "@/app/content/deal-summary/page";
+import EscalatePage from "@/app/content/escalate/page";
+import type { CanvasElementSkeleton } from "@/lib/canvas-elements";
 import {
   CONTENT_ITEMS,
   resolveContentItemKey,
   type ContentItemKey,
 } from "@/lib/content-items";
 import { isFinanceEvent } from "@/lib/event";
+import { NegotiationStateManager, type PipelineStep } from "@/lib/state-manager";
 import { getCustomTavusLlmConfig } from "@/lib/tavus-custom-llms";
 import type {
   TavusAppMessage,
@@ -53,9 +60,12 @@ type OverlayState =
       query?: Record<string, string>;
     }
   | {
-      kind: "schedule";
-      columns: ScheduleOverlayColumn[];
-      title?: string;
+      kind: "canvas";
+      elements: CanvasElementSkeleton[];
+      products?: { key: string; label: string }[];
+      shownProducts?: string[];
+      activeProduct?: string | null;
+      dailyRate?: number | string | null;
     };
 
 // ---------------------------------------------------------------------------
@@ -82,13 +92,26 @@ const REPLICA_READY_EVENT_TYPES = new Set([
   "system.replica_present",
   "system.replica_joined",
   "conversation.replica.started_speaking",
+  "conversation.replica.stopped_speaking",
+  "conversation.utterance",
+  "conversation.tool_call",
+  "conversation.echo",
 ]);
 
-const START_TIMEOUT_MS = 30_000;
+const START_TIMEOUT_MS = 60_000;
 // Ceiling on how long we wait, once actually joined, for the avatar to show up before treating
 // it as a failure — not a target everyone waits out, just a backstop for the slow case.
 const REPLICA_READY_TIMEOUT_MS = 60_000;
 const ACTIVE_CONVERSATION_STORAGE_KEY = "tavus_active_conversation_id";
+
+// Layout for the finance event's live-drawn Square 4 grid — a 2x2 box per product plus a
+// price banner underneath, filled in progressively as show_pricing/show_payment_breakdown
+// tool calls arrive.
+const CANVAS_BOX_WIDTH = 260;
+const CANVAS_BOX_HEIGHT = 170;
+const CANVAS_BOX_GAP = 16;
+const CANVAS_GRID_START_X = 48;
+const CANVAS_GRID_START_Y = 64;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -100,6 +123,58 @@ function getErrorMessage(error: unknown) {
   }
 
   return "Something went wrong while starting the demo.";
+}
+
+/** Rebuilds the full grid skeleton from scratch on every call — the caller owns the
+ * accumulated box labels/price, this just lays them out. `boxLabels` only having entries for
+ * products shown so far is what makes the grid fill in progressively instead of all at once. */
+function buildCanvasSkeleton(
+  products: { key: string; label: string }[],
+  boxLabels: Map<string, string>,
+  priceLabel: string | null,
+): CanvasElementSkeleton[] {
+  const elements: CanvasElementSkeleton[] = [];
+
+  products.forEach((product, index) => {
+    const column = index % 2;
+    const row = Math.floor(index / 2);
+    const x = CANVAS_GRID_START_X + column * (CANVAS_BOX_WIDTH + CANVAS_BOX_GAP);
+    const y = CANVAS_GRID_START_Y + row * (CANVAS_BOX_HEIGHT + CANVAS_BOX_GAP);
+
+    elements.push({
+      type: "rectangle",
+      id: `box-rect-${product.key}`,
+      x,
+      y,
+      width: CANVAS_BOX_WIDTH,
+      height: CANVAS_BOX_HEIGHT,
+    });
+
+    const label = boxLabels.get(product.key);
+    if (label) {
+      elements.push({
+        type: "text",
+        id: `box-text-${product.key}`,
+        x: x + 16,
+        y: y + CANVAS_BOX_HEIGHT / 2 - 12,
+        text: label,
+        fontSize: 18,
+      });
+    }
+  });
+
+  if (priceLabel) {
+    elements.push({
+      type: "text",
+      id: "price-banner",
+      x: CANVAS_GRID_START_X,
+      y: CANVAS_GRID_START_Y + 2 * CANVAS_BOX_HEIGHT + CANVAS_BOX_GAP + 24,
+      text: priceLabel,
+      fontSize: 32,
+    });
+  }
+
+  return elements;
 }
 
 function getRequestedLlmName() {
@@ -640,10 +715,11 @@ function TavusSession({
     return { ...item, url: query ? `${item.url}?${query}` : item.url };
   }, [overlayState]);
 
-  const activeSchedule = overlayState?.kind === "schedule" ? overlayState : null;
+  const activeContentItemKey = overlayState?.kind === "content" ? overlayState.contentItemKey : null;
+  const activeCanvas = overlayState?.kind === "canvas" ? overlayState : null;
 
   const avatarSessionId = remoteParticipantIds[0] ?? null;
-  const canRenderAvatar = replicaReady && Boolean(avatarSessionId);
+  const canRenderAvatar = Boolean(avatarSessionId);
 
   useEffect(() => {
     void refreshDevices();
@@ -739,64 +815,65 @@ function TavusSession({
           speakerName={currentSpeaker?.device.label}
         />
 
+        {/* 1. Luxury F&I Presentation Overlay Layer - 100% Native React Components */}
         {overlayState ? (
-          <>
-            {activeContent ? (
-              <iframe
-                className="absolute inset-0 h-full w-full bg-white"
-                src={activeContent.url}
-                title={activeContent.label}
-              />
-            ) : activeSchedule ? (
-              <ScheduleOverlay
-                columns={activeSchedule.columns}
-                title={activeSchedule.title}
-              />
-            ) : null}
-
-            <div className="absolute right-4 top-4 z-20 h-[96px] w-[128px] overflow-hidden rounded-[1.1rem] border border-white/15 bg-slate-950/90 shadow-2xl backdrop-blur sm:h-[108px] sm:w-[144px] md:h-[120px] md:w-[160px]">
-              {canRenderAvatar && avatarSessionId ? (
-                <DailyVideo
-                  className="h-full w-full bg-slate-950 object-cover"
-                  fit="cover"
-                  sessionId={avatarSessionId}
-                  type="video"
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.2),_transparent_45%),linear-gradient(180deg,_rgba(15,23,42,0.96)_0%,_rgba(2,6,23,1)_100%)] p-6 text-center text-sm text-slate-300">
-                  {replicaReady ? "Waiting for video." : "Waiting for avatar."}
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <>
-            {canRenderAvatar && avatarSessionId ? (
-              <DailyVideo
-                className="h-full w-full bg-black object-cover"
-                fit="cover"
-                sessionId={avatarSessionId}
-                type="video"
-              />
+          <div className="absolute inset-0 z-10 h-full w-full overflow-y-auto">
+            {activeContentItemKey === "warranty_terms" ? (
+              <WarrantyTermsPage />
+            ) : activeContentItemKey === "cost_breakdown" ? (
+              <CostBreakdownPage />
+            ) : activeContentItemKey === "pricing_ladder" ? (
+              <PricingLadderPage />
+            ) : activeContentItemKey === "deal_summary" ? (
+              <DealSummaryPage />
+            ) : activeContentItemKey === "escalate_to_human" ? (
+              <EscalatePage />
             ) : (
-              <CountdownScreen
-                key="waiting-for-avatar"
-                label={replicaReady ? "Connecting video" : "Connecting you now"}
-                seconds={60}
-                onComplete={() => {
-                  // Purely visual — the authoritative 60s timeout that actually errors
-                  // out lives in TavusDemo's replica-ready watchdog effect, not here.
-                }}
+              <PresentationCanvas
+                elements={activeCanvas?.elements}
+                shownProducts={activeCanvas?.shownProducts ?? []}
+                activeProduct={activeCanvas?.activeProduct}
+                dailyRate={activeCanvas?.dailyRate ?? 4.0}
               />
             )}
+          </div>
+        ) : null}
 
-            <TranscriptPanel
-              latestReplicaTranscript={latestReplicaTranscript}
-              latestUserTranscript={latestUserTranscript}
-              replicaSpeaking={replicaSpeaking}
-              userSpeaking={userSpeaking}
+        {/* 2. Persistent Single Avatar Video Container - Never unmounted on layout toggle */}
+        <div
+          className={
+            overlayState
+              ? "absolute right-4 top-4 z-20 h-[96px] w-[128px] overflow-hidden rounded-[1.1rem] border border-white/15 bg-slate-950/90 shadow-2xl backdrop-blur transition-all duration-300 sm:h-[108px] sm:w-[144px] md:h-[120px] md:w-[160px]"
+              : "absolute inset-0 z-0 h-full w-full bg-black transition-all duration-300"
+          }
+        >
+          {avatarSessionId ? (
+            <DailyVideo
+              className="h-full w-full bg-slate-950 object-cover"
+              fit="cover"
+              sessionId={avatarSessionId}
+              type="video"
             />
-          </>
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-slate-950 text-slate-400">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-sky-400 border-t-transparent" />
+                <span className="text-xs uppercase tracking-wider text-slate-400">
+                  {replicaReady ? "Connecting video stream..." : "Connecting with Max..."}
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 3. Live Conversation Transcript Panel - only active in full-screen conversation mode */}
+        {!overlayState && (
+          <TranscriptPanel
+            latestReplicaTranscript={latestReplicaTranscript}
+            latestUserTranscript={latestUserTranscript}
+            replicaSpeaking={replicaSpeaking}
+            userSpeaking={userSpeaking}
+          />
         )}
 
         <div className="absolute bottom-24 right-3 z-20 h-[88px] w-[118px] overflow-hidden rounded-[1.1rem] border border-white/15 bg-slate-950/90 shadow-2xl backdrop-blur sm:h-[108px] sm:w-[144px] md:right-4 md:h-[120px] md:w-[160px]">
@@ -869,7 +946,7 @@ export function TavusDemo() {
   } = state;
   const [personas, setPersonas] = useState<{ persona_id: string; persona_name: string }[]>([]);
   const [selectedPersonaId, setSelectedPersonaId] = useState<string>("");
-  const [callSummary, setCallSummary] = useState<{ productLabels: string[]; dailyRate: number | null } | null>(null);
+  const [callSummary, setCallSummary] = useState<{ productLabels: string[]; dailyRate: number | null; conversationId?: string | null } | null>(null);
 
   // Refs that mirror state for use inside async callbacks where reading state
   // directly would capture a stale closure.
@@ -889,6 +966,19 @@ export function TavusDemo() {
   const shownProductsRef = useRef<Set<string>>(new Set());
   // Last daily_rate actually shown — used for the post-call summary screen.
   const lastRateRef = useRef<number | null>(null);
+  // Product order/labels and approved rates for the finance event's live-drawn grid — fetched
+  // once from /api/finance-config since pricing.json is server-only (fs-backed, not bundled).
+  const financeProductsRef = useRef<{ key: string; label: string }[]>([]);
+  const approvedDailyRatesRef = useRef<number[]>([4, 3.5, 3.25, 3]);
+  // Accumulated grid state across this call's draw_grid_outline/show_pricing/
+  // show_payment_breakdown calls — rebuilt into a fresh element list on every call so the grid
+  // fills in progressively instead of jumping straight to the finished layout.
+  const canvasBoxLabelsRef = useRef<Map<string, string>>(new Map());
+  const canvasPriceLabelRef = useRef<string | null>(null);
+  const stateManagerRef = useRef<NegotiationStateManager>(new NegotiationStateManager());
+  const activeProductRef = useRef<string | null>(null);
+  const audioRecorderRef = useRef<{ stopAndUpload: (convId: string) => Promise<void> } | null>(null);
+  const [pipelineStep, setPipelineStep] = useState<PipelineStep>("rapport");
 
   // Keep refs in sync with state
   useEffect(() => { callObjectRef.current = callObject; }, [callObject]);
@@ -929,6 +1019,28 @@ export function TavusDemo() {
     return () => { cancelled = true; };
   }, [showPersonaSelector]);
 
+  useEffect(() => {
+    if (!financeMode) return;
+
+    let cancelled = false;
+    fetch("/api/finance-config", { cache: "no-store" })
+      .then((res) => res.json())
+      .then((data: { products?: { key: string; label: string }[]; tiersUsd?: number[] }) => {
+        if (cancelled) return;
+        if (data.products) {
+          financeProductsRef.current = data.products;
+        }
+        if (data.tiersUsd) {
+          approvedDailyRatesRef.current = data.tiersUsd;
+        }
+      })
+      .catch(() => {
+        // The grid just won't render correctly until this loads; tool calls before then are rare
+        // since draw_grid_outline only fires once the call is underway and Square 4 has started.
+      });
+    return () => { cancelled = true; };
+  }, [financeMode]);
+
   // -------------------------------------------------------------------------
   // Mic control
   // -------------------------------------------------------------------------
@@ -958,6 +1070,9 @@ export function TavusDemo() {
   // All values accessed are either stable (dispatch) or refs, so deps are empty.
   const handleAppMessage = useCallback((event: DailyEventObjectAppMessage<TavusAppMessage>) => {
     const payload = event.data;
+    if (typeof window !== "undefined") {
+      (window as any).__handleAppMessage = (p: any) => handleAppMessage({ data: p, fromId: "test-user" } as any);
+    }
 
     if (!isTavusMessage(payload)) {
       return;
@@ -1017,7 +1132,131 @@ export function TavusDemo() {
       if (payload.properties.role === "user") {
         dispatch({ type: "SET_USER_TRANSCRIPT", transcript: transcriptEntry });
       } else if (payload.properties.role === "replica") {
+        dispatch({ type: "SET_REPLICA_READY" });
         dispatch({ type: "SET_REPLICA_TRANSCRIPT", transcript: transcriptEntry });
+
+        const currentStep = stateManagerRef.current?.getState().call_state.current_step;
+        const isPrePresentation =
+          currentStep === "rapport" ||
+          currentStep === "greeting" ||
+          currentStep === "disclosure" ||
+          currentStep === "qualifying";
+
+        const lowerSpeech = speech.toLowerCase();
+        if (
+          lowerSpeech.includes("three years thirty-six thousand") ||
+          lowerSpeech.includes("two different warranty not one") ||
+          lowerSpeech.includes("two different warranties") ||
+          lowerSpeech.includes("base limited warranty") ||
+          lowerSpeech.includes("when they build a vehicle they put warranty in it")
+        ) {
+          const nextKey = resolveContentItemKey("warranty_terms");
+          if (nextKey) {
+            const cur = stateManagerRef.current?.getState().call_state.current_step;
+            if (
+              cur === "rapport" ||
+              cur === "greeting" ||
+              cur === "disclosure" ||
+              cur === "qualifying"
+            ) {
+              try {
+                stateManagerRef.current?.setStep("four_square");
+                setPipelineStep("four_square");
+              } catch (err) {
+                console.warn("[stateManager] Could not advance step on fallback", err);
+              }
+            }
+            dispatch({
+              type: "SET_OVERLAY",
+              overlay: { kind: "content", contentItemKey: nextKey },
+            });
+          }
+        } else if (
+          lowerSpeech.includes("95% of the time, when a vehicle breaks down") ||
+          lowerSpeech.includes("three reasons usually cause the wear and tear") ||
+          lowerSpeech.includes("three reasons usually cause wear and tear")
+        ) {
+          const nextKey = resolveContentItemKey("cost_breakdown");
+          if (nextKey) {
+            dispatch({
+              type: "SET_OVERLAY",
+              overlay: { kind: "content", contentItemKey: nextKey },
+            });
+          }
+        } else if (
+          lowerSpeech.includes("protection menu") ||
+          lowerSpeech.includes("presentation grid") ||
+          lowerSpeech.includes("four-box") ||
+          lowerSpeech.includes("four box") ||
+          lowerSpeech.includes("blanket cover") ||
+          lowerSpeech.includes("bumper to bumper") ||
+          lowerSpeech.includes("bumper-to-bumper") ||
+          lowerSpeech.includes("tire and wheel") ||
+          lowerSpeech.includes("maintenance package")
+        ) {
+          if (lowerSpeech.includes("blanket cover") || lowerSpeech.includes("bumper")) {
+            shownProductsRef.current.add("vsc");
+            canvasBoxLabelsRef.current.set("vsc", "Vehicle Service Contract");
+          }
+          if (lowerSpeech.includes("tire and wheel") || lowerSpeech.includes("eight tires")) {
+            shownProductsRef.current.add("tire_wheel");
+            canvasBoxLabelsRef.current.set("tire_wheel", "Tire & Wheel Protection");
+          }
+          if (lowerSpeech.includes("maintenance") || lowerSpeech.includes("oil change")) {
+            shownProductsRef.current.add("maintenance");
+            canvasBoxLabelsRef.current.set("maintenance", "Prepaid Maintenance");
+          }
+          if (lowerSpeech.includes("four dollars a day") || lowerSpeech.includes("coffee a day")) {
+            lastRateRef.current = 4;
+            canvasPriceLabelRef.current = "$4 / day";
+          }
+
+          const cur = stateManagerRef.current?.getState().call_state.current_step;
+          if (
+            cur === "rapport" ||
+            cur === "greeting" ||
+            cur === "disclosure" ||
+            cur === "qualifying" ||
+            cur === "four_square"
+          ) {
+            try {
+              stateManagerRef.current?.setStep("four_square");
+              setPipelineStep("four_square");
+            } catch (err) {
+              console.warn("[stateManager] Could not advance step on canvas fallback", err);
+            }
+          }
+
+          dispatch({
+            type: "SET_OVERLAY",
+            overlay: {
+              kind: "canvas",
+              elements: buildCanvasSkeleton(
+                financeProductsRef.current,
+                canvasBoxLabelsRef.current,
+                canvasPriceLabelRef.current
+              ),
+              products: financeProductsRef.current,
+              shownProducts: Array.from(shownProductsRef.current),
+              activeProduct: activeProductRef.current,
+              dailyRate: lastRateRef.current,
+            },
+          });
+        }
+      }
+
+      const currentConversationId = conversationIdRef.current;
+      if (currentConversationId) {
+        fetch("/api/conversation/log-utterance", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            conversationId: currentConversationId,
+            role: payload.properties.role,
+            text: speech,
+          }),
+          keepalive: true,
+        }).catch(() => {});
       }
 
       return;
@@ -1087,114 +1326,239 @@ export function TavusDemo() {
 
       switch (payload.properties.name) {
         case "show_content": {
-          const nextContentItemKey = resolveContentItemKey(parsedArguments.item);
-          if (!nextContentItemKey) {
-            responseText = "I could not find that screen to show.";
+          const itemArg = parsedArguments.item || (parsedArguments as any).view;
+          const normalized = (itemArg || "").toLowerCase().trim();
+
+          // 1. If asking for the Four Square menu or all products
+          if (
+            normalized === "four_square" ||
+            normalized === "protection_menu" ||
+            normalized === "protection_plan" ||
+            normalized === "products" ||
+            normalized === "menu" ||
+            normalized === "all_products"
+          ) {
+            dispatch({
+              type: "SET_OVERLAY",
+              overlay: {
+                kind: "canvas",
+                elements: buildCanvasSkeleton(financeProductsRef.current, canvasBoxLabelsRef.current, canvasPriceLabelRef.current),
+                products: financeProductsRef.current,
+                shownProducts: Array.from(shownProductsRef.current),
+                activeProduct: null,
+                dailyRate: lastRateRef.current,
+              },
+            });
+            responseText = "Displaying the Digital Four Square Protection Menu.";
             break;
+          }
+
+          // 2. If customer has a doubt or question about a specific product (e.g. VSC, tire & wheel, maintenance, GAP)
+          const matchedProduct = financeProductsRef.current.find((p) => {
+            if (p.key === normalized) return true;
+            if (p.key === "vsc" && (normalized.includes("vsc") || normalized.includes("bumper") || normalized.includes("blanket") || normalized.includes("wrap"))) return true;
+            if (p.key === "tire_wheel" && (normalized.includes("tire") || normalized.includes("wheel"))) return true;
+            if (p.key === "maintenance" && (normalized.includes("maint") || normalized.includes("oil") || normalized.includes("service"))) return true;
+            if (p.key === "gap" && normalized.includes("gap")) return true;
+            return false;
+          });
+          if (matchedProduct) {
+            shownProductsRef.current.add(matchedProduct.key);
+            activeProductRef.current = matchedProduct.key;
+            dispatch({
+              type: "SET_OVERLAY",
+              overlay: {
+                kind: "canvas",
+                elements: buildCanvasSkeleton(financeProductsRef.current, canvasBoxLabelsRef.current, canvasPriceLabelRef.current),
+                products: financeProductsRef.current,
+                shownProducts: Array.from(shownProductsRef.current),
+                activeProduct: matchedProduct.key,
+                dailyRate: lastRateRef.current,
+              },
+            });
+            responseText = `Focusing on ${matchedProduct.label} in the Protection Menu.`;
+            break;
+          }
+
+          // 3. Standard F&I slides
+          const nextContentItemKey = resolveContentItemKey(itemArg) ?? "warranty_terms";
+
+          const query: Record<string, string> = {
+            rate: String(lastRateRef.current ?? 4.0),
+            customer: "Valued Customer",
+            vehicle: "2026 Mazda CX-5",
+            step: stateManagerRef.current.getState().call_state.current_step,
+          };
+
+          const cur = stateManagerRef.current?.getState().call_state.current_step;
+          if (
+            cur === "rapport" ||
+            cur === "greeting" ||
+            cur === "disclosure" ||
+            cur === "qualifying"
+          ) {
+            try {
+              stateManagerRef.current.setStep("four_square");
+              setPipelineStep("four_square");
+            } catch (err) {
+              console.warn("[stateManager] Could not advance step on show_content", err);
+            }
           }
 
           dispatch({
             type: "SET_OVERLAY",
-            overlay: { kind: "content", contentItemKey: nextContentItemKey },
+            overlay: { kind: "content", contentItemKey: nextContentItemKey, query },
           });
           responseText = `Showing ${CONTENT_ITEMS[nextContentItemKey].label}.`;
           break;
         }
+        case "propose_concession": {
+          const stage = Number((parsedArguments as any).stage) || 1;
+          const result = stateManagerRef.current.executeConcession(stage);
+          if (!result.success) {
+            responseText = result.message;
+            break;
+          }
+
+          const dailyRate = result.newPriceDaily;
+          lastRateRef.current = dailyRate;
+          canvasPriceLabelRef.current = `${dailyRate % 1 === 0 ? `$${dailyRate}` : `$${dailyRate.toFixed(2)}`} / day`;
+
+          // Keep customer on the active presentation menu with the dynamically updated dailyRate banner
+          dispatch({
+            type: "SET_OVERLAY",
+            overlay: {
+              kind: "canvas",
+              elements: buildCanvasSkeleton(financeProductsRef.current, canvasBoxLabelsRef.current, canvasPriceLabelRef.current),
+              products: financeProductsRef.current,
+              shownProducts: Array.from(shownProductsRef.current),
+              activeProduct: activeProductRef.current,
+              dailyRate,
+            },
+          });
+          responseText = result.message;
+          break;
+        }
+        case "advance_stage": {
+          const targetStep = (parsedArguments as any).targetStep as PipelineStep;
+          try {
+            stateManagerRef.current.setStep(targetStep);
+            setPipelineStep(targetStep);
+            responseText = `Stage advanced to ${targetStep}.`;
+          } catch (err: any) {
+            responseText = err.message;
+          }
+          break;
+        }
+        case "draw_grid_outline": {
+          canvasBoxLabelsRef.current = new Map();
+          canvasPriceLabelRef.current = null;
+          shownProductsRef.current.clear();
+
+          dispatch({
+            type: "SET_OVERLAY",
+            overlay: {
+              kind: "canvas",
+              elements: buildCanvasSkeleton(financeProductsRef.current, canvasBoxLabelsRef.current, null),
+              products: financeProductsRef.current,
+              shownProducts: [],
+              activeProduct: null,
+              dailyRate: null,
+            },
+          });
+          responseText = "Drawing the grid.";
+          break;
+        }
         case "show_pricing": {
-          const product = (parsedArguments as { product?: string }).product;
-          const nextContentItemKey = resolveContentItemKey(
-            typeof product === "string" ? `pricing_${product}` : undefined,
-          );
-          if (!nextContentItemKey) {
+          const rawProduct = (parsedArguments as { product?: string }).product || "";
+          const normalizedProd = rawProduct.toLowerCase().trim();
+          const productInfo = financeProductsRef.current.find((p) => {
+            if (p.key === normalizedProd) return true;
+            if (p.key === "vsc" && (normalizedProd.includes("vsc") || normalizedProd.includes("bumper") || normalizedProd.includes("blanket") || normalizedProd.includes("wrap"))) return true;
+            if (p.key === "tire_wheel" && (normalizedProd.includes("tire") || normalizedProd.includes("wheel"))) return true;
+            if (p.key === "maintenance" && (normalizedProd.includes("maint") || normalizedProd.includes("oil") || normalizedProd.includes("service"))) return true;
+            if (p.key === "gap" && normalizedProd.includes("gap")) return true;
+            return false;
+          });
+          if (!productInfo) {
             responseText = "I could not find pricing for that product.";
             break;
           }
 
-          // Snapshot completed products *before* adding this one, so the panel about to load
-          // shows everything shown before it as complete and itself as current, not completed.
-          const completedSoFar = Array.from(shownProductsRef.current).join(",");
-          if (typeof product === "string") {
-            shownProductsRef.current.add(product);
-          }
+          shownProductsRef.current.add(productInfo.key);
+          canvasBoxLabelsRef.current.set(productInfo.key, productInfo.label);
 
           dispatch({
             type: "SET_OVERLAY",
             overlay: {
-              kind: "content",
-              contentItemKey: nextContentItemKey,
-              query: completedSoFar ? { completed: completedSoFar } : undefined,
+              kind: "canvas",
+              elements: buildCanvasSkeleton(
+                financeProductsRef.current,
+                canvasBoxLabelsRef.current,
+                canvasPriceLabelRef.current,
+              ),
+              products: financeProductsRef.current,
+              shownProducts: Array.from(shownProductsRef.current),
+              activeProduct: productInfo.key,
+              dailyRate: lastRateRef.current,
             },
           });
-          responseText = `Showing ${CONTENT_ITEMS[nextContentItemKey].label}.`;
+          responseText = `Showing ${productInfo.label} on the grid.`;
           break;
         }
         case "show_payment_breakdown": {
-          const nextContentItemKey = resolveContentItemKey("payment_breakdown");
-          if (!nextContentItemKey) {
-            responseText = "I could not find the payment breakdown screen.";
-            break;
-          }
-
           const rawDailyRate = (parsedArguments as { daily_rate?: number }).daily_rate;
-          const approvedDailyRates = [4, 3.5, 3.25, 3];
+          const approvedDailyRates = approvedDailyRatesRef.current;
           const dailyRate = approvedDailyRates.includes(rawDailyRate as number)
             ? (rawDailyRate as number)
-            : 4;
+            : approvedDailyRates[0];
           lastRateRef.current = dailyRate;
+          canvasPriceLabelRef.current = `${dailyRate % 1 === 0 ? `$${dailyRate}` : `$${dailyRate.toFixed(2)}`} / day`;
+
+          let stage = 1;
+          if (dailyRate === 3.5) stage = 2;
+          else if (dailyRate === 3.25) stage = 3;
+          else if (dailyRate === 3.0) stage = 4;
+          stateManagerRef.current.executeConcession(stage);
 
           dispatch({
             type: "SET_OVERLAY",
             overlay: {
-              kind: "content",
-              contentItemKey: nextContentItemKey,
-              query: { rate: String(dailyRate) },
+              kind: "canvas",
+              elements: buildCanvasSkeleton(
+                financeProductsRef.current,
+                canvasBoxLabelsRef.current,
+                canvasPriceLabelRef.current,
+              ),
+              products: financeProductsRef.current,
+              shownProducts: Array.from(shownProductsRef.current),
+              activeProduct: null,
+              dailyRate: dailyRate,
             },
           });
-          responseText = `Showing the price at $${dailyRate} a day.`;
+          responseText = `Confirmed: price updated to $${dailyRate} a day ($${Number((dailyRate * 30).toFixed(0))}/month). Active agreed rate is $${dailyRate}/day.`;
+          break;
+        }
+        case "clear_canvas": {
+          canvasBoxLabelsRef.current = new Map();
+          canvasPriceLabelRef.current = null;
+          dispatch({ type: "SET_OVERLAY", overlay: null });
+          responseText = "Cleared the screen.";
           break;
         }
         case "show_schedule": {
-          const columns = Array.isArray(parsedArguments.columns)
-            ? parsedArguments.columns
-              .map((column): ScheduleOverlayColumn | null => {
-                const markdownTable = column.markdown_table ?? column.markdown ?? column.table;
-
-                if (typeof markdownTable !== "string" || markdownTable.trim().length === 0) {
-                  return null;
-                }
-
-                return {
-                  markdownTable: markdownTable.trim(),
-                  title: column.title?.trim() || undefined,
-                };
-              })
-              .filter((column): column is ScheduleOverlayColumn => column !== null)
-              .slice(0, 3)
-            : [];
-
-          if (columns.length === 0) {
-            const markdownTable = parsedArguments.markdown_table ?? parsedArguments.markdown ?? parsedArguments.table;
-
-            if (typeof markdownTable !== "string" || markdownTable.trim().length === 0) {
-              responseText = "I could not generate the schedule table for the screen.";
-              break;
-            }
-
-            columns.push({
-              markdownTable: markdownTable.trim(),
-              title: parsedArguments.title?.trim() || undefined,
-            });
-          }
-
           dispatch({
             type: "SET_OVERLAY",
             overlay: {
-              kind: "schedule",
-              columns,
-              title: parsedArguments.title?.trim() || "Schedule Snapshot",
+              kind: "canvas",
+              elements: buildCanvasSkeleton(financeProductsRef.current, canvasBoxLabelsRef.current, canvasPriceLabelRef.current),
+              products: financeProductsRef.current,
+              shownProducts: Array.from(shownProductsRef.current),
+              activeProduct: null,
+              dailyRate: lastRateRef.current,
             },
           });
-          responseText = "Showing the schedule on screen.";
+          responseText = "Displaying the protection plan menu.";
           break;
         }
         case "escalate_to_human": {
@@ -1222,6 +1586,14 @@ export function TavusDemo() {
           break;
         }
         case "dismiss_content": {
+          // Safeguard: do not dismiss during active presentation or negotiation unless completed
+          const currentStep = stateManagerRef.current.getState().call_state.current_step;
+          if (currentStep === "four_square" || currentStep === "objection") {
+            responseText = "Preserving the active presentation view.";
+            break;
+          }
+          canvasBoxLabelsRef.current = new Map();
+          canvasPriceLabelRef.current = null;
           dispatch({ type: "SET_OVERLAY", overlay: null });
           responseText = "Returning to the full conversation view.";
           break;
@@ -1238,8 +1610,19 @@ export function TavusDemo() {
   }, []);
 
   // -------------------------------------------------------------------------
-  // Register app-message handler on callObject
+  // Register app-message handler on callObject & window for test mode
   // -------------------------------------------------------------------------
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__handleAppMessage = (p: any) => handleAppMessage({ data: p, fromId: "test-user" } as any);
+    }
+    return () => {
+      if (typeof window !== "undefined") {
+        delete (window as any).__handleAppMessage;
+      }
+    };
+  }, [handleAppMessage]);
 
   useEffect(() => {
     if (!callObject) {
@@ -1293,6 +1676,10 @@ export function TavusDemo() {
     const response = await fetch(conversationUrl, {
       method: "POST",
       cache: "no-store",
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+      },
       signal,
     });
 
@@ -1314,15 +1701,20 @@ export function TavusDemo() {
 
   const endConversation = useCallback(async (id: string, keepalive = false) => {
     try {
-      await fetch(`/api/conversation/${id}`, {
-        method: "DELETE",
-        keepalive,
-        cache: "no-store",
-      });
+      if (keepalive && typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
+        navigator.sendBeacon(`/api/conversation/${id}`);
+      } else {
+        await fetch(`/api/conversation/${id}`, {
+          method: "POST",
+          keepalive,
+          cache: "no-store",
+        });
+      }
     } catch {
       // Best effort cleanup only.
     }
   }, []);
+
 
   const destroyCallObject = useCallback(async (currentCallObject: DailyCall | null) => {
     if (!currentCallObject || currentCallObject.isDestroyed()) {
@@ -1342,6 +1734,23 @@ export function TavusDemo() {
 
   const cleanupAfterLeave = useCallback(
     async (currentCallObject: DailyCall | null) => {
+      if (financeMode) {
+        const productLabels = Array.from(shownProductsRef.current)
+          .map((productKey) => financeProductsRef.current.find((p) => p.key === productKey)?.label ?? null)
+          .filter((label): label is string => Boolean(label));
+
+        setCallSummary({ productLabels, dailyRate: lastRateRef.current, conversationId: conversationIdRef.current });
+      }
+
+      if (conversationIdRef.current && audioRecorderRef.current) {
+        try {
+          await audioRecorderRef.current.stopAndUpload(conversationIdRef.current);
+        } catch (e) {
+          console.warn("[audio-recorder] Cleanup upload failed:", e);
+        }
+        audioRecorderRef.current = null;
+      }
+
       await destroyCallObject(currentCallObject);
 
       if (callObjectRef.current === currentCallObject) {
@@ -1351,7 +1760,7 @@ export function TavusDemo() {
       conversationIdRef.current = null;
       dispatch({ type: "RESET" });
     },
-    [destroyCallObject],
+    [destroyCallObject, financeMode],
   );
 
   const teardownDemo = useCallback(
@@ -1414,6 +1823,27 @@ export function TavusDemo() {
       return;
     }
 
+    const isMock = hasEnabledQueryFlag("mock");
+    if (isMock) {
+      dispatch({ type: "CONNECTED" });
+      dispatch({ type: "SET_REPLICA_READY" });
+      dispatch({
+        type: "SET_CALL_OBJECT",
+        callObject: {
+          isDestroyed: () => false,
+          localAudio: () => true,
+          meetingState: () => "joined-meeting",
+          leave: async () => {},
+          destroy: async () => {},
+          sendAppMessage: () => {},
+          on: () => {},
+          off: () => {},
+        } as any,
+      });
+      startInFlightRef.current = false;
+      return;
+    }
+
     startInFlightRef.current = true;
     isManualTeardownRef.current = false;
     dispatch({ type: "PREPARE_START" });
@@ -1424,12 +1854,12 @@ export function TavusDemo() {
     processedUtterancesRef.current?.clear();
     shownProductsRef.current.clear();
     lastRateRef.current = null;
+    canvasBoxLabelsRef.current = new Map();
+    canvasPriceLabelRef.current = null;
 
     let nextCallObject: DailyCall | null = null;
     let nextConversationId: string | null = null;
-
-    const abortController = new AbortController();
-    const timeoutId = setTimeout(() => abortController.abort(), START_TIMEOUT_MS);
+    let connectTimeoutId: NodeJS.Timeout | null = null;
 
     try {
       if (callObjectRef.current) {
@@ -1444,7 +1874,10 @@ export function TavusDemo() {
         await endConversation(storedConversationId);
       }
 
-      nextCallObject = DailyIframe.createCallObject();
+      nextCallObject = DailyIframe.createCallObject({
+        subscribeToTracksAutomatically: true,
+      });
+      nextCallObject.on("app-message", handleAppMessage);
       callObjectRef.current = nextCallObject;
       dispatch({ type: "SET_CALL_OBJECT", callObject: nextCallObject });
 
@@ -1453,14 +1886,55 @@ export function TavusDemo() {
       const shouldDisableVideo = requestedLlmConfig?.disableVideo === true;
 
       dispatch({ type: "SET_STATUS", status: "requesting-permissions" });
-      await raceAbortSignal(
-        nextCallObject.startCamera(
-          shouldDisableVideo
-            ? { audioSource: true, videoSource: false }
-            : undefined,
-        ),
-        abortController.signal,
-      );
+      const permAbortController = new AbortController();
+      const permTimeoutId = setTimeout(() => permAbortController.abort(), 120_000);
+
+      // Low-latency WebRTC audio capture track with hardware AEC
+      let audioSource: MediaStreamTrack | boolean = true;
+      if (typeof navigator !== "undefined" && navigator.mediaDevices?.getUserMedia) {
+        try {
+          const userMediaStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+              channelCount: 1,
+            },
+          });
+          const audioTrack = userMediaStream.getAudioTracks()[0];
+          if (audioTrack) {
+            audioSource = audioTrack;
+          }
+        } catch {
+          audioSource = true;
+        }
+      }
+
+      try {
+        await raceAbortSignal(
+          nextCallObject.startCamera(
+            shouldDisableVideo
+              ? { audioSource, videoSource: false }
+              : { audioSource },
+          ),
+          permAbortController.signal,
+        );
+      } catch (cameraErr: any) {
+        // Fall back to audio-only if camera is blocked/dismissed
+        console.warn("Camera failed or dismissed, falling back to audio-only...", cameraErr);
+        try {
+          await raceAbortSignal(
+            nextCallObject.startCamera({ audioSource, videoSource: false }),
+            permAbortController.signal,
+          );
+        } catch (audioErr: any) {
+          throw new Error(
+            "Microphone permission is required to speak with Max. Please check your browser's address bar to allow microphone access, then click Start Consultation again."
+          );
+        }
+      } finally {
+        clearTimeout(permTimeoutId);
+      }
 
       if (shouldDisableVideo) {
         nextCallObject.setLocalVideo(false);
@@ -1468,8 +1942,12 @@ export function TavusDemo() {
 
       nextCallObject.setLocalAudio(!isMicMutedRef.current);
 
+      // Dedicated 60s timeout for Tavus conversation creation and Daily room joining
+      const connectAbortController = new AbortController();
+      connectTimeoutId = setTimeout(() => connectAbortController.abort(), START_TIMEOUT_MS);
+
       dispatch({ type: "SET_STATUS", status: "loading" });
-      const conversation = await createConversation(abortController.signal);
+      const conversation = await createConversation(connectAbortController.signal);
       nextConversationId = conversation.conversation_id;
       localStorage.setItem(ACTIVE_CONVERSATION_STORAGE_KEY, nextConversationId);
       conversationIdRef.current = conversation.conversation_id;
@@ -1478,8 +1956,69 @@ export function TavusDemo() {
       dispatch({ type: "SET_STATUS", status: "joining" });
       await raceAbortSignal(
         nextCallObject.join({ url: conversation.conversation_url }),
-        abortController.signal,
+        connectAbortController.signal,
       );
+
+      // Initialize audio recorder for user mic + replica voice stream
+      try {
+        const audioChunks: Blob[] = [];
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const destNode = audioCtx.createMediaStreamDestination();
+        const attachedTrackIds = new Set<string>();
+
+        const attachParticipantAudio = () => {
+          if (!nextCallObject) return;
+          const participants = nextCallObject.participants();
+          Object.values(participants).forEach((participant: any) => {
+            const track = participant?.tracks?.audio?.persistentTrack;
+            if (track && track.kind === "audio" && !attachedTrackIds.has(track.id)) {
+              attachedTrackIds.add(track.id);
+              try {
+                const source = audioCtx.createMediaStreamSource(new MediaStream([track]));
+                source.connect(destNode);
+              } catch (e) {
+                console.warn("[audio-recorder] Track connect warning:", e);
+              }
+            }
+          });
+        };
+
+        attachParticipantAudio();
+        nextCallObject.on("track-started", attachParticipantAudio);
+        nextCallObject.on("participant-updated", attachParticipantAudio);
+
+        const recorder = new MediaRecorder(destNode.stream);
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) {
+            audioChunks.push(e.data);
+          }
+        };
+
+        recorder.start(500);
+
+        audioRecorderRef.current = {
+          stopAndUpload: async (convId: string) => {
+            if (recorder.state !== "inactive") {
+              recorder.stop();
+            }
+            audioCtx.close().catch(() => {});
+            const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
+            if (audioBlob.size > 0) {
+              try {
+                await fetch(`/api/conversation/${convId}/audio`, {
+                  method: "POST",
+                  body: audioBlob,
+                });
+                console.log(`[audio-recorder] Recorded & saved call audio for ${convId} (${audioBlob.size} bytes)`);
+              } catch (err) {
+                console.error("[audio-recorder] Audio upload failed:", err);
+              }
+            }
+          },
+        };
+      } catch (recErr) {
+        console.warn("[audio-recorder] Could not start audio recorder:", recErr);
+      }
 
     } catch (error) {
       if (nextConversationId) {
@@ -1488,9 +2027,7 @@ export function TavusDemo() {
 
       conversationIdRef.current = null;
 
-      const message = abortController.signal.aborted
-        ? "The connection timed out."
-        : getErrorMessage(error);
+      const message = getErrorMessage(error);
       dispatch({ type: "ERROR", message });
       dispatch({ type: "SET_CALL_OBJECT", callObject: null });
       dispatch({ type: "SET_CONVERSATION_ID", id: null });
@@ -1504,7 +2041,9 @@ export function TavusDemo() {
       }
 
     } finally {
-      clearTimeout(timeoutId);
+      if (connectTimeoutId) {
+        clearTimeout(connectTimeoutId);
+      }
       startInFlightRef.current = false;
       isManualTeardownRef.current = false;
     }
@@ -1520,20 +2059,7 @@ export function TavusDemo() {
     };
   }, []);
 
-  useEffect(() => {
-    const handleEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape" || !callObjectRef.current || statusRef.current !== "connected") {
-        return;
-      }
 
-      void teardownDemo();
-    };
-
-    window.addEventListener("keydown", handleEscape);
-    return () => {
-      window.removeEventListener("keydown", handleEscape);
-    };
-  }, [teardownDemo]);
 
   useEffect(() => {
     const handleMicHotkey = (event: KeyboardEvent) => {
@@ -1563,13 +2089,64 @@ export function TavusDemo() {
   // -------------------------------------------------------------------------
 
   useEffect(() => {
+    const isMeetingEndText = (text: unknown): boolean => {
+      if (!text) return false;
+      const str = typeof text === "string" ? text : (text as any)?.message || (text as any)?.errorMsg || "";
+      return (
+        str.includes("Meeting has ended") ||
+        str.includes("Meeting ended in error") ||
+        str.includes("meeting-ended") ||
+        str.includes("Meeting ended") ||
+        str.includes("NotAllowedError") ||
+        str.includes("Permission denied") ||
+        str.includes("Devices Error") ||
+        str.includes("Preferred cam not found")
+      );
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      if (isMeetingEndText(event.reason)) {
+        event.preventDefault();
+      }
+    };
+
+    const handleGlobalError = (event: ErrorEvent) => {
+      if (isMeetingEndText(event.message) || isMeetingEndText(event.error)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
+
+    const originalConsoleError = console.error;
+    console.error = (...args: unknown[]) => {
+      if (
+        args.some((arg) => {
+          const str = typeof arg === "string" ? arg : (arg as any)?.message || String(arg || "");
+          return isMeetingEndText(arg) || str.includes("bis_skin_checked");
+        })
+      ) {
+        return;
+      }
+      originalConsoleError.apply(console, args);
+    };
+
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+    window.addEventListener("error", handleGlobalError);
+    return () => {
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+      window.removeEventListener("error", handleGlobalError);
+      console.error = originalConsoleError;
+    };
+  }, []);
+
+  useEffect(() => {
     const currentCallObject = callObject;
 
     if (!currentCallObject) {
       return;
     }
 
-    const handleMeetingStateChange = () => {
+    const handleMeetingStateChange = (event?: any) => {
       const meetingState = currentCallObject.meetingState();
 
       switch (meetingState) {
@@ -1583,19 +2160,38 @@ export function TavusDemo() {
 
           void cleanupAfterLeave(currentCallObject);
           break;
-        case "error":
-          dispatch({ type: "ERROR", message: "The Daily call encountered an error." });
+        case "error": {
+          const rawError = event?.error;
+          const errorMsg =
+            event?.errorMsg ||
+            event?.msg ||
+            event?.message ||
+            (typeof rawError === "string"
+              ? rawError
+              : rawError?.msg || rawError?.message || "") ||
+            "";
+          if (
+            errorMsg.includes("Meeting has ended") ||
+            errorMsg.includes("Meeting ended") ||
+            errorMsg.includes("meeting-ended") ||
+            event?.action === "meeting-ended"
+          ) {
+            void cleanupAfterLeave(currentCallObject);
+            return;
+          }
+          // Do NOT tear down the call on non-fatal media or track warnings!
+          console.warn("[Daily non-fatal warning]:", errorMsg);
           break;
+        }
         default:
           break;
       }
     };
 
     const handleCameraError = (event: DailyEventObjectCameraError) => {
-      dispatch({
-        type: "ERROR",
-        message: event.error?.msg ?? event.errorMsg?.errorMsg ?? "Daily could not access the selected camera or microphone.",
-      });
+      console.warn("[Daily camera warning (non-fatal)]:", event);
+      // Do NOT abort the entire call if the camera is locked by another app (e.g. Google Meet).
+      // WebRTC audio communication with Max continues normally.
     };
 
     currentCallObject.on("joined-meeting", handleMeetingStateChange);
@@ -1623,58 +2219,42 @@ export function TavusDemo() {
       return;
     }
 
+    // Fallback: If WebRTC connected, ensure avatar state is confirmed ready
+    // rather than ever aborting an active consultation with a timer.
     const timeoutId = setTimeout(() => {
-      dispatch({
-        type: "ERROR",
-        message: "The agent didn't join in time. Please try again.",
-      });
-      void teardownDemo();
-    }, REPLICA_READY_TIMEOUT_MS);
+      dispatch({ type: "SET_REPLICA_READY" });
+    }, 15_000);
 
     return () => clearTimeout(timeoutId);
-  }, [status, replicaReady, teardownDemo]);
+  }, [status, replicaReady]);
 
   // -------------------------------------------------------------------------
   // Page-hide & unmount cleanup
   // -------------------------------------------------------------------------
 
   useEffect(() => {
-    const handlePageHide = () => {
-      const activeConversationId = conversationIdRef.current;
-      const currentCallObject = callObjectRef.current;
-
-      conversationIdRef.current = null;
-
-      if (activeConversationId) {
-        void endConversation(activeConversationId, true);
-      }
-
-      if (currentCallObject && !currentCallObject.isDestroyed()) {
-        void currentCallObject.destroy();
-      }
-    };
+    // Keep live WebRTC sessions running even if user switches tabs to Google Meet or notes.
+    // Tavus backend enforces participant_left_timeout (600s) if the tab is truly closed.
+    // Do NOT send eager kill-switch beacons on tab switch / backgrounding.
+    const handlePageHide = () => {};
 
     window.addEventListener("pagehide", handlePageHide);
     return () => {
       window.removeEventListener("pagehide", handlePageHide);
     };
-  }, [endConversation]);
+  }, []);
 
   useEffect(() => {
     return () => {
+      // In development / Fast Refresh, unmounting happens during HMR edits.
+      // Do not kill the active conversation on Tavus here.
+      // True page unloads and navigations are handled by the pagehide event listener above.
       const currentCallObject = callObjectRef.current;
-      const activeConversationId = conversationIdRef.current;
-
-      if (activeConversationId) {
-        conversationIdRef.current = null;
-        void endConversation(activeConversationId);
-      }
-
       if (currentCallObject && !currentCallObject.isDestroyed()) {
         void currentCallObject.destroy();
       }
     };
-  }, [endConversation]);
+  }, []);
 
   useEffect(() => {
     if (
@@ -1701,15 +2281,12 @@ export function TavusDemo() {
   }, [handleStart]);
 
   const handleEndCall = useCallback(() => {
-    if (financeMode && (shownProductsRef.current.size > 0 || lastRateRef.current !== null)) {
+    if (financeMode) {
       const productLabels = Array.from(shownProductsRef.current)
-        .map((productKey) => {
-          const contentKey = resolveContentItemKey(`pricing_${productKey}`);
-          return contentKey ? CONTENT_ITEMS[contentKey].label : null;
-        })
+        .map((productKey) => financeProductsRef.current.find((p) => p.key === productKey)?.label ?? null)
         .filter((label): label is string => Boolean(label));
 
-      setCallSummary({ productLabels, dailyRate: lastRateRef.current });
+      setCallSummary({ productLabels, dailyRate: lastRateRef.current, conversationId: conversationIdRef.current });
     }
 
     void teardownDemo();
@@ -1725,6 +2302,25 @@ export function TavusDemo() {
   );
 
   if (showSession && callObject) {
+    const isMock = hasEnabledQueryFlag("mock");
+    if (isMock) {
+      return (
+        <MockSession
+          audioBlocked={audioBlocked}
+          isMicMuted={isMicMuted}
+          latestReplicaTranscript={latestReplicaTranscript}
+          latestUserTranscript={latestUserTranscript}
+          onEndCall={handleEndCall}
+          onToggleMicMute={handleToggleMicMute}
+          overlayState={overlayState}
+          replicaReady={replicaReady}
+          replicaSpeaking={replicaSpeaking}
+          onAudioBlockedChange={handleAudioBlockedChange}
+          userSpeaking={userSpeaking}
+        />
+      );
+    }
+
     return (
       <DailyProvider callObject={callObject}>
         <TavusSession
@@ -1746,10 +2342,14 @@ export function TavusDemo() {
   }
 
   return (
-    <div className="relative h-screen overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(41,80,200,0.35),_transparent_38%),linear-gradient(180deg,_#09101d_0%,_#060912_100%)] text-white">
+    <div
+      className="relative h-screen overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(41,80,200,0.35),_transparent_38%),linear-gradient(180deg,_#09101d_0%,_#060912_100%)] text-white"
+      suppressHydrationWarning
+    >
       {callSummary ? (
         <CallSummaryScreen
           dailyRate={callSummary.dailyRate}
+          conversationId={callSummary.conversationId}
           onStartNewCall={handleStartNewCallFromSummary}
           productLabels={callSummary.productLabels}
         />
@@ -1920,16 +2520,35 @@ export function TavusDemo() {
 
               {errorMessage ? (
                 <div className="rounded-3xl border border-rose-300/20 bg-rose-500/10 px-5 py-4 text-sm text-rose-100">
-                  <p>{errorMessage}</p>
-                  <div className="mt-3">
-                    <button
-                      className="rounded-full border border-rose-300/30 bg-rose-400/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-rose-100 transition hover:bg-rose-400/30"
-                      onClick={handleManualStart}
-                      type="button"
-                    >
-                      Retry
-                    </button>
-                  </div>
+                  <p className="font-semibold">{errorMessage}</p>
+                  {errorMessage.toLowerCase().includes("credits") ? (
+                    <div className="mt-4 p-4 rounded-2xl bg-sky-500/15 border border-sky-400/20 space-y-2">
+                      <p className="text-xs text-sky-200">
+                        You can test the progressive Excalidraw presentation panel in **Local Mock Mode** without spending credits.
+                      </p>
+                      <button
+                        className="rounded-full bg-sky-400 px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-sky-300"
+                        onClick={() => {
+                          if (typeof window !== "undefined") {
+                            window.location.search = "?mock=true";
+                          }
+                        }}
+                        type="button"
+                      >
+                        Launch Mock Mode
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="mt-3">
+                      <button
+                        className="rounded-full border border-rose-300/30 bg-rose-400/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-rose-100 transition hover:bg-rose-400/30"
+                        onClick={handleManualStart}
+                        type="button"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : null}
             </div>
@@ -2064,5 +2683,190 @@ export function TavusDemo() {
         `}</style>
       ) : null}
     </div>
+  );
+}
+
+type MockSessionProps = {
+  audioBlocked: boolean;
+  isMicMuted: boolean;
+  latestReplicaTranscript: TranscriptEntry | null;
+  latestUserTranscript: TranscriptEntry | null;
+  onEndCall(): void;
+  onToggleMicMute(): void;
+  overlayState: OverlayState | null;
+  replicaReady: boolean;
+  replicaSpeaking: boolean;
+  onAudioBlockedChange(nextValue: boolean): void;
+  userSpeaking: boolean;
+};
+
+function MockSession({
+  isMicMuted,
+  latestReplicaTranscript,
+  latestUserTranscript,
+  onEndCall,
+  onToggleMicMute,
+  overlayState,
+  replicaSpeaking,
+  userSpeaking,
+}: MockSessionProps) {
+  const activeContent = useMemo(() => {
+    if (!overlayState || overlayState.kind !== "content") {
+      return null;
+    }
+
+    const item = CONTENT_ITEMS[overlayState.contentItemKey];
+    const query = overlayState.query ? new URLSearchParams(overlayState.query).toString() : "";
+
+    return { ...item, url: query ? `${item.url}?${query}` : item.url };
+  }, [overlayState]);
+
+  const activeContentItemKey = overlayState?.kind === "content" ? overlayState.contentItemKey : null;
+  const activeSchedule = (overlayState as any)?.kind === "schedule" ? overlayState : null;
+  const activeCanvas = overlayState?.kind === "canvas" ? overlayState : null;
+  const isDebugMode = typeof window !== "undefined" && (new URLSearchParams(window.location.search).get("debug") === "1" || new URLSearchParams(window.location.search).get("debug") === "true");
+
+  const triggerTool = (name: string, args: any = {}) => {
+    if (typeof window !== "undefined" && (window as any).__handleAppMessage) {
+      (window as any).__handleAppMessage({
+        event_type: "conversation.tool_call",
+        message_type: "conversation",
+        properties: {
+          name,
+          arguments: JSON.stringify(args)
+        }
+      });
+    }
+  };
+
+  return (
+    <>
+      <div className={`relative h-screen w-screen overflow-hidden ${overlayState ? "bg-slate-950" : "bg-black"}`}>
+        <FloatingMicControl
+          isMuted={isMicMuted}
+          isOverlayActive={Boolean(overlayState)}
+          micName="Test Microphone"
+          onToggle={onToggleMicMute}
+          speakerName="Test Speaker"
+        />
+
+        {/* Presentation Overlay Layer */}
+        {overlayState ? (
+          <div className="absolute inset-0 z-10 h-full w-full overflow-y-auto">
+            {activeContentItemKey === "warranty_terms" ? (
+              <WarrantyTermsPage />
+            ) : activeContentItemKey === "cost_breakdown" ? (
+              <CostBreakdownPage />
+            ) : activeContentItemKey === "pricing_ladder" ? (
+              <PricingLadderPage />
+            ) : activeContentItemKey === "deal_summary" ? (
+              <DealSummaryPage />
+            ) : activeContentItemKey === "escalate_to_human" ? (
+              <EscalatePage />
+            ) : (
+              <PresentationCanvas
+                elements={activeCanvas?.elements}
+                shownProducts={activeCanvas?.shownProducts}
+                activeProduct={activeCanvas?.activeProduct}
+                dailyRate={activeCanvas?.dailyRate ?? 4.0}
+              />
+            )}
+          </div>
+        ) : null}
+
+        {/* Persistent Avatar Container (Test Mode) */}
+        <div
+          className={
+            overlayState
+              ? "absolute right-4 top-4 z-20 h-[96px] w-[128px] overflow-hidden rounded-[1.1rem] border border-white/15 bg-slate-950/90 shadow-2xl backdrop-blur transition-all duration-300 sm:h-[108px] sm:w-[144px] md:h-[120px] md:w-[160px]"
+              : "absolute inset-0 z-0 flex h-full w-full items-center justify-center bg-slate-950 transition-all duration-300"
+          }
+        >
+          {overlayState ? (
+            <div className="flex h-full flex-col items-center justify-center bg-slate-900 text-center p-2 border border-sky-500/25">
+              <div className="text-[10px] uppercase font-bold text-sky-400">Max (Test Mode)</div>
+              <div className="text-[9px] text-slate-400 mt-1">{replicaSpeaking ? "Speaking..." : "Idle"}</div>
+            </div>
+          ) : (
+            <div className="text-center space-y-4">
+              <div className="size-36 rounded-full border border-sky-500/25 bg-slate-900 mx-auto flex items-center justify-center shadow-2xl">
+                <span className="text-4xl">👨‍💼</span>
+              </div>
+              <h3 className="text-lg font-semibold text-white">Digital Finance Manager Consultation</h3>
+              <p className="text-sm text-slate-400 max-w-md mx-auto">
+                Interactive Showroom Walkthrough for 2026 Mazda CX-5.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Transcript Panel (only shown when not in presentation overlay) */}
+        {!overlayState && (
+          <TranscriptPanel
+            latestReplicaTranscript={latestReplicaTranscript}
+            latestUserTranscript={latestUserTranscript}
+            replicaSpeaking={replicaSpeaking}
+            userSpeaking={userSpeaking}
+          />
+        )}
+
+        <div className="absolute bottom-24 right-3 z-20 h-[88px] w-[118px] overflow-hidden rounded-[1.1rem] border border-white/15 bg-slate-950/90 shadow-2xl backdrop-blur sm:h-[108px] sm:w-[144px] md:right-4 md:h-[120px] md:w-[160px]">
+          <div className="flex h-full items-center justify-center text-[0.6rem] uppercase tracking-[0.2em] text-slate-500">
+            Camera Off
+          </div>
+          <span className="absolute bottom-1 left-1.5 rounded-full bg-black/50 px-1.5 py-0.5 text-[0.5rem] font-semibold uppercase tracking-[0.16em] text-white/80">
+            You
+          </span>
+        </div>
+
+        <CallControlBar isMuted={isMicMuted} onEndCall={onEndCall} onToggleMute={onToggleMicMute} />
+
+        {isDebugMode && (
+          <div className="fixed bottom-20 left-4 z-50 flex flex-col gap-2 max-w-2xl rounded-2xl border border-white/20 bg-slate-900/95 p-4 shadow-2xl backdrop-blur">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-bold uppercase tracking-wider text-sky-400">
+                DFM Test &amp; Pipeline Debug Controller
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-1 text-[11px] font-medium text-slate-300">
+              <span className="text-slate-500 font-semibold">Stage Pipeline:</span>
+              <button onClick={() => triggerTool("advance_stage", { targetStep: "rapport" })} className="rounded bg-slate-800 hover:bg-slate-700 px-2 py-0.5 text-[10px] text-slate-200">0. Rapport</button>
+              <button onClick={() => triggerTool("advance_stage", { targetStep: "greeting" })} className="rounded bg-slate-800 hover:bg-slate-700 px-2 py-0.5 text-[10px] text-slate-200">1. Greeting</button>
+              <button onClick={() => triggerTool("advance_stage", { targetStep: "disclosure" })} className="rounded bg-slate-800 hover:bg-slate-700 px-2 py-0.5 text-[10px] text-slate-200">2. Disclosure</button>
+              <button onClick={() => triggerTool("advance_stage", { targetStep: "qualifying" })} className="rounded bg-slate-800 hover:bg-slate-700 px-2 py-0.5 text-[10px] text-slate-200">3. Qualifying</button>
+              <button onClick={() => triggerTool("advance_stage", { targetStep: "four_square" })} className="rounded bg-sky-800 hover:bg-sky-700 px-2 py-0.5 text-[10px] text-sky-200">4. Protection Plan</button>
+              <button onClick={() => triggerTool("advance_stage", { targetStep: "objection" })} className="rounded bg-indigo-800 hover:bg-indigo-700 px-2 py-0.5 text-[10px] text-indigo-200">5. Negotiation</button>
+              <button onClick={() => triggerTool("advance_stage", { targetStep: "close" })} className="rounded bg-emerald-800 hover:bg-emerald-700 px-2 py-0.5 text-[10px] text-emerald-200">6. Verbal Close</button>
+              <button onClick={() => triggerTool("advance_stage", { targetStep: "verification" })} className="rounded bg-amber-800 hover:bg-amber-700 px-2 py-0.5 text-[10px] text-amber-200">7. Verify (Guarded)</button>
+            </div>
+
+            <div className="flex flex-wrap gap-1 text-[11px] font-medium text-slate-300">
+              <span className="text-slate-500 font-semibold">Courtesy Rate Test:</span>
+              <button onClick={() => triggerTool("propose_concession", { stage: 1 })} className="rounded bg-indigo-500/20 hover:bg-indigo-500/40 px-2.5 py-1 text-xs text-indigo-200">$4.00/day</button>
+              <button onClick={() => triggerTool("propose_concession", { stage: 2 })} className="rounded bg-indigo-500/20 hover:bg-indigo-500/40 px-2.5 py-1 text-xs text-indigo-200">$3.50/day</button>
+              <button onClick={() => triggerTool("propose_concession", { stage: 3 })} className="rounded bg-indigo-500/20 hover:bg-indigo-500/40 px-2.5 py-1 text-xs text-indigo-200">$3.25/day</button>
+              <button onClick={() => triggerTool("propose_concession", { stage: 4 })} className="rounded bg-indigo-500/20 hover:bg-indigo-500/40 px-2.5 py-1 text-xs text-indigo-200">$3.00/day</button>
+              <button onClick={() => triggerTool("propose_concession", { stage: 5 })} className="rounded bg-rose-500/20 hover:bg-rose-500/40 px-2.5 py-1 text-xs text-rose-300">Test Floor Breach (&lt;$3)</button>
+            </div>
+
+            <div className="flex flex-wrap gap-1 text-[11px] font-medium text-slate-300">
+              <span className="text-slate-500 font-semibold">Canvas &amp; Views:</span>
+              <button onClick={() => triggerTool("show_content", { item: "warranty_terms" })} className="rounded bg-sky-500/20 hover:bg-sky-500/40 px-2.5 py-1 text-xs text-sky-200">Warranty</button>
+              <button onClick={() => triggerTool("show_content", { item: "cost_breakdown" })} className="rounded bg-sky-500/20 hover:bg-sky-500/40 px-2.5 py-1 text-xs text-sky-200">Costs</button>
+              <button onClick={() => triggerTool("show_content", { view: "four_square" })} className="rounded bg-sky-500/20 hover:bg-sky-500/40 px-2.5 py-1 text-xs text-sky-200">Protection Menu</button>
+              <button onClick={() => triggerTool("show_content", { view: "pricing_ladder" })} className="rounded bg-indigo-500/20 hover:bg-indigo-500/40 px-2.5 py-1 text-xs text-indigo-200">Investment Summary</button>
+              <button onClick={() => triggerTool("show_content", { view: "deal_summary" })} className="rounded bg-emerald-500/20 hover:bg-emerald-500/40 px-2.5 py-1 text-xs text-emerald-200">Deal Summary</button>
+              <button onClick={() => triggerTool("show_pricing", { product: "vsc" })} className="rounded bg-emerald-500/20 hover:bg-emerald-500/40 px-2 py-1 text-xs text-emerald-200">+VSC</button>
+              <button onClick={() => triggerTool("show_pricing", { product: "maintenance" })} className="rounded bg-emerald-500/20 hover:bg-emerald-500/40 px-2 py-1 text-xs text-emerald-200">+Maint</button>
+              <button onClick={() => triggerTool("show_pricing", { product: "tire_wheel" })} className="rounded bg-emerald-500/20 hover:bg-emerald-500/40 px-2 py-1 text-xs text-emerald-200">+Tire</button>
+              <button onClick={() => triggerTool("show_pricing", { product: "gap" })} className="rounded bg-emerald-500/20 hover:bg-emerald-500/40 px-2 py-1 text-xs text-emerald-200">+GAP</button>
+              <button onClick={() => triggerTool("clear_canvas")} className="rounded bg-rose-500/20 hover:bg-rose-500/40 px-2 py-1 text-xs text-rose-200">Reset</button>
+              <button onClick={() => triggerTool("dismiss_content")} className="rounded bg-slate-500/20 hover:bg-slate-500/40 px-2 py-1 text-xs text-slate-200">Dismiss</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
   );
 }

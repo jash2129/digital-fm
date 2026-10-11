@@ -1,5 +1,5 @@
 {
-  "_comment": "Single source of truth for the negotiation tiers and product coverage panels. Edit this file, then run scripts/push-pricing-config.ps1 to push the tool schema to the live persona. See docs/OPERATIONS.md for the full how-to. Do NOT edit the numbers in prompts/digital-finance-manager/system-instruction.md separately without also updating them here — they must match.",
+  "_comment": "Single source of truth for negotiation tiers and product coverage panels. Synchronized verbatim with wordtoword.md. Order: 1: vsc (7-Year Bumper-to-Bumper), 2: tire_wheel (5-Year Tire & Wheel), 3: maintenance (4-Year Maintenance), 4: gap (GAP Protection).",
 
   "negotiation": {
     "openingRateUsd": 4,
@@ -10,44 +10,43 @@
   "products": {
     "vsc": {
       "order": 1,
-      "label": "10-Year Bumper-to-Bumper",
+      "label": "7-Year Bumper-to-Bumper",
       "eyebrow": "Protection Package · Part 1 of 4",
-      "title": "10-Year, 100,000-Mile Bumper-to-Bumper",
-      "description": "Wraps a blanket-cover contract around the vehicle for wear-and-tear failures the factory warranty won't pay for — the same major components, but covered no matter what caused the breakdown.",
+      "title": "7-Year / 100,000-Mile Bumper-to-Bumper Warranty",
+      "description": "True blanket cover warranty protecting against wear and tear failures — the engine, transmission, AC, electronics, parts, and labor with zero deductible.",
       "bullets": [
-        "Engine and transmission",
-        "Drive axle and four-wheel drive components",
-        "Suspension and steering",
-        "Electrical system",
-        "Brakes",
-        "Air conditioning and cooling system",
-        "All high-tech accessories, including labor",
-        "Zero deductible out of pocket"
-      ]
-    },
-    "maintenance": {
-      "order": 2,
-      "label": "Maintenance Plan",
-      "eyebrow": "Protection Package · Part 2 of 4",
-      "title": "5-Year Maintenance Cover",
-      "description": "Routine scheduled maintenance for the next five years, taken care of — no more paying out of pocket every time it's due.",
-      "bullets": [
-        "Full synthetic oil changes",
-        "Filters",
-        "Tire rotations",
-        "Covers the next 5 years of scheduled service"
+        "Engine ($7,000) & transmission ($6,000) replacement",
+        "Air conditioning ($4,000) & cooling climate systems",
+        "Dashboard screens, sensors & high-tech electronics ($6,500–$8,500)",
+        "Certified technician labor ($130–$160/hr for 10–15 hours)",
+        "Zero deductible at any service location across the metroplex"
       ]
     },
     "tire_wheel": {
-      "order": 3,
-      "label": "Tire & Wheel Coverage",
-      "eyebrow": "Protection Package · Part 3 of 4",
-      "title": "5-Year Tire & Wheel Coverage",
-      "description": "Potholes, blowouts, and road hazards happen — this covers the tires and wheels for the next five years.",
+      "order": 2,
+      "label": "5-Year Tire & Wheel",
+      "eyebrow": "Protection Package · Part 2 of 4",
+      "title": "5-Year Tire and Wheel Cover",
+      "description": "Texas roads and highway construction cause potholes and blowouts — covers 2 complete sets of tires and wheels for the next 5 years.",
       "bullets": [
-        "Blowouts and road-hazard tire damage replaced at no cost",
-        "Cosmetic rim damage from potholes repaired",
-        "Covers the next 5 years"
+        "Covers 2 sets of tires over next 5 years (8 tires total)",
+        "Three hundred fifty dollar replacement value per tire",
+        "Hundred twenty-five dollar installation covered per tire",
+        "Almost four thousand dollars in out-of-pocket savings",
+        "Zero deductible on road hazard punctures, blowouts & rim damage"
+      ]
+    },
+    "maintenance": {
+      "order": 3,
+      "label": "4-Year Maintenance Package",
+      "eyebrow": "Protection Package · Part 3 of 4",
+      "title": "4-Year Maintenance Package",
+      "description": "Routine scheduled maintenance fully taken care of for the next 4 years — say goodbye to service desk invoices.",
+      "bullets": [
+        "Full synthetic oil changes ($125 value each included)",
+        "Engine and cabin air filter replacements ($29 value each included)",
+        "Tire rotations and inspections ($140 value each included)",
+        "Zero maintenance bills — only thing you have to worry about is paying for GAS!"
       ]
     },
     "gap": {
@@ -55,11 +54,11 @@
       "label": "GAP Coverage",
       "eyebrow": "Protection Package · Part 4 of 4",
       "title": "GAP Coverage",
-      "description": "If the vehicle is totaled, stolen, or destroyed and the insurance payout doesn't cover the full loan balance, GAP covers the difference — so you're not paying out of pocket on a vehicle you no longer have.",
+      "description": "Covers the gap between insurance payout and loan balance in the event of collision, theft, hail storm, or flood total loss.",
       "bullets": [
-        "Covers the gap between insurance payout and loan balance",
-        "Applies to accident, theft, hail, flood, and fire total losses",
-        "No out-of-pocket balance left on a vehicle you no longer have"
+        "Covers difference between insurance payout and loan balance",
+        "Total loss protection for accident, theft, hail, and flood",
+        "Zero out-of-pocket loan debt remaining on a totaled vehicle"
       ]
     }
   }

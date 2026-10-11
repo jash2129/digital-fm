@@ -1,0 +1,177 @@
+{
+  "conversationId": "cc2ce7c7421d0418",
+  "personaId": "pb0b08db38a9",
+  "visitorId": "3989d84c-2140-4a04-b393-49cb7ff3ae99",
+  "dealId": null,
+  "startTime": "2026-09-27T20:10:12.960Z",
+  "endTime": "2026-09-29T15:13:37.358Z",
+  "durationSeconds": null,
+  "status": "completed",
+  "transcript": [
+    {
+      "role": "replica",
+      "text": "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!",
+      "timestamp": "2026-09-27T20:10:17.091Z"
+    },
+    {
+      "role": "pal",
+      "text": "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!",
+      "timestamp": "2026-09-27T20:10:17.174Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah.",
+      "timestamp": "2026-09-27T20:10:32.659Z"
+    },
+    {
+      "role": "replica",
+      "text": "That's great to hear! Is there anything in particular from the test drive that stood out to you?",
+      "timestamp": "2026-09-27T20:10:32.721Z"
+    },
+    {
+      "role": "pal",
+      "text": "That's great to hear! Is there anything in particular from the test drive that stood out to you?",
+      "timestamp": "2026-09-27T20:10:32.760Z"
+    },
+    {
+      "role": "user",
+      "text": "No.",
+      "timestamp": "2026-09-27T20:10:40.649Z"
+    },
+    {
+      "role": "replica",
+      "text": "Got it! Well, I'm excited to help you with the next steps. Just want to let you know, first of all, this transaction is recorded audio and video for insurance purposes. Also, I'm required by the law to disclose all the information with you before you sign any paperwork. So it's very important to make sure that you understand everything first before you sign. Is that okay?",
+      "timestamp": "2026-09-27T20:10:40.711Z"
+    },
+    {
+      "role": "pal",
+      "text": "Got it! Well, I'm excited to help you with the next steps. Just want to let you know, first of all, this transaction is recorded audio and video for insurance purposes. Also, I'm required by the law to disclose all the information with you before you sign any paperwork. So it's very important to make sure that you understand everything first before you sign. Is that okay?",
+      "timestamp": "2026-09-27T20:10:40.757Z"
+    },
+    {
+      "role": "user",
+      "text": "Okay. Can you able to hear the audio?",
+      "timestamp": "2026-09-27T20:11:10.939Z"
+    },
+    {
+      "role": "replica",
+      "text": "It seems like the audio is a bit unclear on my end. Can you confirm that you are okay with the disclosure I just mentioned? If you have any questions about it, feel free to ask!",
+      "timestamp": "2026-09-27T20:11:11.015Z"
+    },
+    {
+      "role": "pal",
+      "text": "It seems like the audio is a bit unclear on my end. Can you confirm that you are okay with the disclosure I just mentioned? If you have any questions about it, feel free to ask!",
+      "timestamp": "2026-09-27T20:11:11.073Z"
+    },
+    {
+      "role": "user",
+      "text": "Yes.",
+      "timestamp": "2026-09-27T20:11:16.710Z"
+    },
+    {
+      "role": "replica",
+      "text": "Thanks for confirming! Let's move on. I want to make sure that you've driven the vehicle that you're buying, the 2026 Mazda CX-50 2.5 Turbo. Did you get the chance to drive it?",
+      "timestamp": "2026-09-27T20:11:16.769Z"
+    },
+    {
+      "role": "pal",
+      "text": "Thanks for confirming! Let's move on. I want to make sure that you've driven the vehicle that you're buying, the 2026 Mazda CX-50 2.5 Turbo. Did you get the chance to drive it?",
+      "timestamp": "2026-09-27T20:11:16.844Z"
+    },
+    {
+      "role": "user",
+      "text": "Yes.",
+      "timestamp": "2026-09-27T20:11:33.285Z"
+    },
+    {
+      "role": "replica",
+      "text": "Great! When you came back from the test drive, did the salesperson do the walk-around of the vehicle — show you the features, all the built-in technology and equipment in the car?",
+      "timestamp": "2026-09-27T20:11:33.340Z"
+    },
+    {
+      "role": "pal",
+      "text": "Great! When you came back from the test drive, did the salesperson do the walk-around of the vehicle — show you the features, all the built-in technology and equipment in the car?",
+      "timestamp": "2026-09-27T20:11:33.381Z"
+    },
+    {
+      "role": "user",
+      "text": "No, no, no, there was a boycott from my side, I just, uh, changed the Wi-Fi. I just connected to my mobile.",
+      "timestamp": "2026-09-27T20:12:22.089Z"
+    },
+    {
+      "role": "replica",
+      "text": "I understand there might have been some frustration with the connection. It happens! Let's keep moving forward. My final question — I want to make sure that the salesperson went over the warranty that you're getting with the vehicle. Did they cover that for you?",
+      "timestamp": "2026-09-27T20:12:22.741Z"
+    },
+    {
+      "role": "pal",
+      "text": "I understand there might have been some frustration with the connection. It happens! Let's keep moving forward. My final question — I want to make sure that the salesperson went over the warranty that you're getting with the vehicle. Did they cover that for you?",
+      "timestamp": "2026-09-27T20:12:23.133Z"
+    },
+    {
+      "role": "user",
+      "text": "Yes.",
+      "timestamp": "2026-09-27T20:12:41.150Z"
+    },
+    {
+      "role": "replica",
+      "text": "Even if you say yes, there is actually more information in the warranty, so I want to make sure I go over it in depth to make sure that you understand everything. Is that okay?",
+      "timestamp": "2026-09-27T20:12:41.205Z"
+    },
+    {
+      "role": "pal",
+      "text": "Even if you say yes, there is actually more information in the warranty, so I want to make sure I go over it in depth to make sure that you understand everything. Is that okay?",
+      "timestamp": "2026-09-27T20:12:41.312Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah. Go ahead.",
+      "timestamp": "2026-09-27T20:12:58.873Z"
+    },
+    {
+      "role": "user",
+      "text": "So, hmm.",
+      "timestamp": "2026-09-27T20:13:20.195Z"
+    },
+    {
+      "role": "replica",
+      "text": "I appreciate your patience! Let me explain the warranty details. \n\nHyundai is like any other manufacturer. When they build a vehicle, they do put a warranty on it. In your case, you get two different warranties, not one.\n\nThe first warranty is five years, 60,000 miles, which is a base limited warranty referring to bumper to bumper coverage. The second warranty is for ten years and 100,000 miles, focusing on the powertrain, which covers the engine and the transmission. \n\nHowever, what you might not know — and it’s stated in the manual in the glove box — is that this warranty from the manufacturer is against defect only. This means it covers anything that was misdesigned, misbuilt, or misinstalled by the manufacturer.\n\nIf any issues arise under these terms, the manufacturer will take the vehicle back, fix it, and give it back to you. It's essentially a warranty against recalls.\n\nAre you with me so far?",
+      "timestamp": "2026-09-27T20:13:20.277Z"
+    },
+    {
+      "role": "pal",
+      "text": "I appreciate your patience! Let me explain the warranty details. \n\nHyundai is like any other manufacturer. When they build a vehicle, they do put a warranty on it. In your case, you get two different warranties, not one.\n\nThe first warranty is five years, 60,000 miles, which is a base limited warranty referring to bumper to bumper coverage. The second warranty is for ten years and 100,000 miles, focusing on the powertrain, which covers the engine and the transmission. \n\nHowever, what you might not know — and it’s stated in the manual in the glove box — is that this warranty from the manufacturer is against defect only. This means it covers anything that was misdesigned, misbuilt, or misinstalled by the manufacturer.\n\nIf any issues arise under these terms, the manufacturer will take the vehicle back, fix it, and give it back to you. It's essentially a warranty against recalls.\n\nAre you with me so far?",
+      "timestamp": "2026-09-27T20:13:20.433Z"
+    },
+    {
+      "role": "user",
+      "text": "Yes.",
+      "timestamp": "2026-09-27T20:14:23.497Z"
+    },
+    {
+      "role": "replica",
+      "text": "Awesome! Now, there is another reason that can cause any breakdown to our vehicles — it comes under wear and tear. Typically, three factors cause wear and tear: \n\n1. **Climate** — especially in Texas, where temperatures can swing from very hot in the summer to quite cold in the winter, which impacts many vehicle parts.\n \n2. **Road condition** — with all the construction, potholes, and uneven roads, it can lead to damage.\n \n3. **Driving habits** — how we all drive can affect a vehicle's longevity.\n\nIn fact, 95% of the time when a vehicle breaks down, it's due to wear and tear. So, if you ever run into an issue, the first step is to take it to any service location. They'll diagnose the issue, and if any manufacturer warranty is left, they'll check if it was due to a defect. If it’s because of wear and tear, you'll end up covering the costs.\n\nFor example, just looking at costs, an engine rebuild could be around $7,500, and a transmission could run you about $6,000, plus labor that averages around $130 to $160 per hour for about 10 to 15 hours. This is why we recommend wrapping a blanket-cover warranty around your vehicle.\n\nDoes that make sense?",
+      "timestamp": "2026-09-27T20:14:23.588Z"
+    },
+    {
+      "role": "pal",
+      "text": "Awesome! Now, there is another reason that can cause any breakdown to our vehicles — it comes under wear and tear. Typically, three factors cause wear and tear: \n\n1. **Climate** — especially in Texas, where temperatures can swing from very hot in the summer to quite cold in the winter, which impacts many vehicle parts.\n \n2. **Road condition** — with all the construction, potholes, and uneven roads, it can lead to damage.\n \n3. **Driving habits** — how we all drive can affect a vehicle's longevity.\n\nIn fact, 95% of the time when a vehicle breaks down, it's due to wear and tear. So, if you ever run into an issue, the first step is to take it to any service location. They'll diagnose the issue, and if any manufacturer warranty is left, they'll check if it was due to a defect. If it’s because of wear and tear, you'll end up covering the costs.\n\nFor example, just looking at costs, an engine rebuild could be around $7,500, and a transmission could run you about $6,000, plus labor that averages around $130 to $160 per hour for about 10 to 15 hours. This is why we recommend wrapping a blanket-cover warranty around your vehicle.\n\nDoes that make sense?",
+      "timestamp": "2026-09-27T20:14:23.657Z"
+    },
+    {
+      "role": "user",
+      "text": "Phone charger.",
+      "timestamp": "2026-09-27T20:14:58.494Z"
+    },
+    {
+      "role": "replica",
+      "text": "It sounds like you might be using your phone right now! No worries at all. Just to summarize, the majority of vehicle breakdowns, about 95% of the time, result from wear and tear rather than manufacturing defects. \n\nWhen a vehicle breaks down, you take it to a service place, and they must first diagnose it to find out what the problem is. If there’s any manufacturer warranty left, the manufacturer comes in first to cover that — but if it’s determined to be due to wear and tear, unfortunately, that falls on you.\n\nThat's why we recommend wrapping a blanket cover warranty around the vehicle. Do you have any questions so far?",
+      "timestamp": "2026-09-27T20:14:58.593Z"
+    },
+    {
+      "role": "pal",
+      "text": "It sounds like you might be using your phone right now! No worries at all. Just to summarize, the majority of vehicle breakdowns, about 95% of the time, result from wear and tear rather than manufacturing defects. \n\nWhen a vehicle breaks down, you take it to a service place, and they must first diagnose it to find out what the problem is. If there’s any manufacturer warranty left, the manufacturer comes in first to cover that — but if it’s determined to be due to wear and tear, unfortunately, that falls on you.\n\nThat's why we recommend wrapping a blanket cover warranty around the vehicle. Do you have any questions so far?",
+      "timestamp": "2026-09-27T20:14:58.648Z"
+    }
+  ]
+}

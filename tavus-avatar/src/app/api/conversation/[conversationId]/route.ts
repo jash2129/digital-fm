@@ -72,3 +72,8 @@ export async function DELETE(request: Request, context: RouteContext) {
     );
   }
 }
+
+export async function POST(request: Request, context: RouteContext) {
+  return DELETE(request, context);
+}
+

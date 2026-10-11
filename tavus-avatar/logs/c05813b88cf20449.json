@@ -1,0 +1,187 @@
+{
+  "conversationId": "c05813b88cf20449",
+  "personaId": "pedee15ef236",
+  "visitorId": "68ab16ae-e4c0-4974-a2a7-aaff45a92ce9",
+  "dealId": null,
+  "startTime": "2026-10-01T22:41:16.441Z",
+  "endTime": "2026-10-01T22:44:48.397Z",
+  "durationSeconds": 212,
+  "status": "completed",
+  "transcript": [
+    {
+      "role": "pal",
+      "text": "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!",
+      "timestamp": "2026-10-01T22:41:28.859Z"
+    },
+    {
+      "role": "replica",
+      "text": "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!",
+      "timestamp": "2026-10-01T22:41:28.866Z"
+    },
+    {
+      "role": "replica",
+      "text": "Awesome, really glad to hear that! Before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-10-01T22:41:42.543Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah. Yeah, it did.",
+      "timestamp": "2026-10-01T22:41:42.588Z"
+    },
+    {
+      "role": "pal",
+      "text": "Awesome, really glad to hear that! Before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-10-01T22:41:42.648Z"
+    },
+    {
+      "role": "pal",
+      "text": "Absolutely, I'm here! Before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-10-01T22:42:00.044Z"
+    },
+    {
+      "role": "replica",
+      "text": "Absolutely, I'm here! Before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-10-01T22:42:00.146Z"
+    },
+    {
+      "role": "user",
+      "text": "Are you there?",
+      "timestamp": "2026-10-01T22:42:00.210Z"
+    },
+    {
+      "role": "user",
+      "text": "Okay.",
+      "timestamp": "2026-10-01T22:42:19.330Z"
+    },
+    {
+      "role": "replica",
+      "text": "First, I see that you agreed to buy a new two thousand twenty-six Mazda CX-5.",
+      "timestamp": "2026-10-01T22:42:19.382Z"
+    },
+    {
+      "role": "pal",
+      "text": "First, I see that you agreed to buy a new two thousand twenty-six Mazda CX-5.",
+      "timestamp": "2026-10-01T22:42:19.445Z"
+    },
+    {
+      "role": "user",
+      "text": "No, that one— I was going with Mercedes.",
+      "timestamp": "2026-10-01T22:42:34.627Z"
+    },
+    {
+      "role": "replica",
+      "text": "Got it, no problem at all. Let's make sure all the numbers make sense first. A few questions before I prepare the paperwork — have you got the chance to drive the vehicle that you are buying?",
+      "timestamp": "2026-10-01T22:42:34.738Z"
+    },
+    {
+      "role": "pal",
+      "text": "Got it, no problem at all. Let's make sure all the numbers make sense first. A few questions before I prepare the paperwork — have you got the chance to drive the vehicle that you are buying?",
+      "timestamp": "2026-10-01T22:42:34.788Z"
+    },
+    {
+      "role": "user",
+      "text": "No, that one— I was going with Mercedes. You're wrong.",
+      "timestamp": "2026-10-01T22:42:38.147Z"
+    },
+    {
+      "role": "replica",
+      "text": "I completely understand and I respect your time! Just to clarify, let me prepare the paperwork for the Mazda CX-5 since that was the original agreement. A few questions before I do that. Have you got the chance to drive the vehicle that you are buying?",
+      "timestamp": "2026-10-01T22:42:38.280Z"
+    },
+    {
+      "role": "pal",
+      "text": "I completely understand and I respect your time! Just to clarify, let me prepare the paperwork for the Mazda CX-5 since that was the original agreement. A few questions before I do that. Have you got the chance to drive the vehicle that you are buying?",
+      "timestamp": "2026-10-01T22:42:38.405Z"
+    },
+    {
+      "role": "user",
+      "text": "Before confirming, I got asked something, like. \"I am buying Mercedes Maybach, not the Mazda CX-5.\"",
+      "timestamp": "2026-10-01T22:43:02.708Z"
+    },
+    {
+      "role": "replica",
+      "text": "I understand, and I appreciate your patience! Let’s make sure we’re on the same page. So it sounds like you're looking to finalize on the Mercedes Maybach instead. I can help if you have questions or information about that. What can I assist you with regarding the Maybach?",
+      "timestamp": "2026-10-01T22:43:02.773Z"
+    },
+    {
+      "role": "pal",
+      "text": "I understand, and I appreciate your patience! Let’s make sure we’re on the same page. So it sounds like you're looking to finalize on the Mercedes Maybach instead. I can help if you have questions or information about that. What can I assist you with regarding the Maybach?",
+      "timestamp": "2026-10-01T22:43:02.821Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah, interesting.",
+      "timestamp": "2026-10-01T22:43:21.732Z"
+    },
+    {
+      "role": "replica",
+      "text": "Right on, I hear you! If you have any specific questions about the Mercedes Maybach or anything else, just let me know.",
+      "timestamp": "2026-10-01T22:43:21.807Z"
+    },
+    {
+      "role": "pal",
+      "text": "Right on, I hear you! If you have any specific questions about the Mercedes Maybach or anything else, just let me know.",
+      "timestamp": "2026-10-01T22:43:21.866Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah, it's about finance and insurance.",
+      "timestamp": "2026-10-01T22:43:33.741Z"
+    },
+    {
+      "role": "pal",
+      "text": "Absolutely, I understand! If you're looking for information or assistance regarding finance and insurance options for the Mercedes Maybach, I'm here to help with that. What specific information are you interested in?",
+      "timestamp": "2026-10-01T22:43:33.783Z"
+    },
+    {
+      "role": "replica",
+      "text": "Absolutely, I understand! If you're looking for information or assistance regarding finance and insurance options for the Mercedes Maybach, I'm here to help with that. What specific information are you interested in?",
+      "timestamp": "2026-10-01T22:43:33.827Z"
+    },
+    {
+      "role": "user",
+      "text": "What is the default, uh, insurance cover I get from the manufacturer?",
+      "timestamp": "2026-10-01T22:43:56.396Z"
+    },
+    {
+      "role": "replica",
+      "text": "Got it, let me pull that right up for you... There is actually more information about the warranty I need to go over with you to make sure you do understand everything. Mazda is like any other manufacturer when they build a vehicle. In this case, you get two different warranties, not one. \n\nThe first warranty is three years thirty-six thousand mile base limited warranty. \n\nThe second is five years sixty thousand mile powertrain, which refers to the engine and the transmission. I'm sure we agree that's a very good complementary warranty from the manufacturer, but what you may not know is that this warranty is a defect-only warranty, as stated in the manual book of the vehicle, on page four. This warranty from the manufacturer covers anything that is mis-designed, mis-built, or mis-installed. \n\nAre you with me so far?",
+      "timestamp": "2026-10-01T22:43:56.478Z"
+    },
+    {
+      "role": "pal",
+      "text": "Got it, let me pull that right up for you... There is actually more information about the warranty I need to go over with you to make sure you do understand everything. Mazda is like any other manufacturer when they build a vehicle. In this case, you get two different warranties, not one. \n\nThe first warranty is three years thirty-six thousand mile base limited warranty. \n\nThe second is five years sixty thousand mile powertrain, which refers to the engine and the transmission. I'm sure we agree that's a very good complementary warranty from the manufacturer, but what you may not know is that this warranty is a defect-only warranty, as stated in the manual book of the vehicle, on page four. This warranty from the manufacturer covers anything that is mis-designed, mis-built, or mis-installed. \n\nAre you with me so far?",
+      "timestamp": "2026-10-01T22:43:56.671Z"
+    },
+    {
+      "role": "user",
+      "text": "I was asking you about the Mercedes Maybach, and you're showing me the Mazda CX-5.",
+      "timestamp": "2026-10-01T22:44:17.461Z"
+    },
+    {
+      "role": "pal",
+      "text": "I completely understand — my apologies for the mix-up! Let's get back to the Mercedes Maybach. Can you please remind me what specific details you’re looking for regarding the insurance cover from the manufacturer?",
+      "timestamp": "2026-10-01T22:44:17.511Z"
+    },
+    {
+      "role": "replica",
+      "text": "I completely understand — my apologies for the mix-up! Let's get back to the Mercedes Maybach. Can you please remind me what specific details you’re looking for regarding the insurance cover from the manufacturer?",
+      "timestamp": "2026-10-01T22:44:17.558Z"
+    },
+    {
+      "role": "user",
+      "text": "I was asking you about the Mercedes Maybach, and you're showing me the Mazda CX-5. What is this?",
+      "timestamp": "2026-10-01T22:44:21.228Z"
+    },
+    {
+      "role": "replica",
+      "text": "I completely understand your frustration, and I appreciate your patience. Unfortunately, I only have the information on the Mazda CX-5 for finance and insurance options. If you need detailed information on the Mercedes Maybach, I recommend reaching out to the dealership directly or the finance department handling the Maybach purchase. Is there anything else I can assist you with related to the Mazda or any other questions you might have?",
+      "timestamp": "2026-10-01T22:44:21.351Z"
+    },
+    {
+      "role": "pal",
+      "text": "I completely understand your frustration, and I appreciate your patience. Unfortunately, I only have the information on the Mazda CX-5 for finance and insurance options. If you need detailed information on the Mercedes Maybach, I recommend reaching out to the dealership directly or the finance department handling the Maybach purchase. Is there anything else I can assist you with related to the Mazda or any other questions you might have?",
+      "timestamp": "2026-10-01T22:44:21.484Z"
+    }
+  ]
+}

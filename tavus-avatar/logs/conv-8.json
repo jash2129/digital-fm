@@ -1,0 +1,11 @@
+{
+  "conversationId": "conv-8",
+  "personaId": "persona-default",
+  "visitorId": "visitor-7",
+  "dealId": null,
+  "startTime": "2026-10-06T07:11:29.499Z",
+  "endTime": null,
+  "durationSeconds": null,
+  "status": "active",
+  "transcript": []
+}

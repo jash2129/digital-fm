@@ -1,0 +1,82 @@
+{
+  "conversationId": "c115807437791455",
+  "personaId": "pb0b08db38a9",
+  "visitorId": "3989d84c-2140-4a04-b393-49cb7ff3ae99",
+  "dealId": null,
+  "startTime": "2026-09-27T12:54:34.814Z",
+  "endTime": "2026-09-27T12:55:49.968Z",
+  "durationSeconds": 75,
+  "status": "completed",
+  "transcript": [
+    {
+      "role": "replica",
+      "text": "Hi there, congratulations on your new vehicle! I'm Max, the finance manager here — my job today is to walk you through a few protection options for your car and make sure you have all the information you need before anything gets signed. Before we get into that, what's your name?",
+      "timestamp": "2026-09-27T12:54:48.048Z"
+    },
+    {
+      "role": "pal",
+      "text": "Hi there, congratulations on your new vehicle! I'm Max, the finance manager here — my job today is to walk you through a few protection options for your car and make sure you have all the information you need before anything gets signed. Before we get into that, what's your name?",
+      "timestamp": "2026-09-27T12:54:48.215Z"
+    },
+    {
+      "role": "pal",
+      "text": "Great, James! Nice to meet you. Just to make sure I've got the right details, you're the one financing or purchasing the vehicle today, correct? And could you also confirm your address and a phone number we can have on file? And how's your experience been at the dealership so far?",
+      "timestamp": "2026-09-27T12:55:11.731Z"
+    },
+    {
+      "role": "replica",
+      "text": "Great, James! Nice to meet you. Just to make sure I've got the right details, you're the one financing or purchasing the vehicle today, correct? And could you also confirm your address and a phone number we can have on file? And how's your experience been at the dealership so far?",
+      "timestamp": "2026-09-27T12:55:11.806Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah. Yeah, myself is James.",
+      "timestamp": "2026-09-27T12:55:11.865Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah. Yeah, myself is James. That's not me. That's additional finance manager. We can change the avatars. Like, we have wide range of avatars here.",
+      "timestamp": "2026-09-27T12:55:22.736Z"
+    },
+    {
+      "role": "replica",
+      "text": "Alright, thanks for letting me know, James! So, just to make sure I've got everything correct, you're the one financing or purchasing the vehicle today, right? Can I also confirm your address and a phone number to keep on file? How's your experience been at the dealership so far?",
+      "timestamp": "2026-09-27T12:55:22.847Z"
+    },
+    {
+      "role": "pal",
+      "text": "Alright, thanks for letting me know, James! So, just to make sure I've got everything correct, you're the one financing or purchasing the vehicle today, right? Can I also confirm your address and a phone number to keep on file? How's your experience been at the dealership so far?",
+      "timestamp": "2026-09-27T12:55:23.197Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah. Yeah, myself is James. That's not me. That's additional finance manager. We can change the avatars. Like, we have wide range of avatars here. Can you able to see my screen?",
+      "timestamp": "2026-09-27T12:55:25.102Z"
+    },
+    {
+      "role": "replica",
+      "text": "I can't see your screen, but I can help you with the protection options for your vehicle. Could you let me know how your experience at the dealership has been so far?",
+      "timestamp": "2026-09-27T12:55:25.268Z"
+    },
+    {
+      "role": "pal",
+      "text": "I can't see your screen, but I can help you with the protection options for your vehicle. Could you let me know how your experience at the dealership has been so far?",
+      "timestamp": "2026-09-27T12:55:25.366Z"
+    },
+    {
+      "role": "user",
+      "text": "So, wait. Let me stop this first.",
+      "timestamp": "2026-09-27T12:55:37.288Z"
+    },
+    {
+      "role": "replica",
+      "text": "No worries, James. Take your time. Just let me know when you're ready to continue!",
+      "timestamp": "2026-09-27T12:55:37.355Z"
+    },
+    {
+      "role": "pal",
+      "text": "No worries, James. Take your time. Just let me know when you're ready to continue!",
+      "timestamp": "2026-09-27T12:55:37.447Z"
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "conversationId": "cfdaaf0b4acf6478",
+  "personaId": "pedee15ef236",
+  "visitorId": "3989d84c-2140-4a04-b393-49cb7ff3ae99",
+  "dealId": null,
+  "startTime": "2026-10-06T11:58:56.415Z",
+  "endTime": "2026-10-06T12:00:18.058Z",
+  "durationSeconds": 82,
+  "status": "completed",
+  "transcript": [
+    {
+      "role": "pal",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-06T11:59:00.938Z"
+    },
+    {
+      "role": "replica",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-06T11:59:00.945Z"
+    },
+    {
+      "role": "user",
+      "text": "Hey.",
+      "timestamp": "2026-10-06T11:59:11.734Z"
+    },
+    {
+      "role": "replica",
+      "text": "Hey there! How was your drive in the Mazda CX-5? Did you get a good feel for how it handles?",
+      "timestamp": "2026-10-06T11:59:11.785Z"
+    },
+    {
+      "role": "pal",
+      "text": "Hey there! How was your drive in the Mazda CX-5? Did you get a good feel for how it handles?",
+      "timestamp": "2026-10-06T11:59:11.825Z"
+    },
+    {
+      "role": "user",
+      "text": "Awesome.",
+      "timestamp": "2026-10-06T11:59:22.937Z"
+    },
+    {
+      "role": "replica",
+      "text": "Awesome! I’m glad to hear that. Well, before I start, I just want to let you know this transaction is recorded audio and video. And I'm required by law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-10-06T11:59:22.978Z"
+    },
+    {
+      "role": "pal",
+      "text": "Awesome! I’m glad to hear that. Well, before I start, I just want to let you know this transaction is recorded audio and video. And I'm required by law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-10-06T11:59:23.014Z"
+    },
+    {
+      "role": "user",
+      "text": "Okay.",
+      "timestamp": "2026-10-06T11:59:43.111Z"
+    },
+    {
+      "role": "user",
+      "text": "Is that, uh, disclosure you're saying?",
+      "timestamp": "2026-10-06T12:00:08.215Z"
+    },
+    {
+      "role": "replica",
+      "text": "Yes, that's right. It's just a standard process to make sure everything is clear and fully understood before any paperwork is signed. Speaking of paperwork, first I see that you agreed to buy a new 2026 Mazda CX-5. Now, I have a few questions before I prepare the paperwork. Have you got the chance to drive the vehicle that you are buying?",
+      "timestamp": "2026-10-06T12:00:08.258Z"
+    },
+    {
+      "role": "pal",
+      "text": "Yes, that's right. It's just a standard process to make sure everything is clear and fully understood before any paperwork is signed. Speaking of paperwork, first I see that you agreed to buy a new 2026 Mazda CX-5. Now, I have a few questions before I prepare the paperwork. Have you got the chance to drive the vehicle that you are buying?",
+      "timestamp": "2026-10-06T12:00:08.298Z"
+    }
+  ]
+}

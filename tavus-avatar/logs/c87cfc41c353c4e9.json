@@ -1,0 +1,37 @@
+{
+  "conversationId": "c87cfc41c353c4e9",
+  "personaId": "pedee15ef236",
+  "visitorId": "68ab16ae-e4c0-4974-a2a7-aaff45a92ce9",
+  "dealId": null,
+  "startTime": "2026-10-07T11:29:52.088Z",
+  "endTime": "2026-10-07T11:31:20.251Z",
+  "durationSeconds": 88,
+  "status": "completed",
+  "transcript": [
+    {
+      "role": "replica",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-07T11:29:56.328Z"
+    },
+    {
+      "role": "pal",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-07T11:29:56.375Z"
+    },
+    {
+      "role": "user",
+      "text": "Hi Max, hi Max. Uh, as I can hear you, and what is this about?",
+      "timestamp": "2026-10-07T11:30:14.522Z"
+    },
+    {
+      "role": "replica",
+      "text": "I'm just going over your vehicle paperwork and reviewing the factory warranty on your new car before you finalize everything. Let's dive right in. Before I start, I just want to let you know this transaction is recorded audio and video. Also, I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-10-07T11:30:14.590Z"
+    },
+    {
+      "role": "pal",
+      "text": "I'm just going over your vehicle paperwork and reviewing the factory warranty on your new car before you finalize everything. Let's dive right in. Before I start, I just want to let you know this transaction is recorded audio and video. Also, I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-10-07T11:30:14.624Z"
+    }
+  ]
+}

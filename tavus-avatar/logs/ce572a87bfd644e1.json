@@ -1,0 +1,132 @@
+{
+  "conversationId": "ce572a87bfd644e1",
+  "personaId": "pedee15ef236",
+  "visitorId": "68ab16ae-e4c0-4974-a2a7-aaff45a92ce9",
+  "dealId": null,
+  "startTime": "2026-10-01T21:14:17.124Z",
+  "endTime": "2026-10-01T21:17:32.979Z",
+  "durationSeconds": 196,
+  "status": "completed",
+  "transcript": [
+    {
+      "role": "pal",
+      "text": "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!",
+      "timestamp": "2026-10-01T21:14:23.278Z"
+    },
+    {
+      "role": "replica",
+      "text": "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!",
+      "timestamp": "2026-10-01T21:14:23.285Z"
+    },
+    {
+      "role": "user",
+      "text": "Yes.",
+      "timestamp": "2026-10-01T21:14:33.278Z"
+    },
+    {
+      "role": "replica",
+      "text": "Awesome, really glad to hear that! Before I start, I just want to let you know this transaction is recorded audio and video. Also, I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-10-01T21:14:35.230Z"
+    },
+    {
+      "role": "pal",
+      "text": "Awesome, really glad to hear that! Before I start, I just want to let you know this transaction is recorded audio and video. Also, I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first, okay?",
+      "timestamp": "2026-10-01T21:14:35.280Z"
+    },
+    {
+      "role": "user",
+      "text": "Okay.",
+      "timestamp": "2026-10-01T21:14:53.211Z"
+    },
+    {
+      "role": "pal",
+      "text": "First, I see that you agreed to buy a new 2026 Mazda CX-5. A few questions before I prepare the paperwork. Have you got the chance to drive the vehicle that you are buying?",
+      "timestamp": "2026-10-01T21:14:54.519Z"
+    },
+    {
+      "role": "replica",
+      "text": "First, I see that you agreed to buy a new 2026 Mazda CX-5. A few questions before I prepare the paperwork. Have you got the chance to drive the vehicle that you are buying?",
+      "timestamp": "2026-10-01T21:14:54.600Z"
+    },
+    {
+      "role": "user",
+      "text": "Mm-hm. Yeah, I got.",
+      "timestamp": "2026-10-01T21:15:11.354Z"
+    },
+    {
+      "role": "pal",
+      "text": "Great to hear! When you came back from the test drive, did the salesperson do the walkaround and show you all the features and bells and whistles in the car?",
+      "timestamp": "2026-10-01T21:15:12.731Z"
+    },
+    {
+      "role": "replica",
+      "text": "Great to hear! When you came back from the test drive, did the salesperson do the walkaround and show you all the features and bells and whistles in the car?",
+      "timestamp": "2026-10-01T21:15:12.793Z"
+    },
+    {
+      "role": "user",
+      "text": "Yeah.",
+      "timestamp": "2026-10-01T21:15:24.935Z"
+    },
+    {
+      "role": "pal",
+      "text": "Perfect! And what's your understanding of the warranty that comes with the vehicle? Did the salesperson go over everything with you?",
+      "timestamp": "2026-10-01T21:15:26.241Z"
+    },
+    {
+      "role": "replica",
+      "text": "Perfect! And what's your understanding of the warranty that comes with the vehicle? Did the salesperson go over everything with you?",
+      "timestamp": "2026-10-01T21:15:26.279Z"
+    },
+    {
+      "role": "user",
+      "text": "No.",
+      "timestamp": "2026-10-01T21:15:35.535Z"
+    },
+    {
+      "role": "replica",
+      "text": "Got it, no problem at all. I’ll personally make sure our team does a complete walk-around and shows you all those tech features before you leave with the keys today. I completely understand and I respect your time! By law, before you sign, I'm just required to go over what the manufacturer warranty does and doesn’t cover so there are no surprises. \n\nThere is actually more information about the warranty I need to go over with you to make sure you do understand everything. Mazda is like any other manufacturer when they build a vehicle, they put warranty in it. In your case, you get two different warranties, not one. The first warranty is three years thirty-six thousand miles base limited warranty. The second is five years sixty thousand miles powertrain, which is referring to the engine and the transmission. I'm sure you and I agree that’s a very good complementary warranty from the manufacturer, but what you do not know is that this warranty is a defect only, stated in the manual book of the vehicle. In the glove box, page number four says that this warranty from the manufacturer is against anything that is misdesigned, misbuilt, or misinstalled. \n\nAre you with me so far?",
+      "timestamp": "2026-10-01T21:15:38.569Z"
+    },
+    {
+      "role": "pal",
+      "text": "Got it, no problem at all. I’ll personally make sure our team does a complete walk-around and shows you all those tech features before you leave with the keys today. I completely understand and I respect your time! By law, before you sign, I'm just required to go over what the manufacturer warranty does and doesn’t cover so there are no surprises. \n\nThere is actually more information about the warranty I need to go over with you to make sure you do understand everything. Mazda is like any other manufacturer when they build a vehicle, they put warranty in it. In your case, you get two different warranties, not one. The first warranty is three years thirty-six thousand miles base limited warranty. The second is five years sixty thousand miles powertrain, which is referring to the engine and the transmission. I'm sure you and I agree that’s a very good complementary warranty from the manufacturer, but what you do not know is that this warranty is a defect only, stated in the manual book of the vehicle. In the glove box, page number four says that this warranty from the manufacturer is against anything that is misdesigned, misbuilt, or misinstalled. \n\nAre you with me so far?",
+      "timestamp": "2026-10-01T21:15:38.824Z"
+    },
+    {
+      "role": "user",
+      "text": "Can you explain what exactly is 36,000 miles I get?",
+      "timestamp": "2026-10-01T21:16:26.979Z"
+    },
+    {
+      "role": "user",
+      "text": "Can you explain what exactly is 36,000 miles I get? Can you explain in detail about it?",
+      "timestamp": "2026-10-01T21:16:29.453Z"
+    },
+    {
+      "role": "replica",
+      "text": "Absolutely, I can clarify that for you! The three years thirty-six thousand mile warranty means that for three years from the date of purchase, or until the vehicle reaches thirty-six thousand miles — whichever comes first — you're covered for certain defects in materials or workmanship. \n\nThis warranty typically covers parts like the engine and transmission. It's important to note that it's a defect-only warranty, meaning it will cover issues that arise from manufacturing defects, but not problems caused by wear and tear, accidents, or regular maintenance needed over time. \n\nNow, does that help clear things up?",
+      "timestamp": "2026-10-01T21:16:31.405Z"
+    },
+    {
+      "role": "pal",
+      "text": "Absolutely, I can clarify that for you! The three years thirty-six thousand mile warranty means that for three years from the date of purchase, or until the vehicle reaches thirty-six thousand miles — whichever comes first — you're covered for certain defects in materials or workmanship. \n\nThis warranty typically covers parts like the engine and transmission. It's important to note that it's a defect-only warranty, meaning it will cover issues that arise from manufacturing defects, but not problems caused by wear and tear, accidents, or regular maintenance needed over time. \n\nNow, does that help clear things up?",
+      "timestamp": "2026-10-01T21:16:31.468Z"
+    },
+    {
+      "role": "user",
+      "text": "No.",
+      "timestamp": "2026-10-01T21:17:11.067Z"
+    },
+    {
+      "role": "replica",
+      "text": "I hear you, and I'm sorry for any confusion. Let me break it down a bit more. The warranty covers the vehicle for defects — things that were wrong with it from the start or issues that happen due to the way it was made. \n\nIf something goes wrong with the engine or transmission during that time, and it’s due to a defect, the warranty will cover the repairs or replacement at no cost to you. What it won't cover are issues that come up just from using the car over time or any accidents.\n\nDoes that help clarify things a bit more for you?",
+      "timestamp": "2026-10-01T21:17:12.807Z"
+    },
+    {
+      "role": "pal",
+      "text": "I hear you, and I'm sorry for any confusion. Let me break it down a bit more. The warranty covers the vehicle for defects — things that were wrong with it from the start or issues that happen due to the way it was made. \n\nIf something goes wrong with the engine or transmission during that time, and it’s due to a defect, the warranty will cover the repairs or replacement at no cost to you. What it won't cover are issues that come up just from using the car over time or any accidents.\n\nDoes that help clarify things a bit more for you?",
+      "timestamp": "2026-10-01T21:17:12.901Z"
+    }
+  ]
+}

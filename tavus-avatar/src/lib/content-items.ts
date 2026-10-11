@@ -1,79 +1,28 @@
-import { isFinanceEvent } from "@/lib/event";
+/**
+ * Digital Finance Manager (DFM) Presentation Content Items
+ * Maps tool call arguments and conversational aliases to presentation overlays.
+ */
 
-const AWS_CONTENT_ITEMS = {
-  aws_voice_ai_overview: {
-    url: "/content/aws-voice-ai",
-    label: "AWS Voice AI Overview",
+export const FINANCE_CONTENT_ITEMS = {
+  warranty_terms: {
+    url: "/content/warranty-terms",
+    label: "Factory Warranty Terms",
   },
-  guidance_voice_agents_aws: {
-    url: "/content/guidance-voice-agents-aws",
-    label: "Guidance for Voice Agents on AWS",
+  cost_breakdown: {
+    url: "/content/cost-breakdown",
+    label: "Repair Cost Breakdown",
   },
-  common_use_cases: {
-    url: "/content/common-use-cases",
-    label: "Voice AI Use Cases by Industry",
+  four_square: {
+    url: "/content/four-square",
+    label: "Digital Four Square Menu",
   },
-} as const;
-
-const AWS_CONTENT_ITEM_ALIASES: Record<keyof typeof AWS_CONTENT_ITEMS, string[]> = {
-  aws_voice_ai_overview: [
-    "aws_voice_ai_overview",
-    "aws voice ai overview",
-    "aws ai overview",
-    "aws overview",
-    "voice ai overview",
-    "aws voice overview",
-  ],
-  guidance_voice_agents_aws: [
-    "guidance_voice_agents_aws",
-    "guidance for voice agents",
-    "guidance for voice agents on aws",
-    "voice agents guidance",
-    "voice agent guidance aws",
-    "aws guidance",
-    "aws voice agent guidance",
-    "sample voice agent",
-    "architecture diagram",
-    "reference architecture",
-    "diagram",
-    "the diagram",
-    "show diagram",
-    "voice agent architecture",
-  ],
-  common_use_cases: [
-    "common_use_cases",
-    "common use cases",
-    "use cases",
-    "use cases by industry",
-    "industry use cases",
-    "voice ai use cases",
-    "what industries",
-    "industry examples",
-    "show use cases",
-    "use case examples",
-  ],
-};
-
-const FINANCE_CONTENT_ITEMS = {
-  pricing_gap: {
-    url: "/content/pricing-gap",
-    label: "GAP Coverage",
+  pricing_ladder: {
+    url: "/content/pricing-ladder",
+    label: "Protection Investment Summary",
   },
-  pricing_vsc: {
-    url: "/content/pricing-vsc",
-    label: "10-Year Bumper-to-Bumper",
-  },
-  pricing_tire_wheel: {
-    url: "/content/pricing-tire-wheel",
-    label: "Tire & Wheel Coverage",
-  },
-  pricing_maintenance: {
-    url: "/content/pricing-maintenance",
-    label: "Maintenance Plan",
-  },
-  payment_breakdown: {
-    url: "/content/payment-breakdown",
-    label: "Payment Breakdown",
+  deal_summary: {
+    url: "/content/deal-summary",
+    label: "Deal Summary & Agreement",
   },
   escalate_to_human: {
     url: "/content/escalate",
@@ -81,44 +30,86 @@ const FINANCE_CONTENT_ITEMS = {
   },
 } as const;
 
-const FINANCE_CONTENT_ITEM_ALIASES: Record<keyof typeof FINANCE_CONTENT_ITEMS, string[]> = {
-  pricing_gap: ["pricing_gap", "gap", "gap insurance", "gap coverage", "gap pricing", "show gap"],
-  pricing_vsc: [
-    "pricing_vsc",
+export type ContentItemKey = keyof typeof FINANCE_CONTENT_ITEMS;
+
+export const CONTENT_ITEMS: Record<ContentItemKey, { url: string; label: string }> = FINANCE_CONTENT_ITEMS;
+
+export const FINANCE_CONTENT_ITEM_ALIASES: Record<ContentItemKey, string[]> = {
+  warranty_terms: [
+    "warranty_terms",
+    "warranty terms",
+    "factory warranty",
+    "manufacturer warranty",
+    "bumper to bumper warranty",
+    "powertrain warranty",
+    "defect only",
+    "show warranty",
+    "warranty",
+    "warranties",
+    "coverage terms",
+    "page 4",
+  ],
+  cost_breakdown: [
+    "cost_breakdown",
+    "cost breakdown",
+    "repair costs",
+    "repair cost breakdown",
+    "wear and tear",
+    "what things cost",
+    "show cost breakdown",
+    "show repair costs",
+    "breakdown costs",
+    "climate costs",
+    "labor rate",
+  ],
+  four_square: [
+    "four_square",
+    "four square",
+    "protection menu",
+    "protection plan",
+    "protection package",
+    "bundled package",
+    "4 square",
+    "four products",
+    "products",
+    "menu",
+    "all products",
+    "blanket cover",
+    "grid",
     "vsc",
-    "bumper to bumper",
-    "bumper-to-bumper",
-    "vehicle service contract",
-    "extended service contract",
-    "service contract",
-    "vsc pricing",
-  ],
-  pricing_tire_wheel: [
-    "pricing_tire_wheel",
-    "tire and wheel",
-    "tire & wheel",
-    "tire wheel coverage",
-    "tires and wheels",
-    "show tire and wheel",
-  ],
-  pricing_maintenance: [
-    "pricing_maintenance",
+    "tire_wheel",
     "maintenance",
-    "maintenance plan",
-    "prepaid maintenance",
-    "maintenance pricing",
-    "show maintenance",
+    "gap",
+    "tires",
+    "oil change",
   ],
-  payment_breakdown: [
-    "payment_breakdown",
-    "payment breakdown",
+  pricing_ladder: [
+    "pricing_ladder",
+    "pricing ladder",
+    "pricing",
+    "ladder",
+    "negotiation ladder",
+    "tiers",
+    "discount ladder",
+    "investment summary",
+    "daily rate",
+    "coffee comparison",
+    "starbucks",
     "monthly payment",
-    "daily payment",
-    "payment comparison",
-    "show payment",
-    "show payments",
-    "the offer",
-    "show the price",
+    "rates",
+  ],
+  deal_summary: [
+    "deal_summary",
+    "deal summary",
+    "summary",
+    "verbal close",
+    "close summary",
+    "agreed package",
+    "final summary",
+    "confirmation",
+    "agreement",
+    "verbal close summary",
+    "closed deal",
   ],
   escalate_to_human: [
     "escalate_to_human",
@@ -128,21 +119,14 @@ const FINANCE_CONTENT_ITEM_ALIASES: Record<keyof typeof FINANCE_CONTENT_ITEMS, s
     "talk to someone else",
     "manager",
     "speak to a person",
+    "escalate",
+    "floor breach",
   ],
 };
 
-export type ContentItemKey = keyof typeof AWS_CONTENT_ITEMS | keyof typeof FINANCE_CONTENT_ITEMS;
+const CONTENT_ITEM_ALIASES: Record<ContentItemKey, string[]> = FINANCE_CONTENT_ITEM_ALIASES;
 
-export const CONTENT_ITEMS = (isFinanceEvent() ? FINANCE_CONTENT_ITEMS : AWS_CONTENT_ITEMS) as Record<
-  ContentItemKey,
-  { url: string; label: string }
->;
-const CONTENT_ITEM_ALIASES = (
-  isFinanceEvent() ? FINANCE_CONTENT_ITEM_ALIASES : AWS_CONTENT_ITEM_ALIASES
-) as Record<ContentItemKey, string[]>;
-export const DEFAULT_CONTENT_ITEM_KEY: ContentItemKey = Object.keys(
-  CONTENT_ITEMS,
-)[0] as ContentItemKey;
+export const DEFAULT_CONTENT_ITEM_KEY: ContentItemKey = "warranty_terms";
 
 function normalizeContentKey(value: string) {
   return value
@@ -159,10 +143,6 @@ export function isContentItemKey(value: string): value is ContentItemKey {
 
 export function resolveContentItemKey(value?: unknown): ContentItemKey | null {
   if (typeof value !== "string" || value.trim().length === 0) {
-    if (Object.keys(CONTENT_ITEMS).length === 1) {
-      return DEFAULT_CONTENT_ITEM_KEY;
-    }
-
     return null;
   }
 
@@ -187,10 +167,6 @@ export function resolveContentItemKey(value?: unknown): ContentItemKey | null {
 
   if (matchedEntry) {
     return matchedEntry[0];
-  }
-
-  if (Object.keys(CONTENT_ITEMS).length === 1) {
-    return DEFAULT_CONTENT_ITEM_KEY;
   }
 
   return null;

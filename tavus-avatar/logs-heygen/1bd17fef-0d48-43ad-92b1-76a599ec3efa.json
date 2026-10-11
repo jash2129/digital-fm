@@ -1,0 +1,44 @@
+{
+  "sessionId": "1bd17fef-0d48-43ad-92b1-76a599ec3efa",
+  "engine": "heygen-grok",
+  "avatarId": "heygen-liveavatar",
+  "avatarName": "Max (Consultant Fallback - Custom Avatar Deploying)",
+  "startTime": "2026-10-08T17:48:10.454Z",
+  "endTime": "2026-10-08T17:49:00.767Z",
+  "durationSeconds": 50,
+  "status": "completed",
+  "productsCovered": [],
+  "finalDailyRate": 4,
+  "transcript": [
+    {
+      "role": "assistant",
+      "text": "Hey there! Can you hear and see me alright? Welcome in — I'm Max, your finance manager today!",
+      "timestamp": "2026-10-08T17:49:00.767Z"
+    },
+    {
+      "role": "user",
+      "text": "Hey there, can you hear and see me Alright? Welcome in. I'm Max, your finance manager today.",
+      "timestamp": "2026-10-08T17:49:00.767Z"
+    },
+    {
+      "role": "user",
+      "text": "Max, how are you?",
+      "timestamp": "2026-10-08T17:49:00.767Z"
+    },
+    {
+      "role": "user",
+      "text": "Hello.",
+      "timestamp": "2026-10-08T17:49:00.767Z"
+    },
+    {
+      "role": "user",
+      "text": "Are you there?",
+      "timestamp": "2026-10-08T17:49:00.767Z"
+    },
+    {
+      "role": "user",
+      "text": "Hello.",
+      "timestamp": "2026-10-08T17:49:00.767Z"
+    }
+  ]
+}

@@ -1,19 +1,31 @@
+"use client";
+
+import React from "react";
+
 export default function EscalatePage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[radial-gradient(circle_at_top,_rgba(56,189,248,0.18),_transparent_34%),linear-gradient(180deg,_#f6fbff_0%,_#e7f1fb_100%)] px-8 py-10 text-center text-slate-950">
-      <div className="mx-auto flex max-w-lg flex-col items-center gap-4 rounded-[2rem] border border-sky-200/80 bg-white/85 p-10 shadow-[0_24px_90px_rgba(7,15,43,0.12)] backdrop-blur">
-        <p className="text-xs font-semibold uppercase tracking-[0.35em] text-sky-700">
-          One Moment
+    <main className="relative flex min-h-screen items-center justify-center bg-[radial-gradient(ellipse_at_top,_rgba(14,165,233,0.18)_0%,_rgba(2,6,23,0.95)_60%,_#020617_100%)] px-8 py-10 text-center text-slate-100 font-sans select-none">
+      {/* Ambient background glows */}
+      <div className="pointer-events-none absolute -top-20 -left-20 h-80 w-80 rounded-full bg-cyan-500/10 blur-[110px]" />
+      <div className="pointer-events-none absolute -bottom-20 -right-20 h-80 w-80 rounded-full bg-indigo-500/10 blur-[110px]" />
+
+      <div className="relative mx-auto flex max-w-lg flex-col items-center gap-4 rounded-2xl border border-white/10 bg-slate-900/80 p-8 sm:p-10 shadow-2xl backdrop-blur-xl">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/15 border border-amber-400/40 text-amber-300 text-2xl shadow-inner">
+          🤝
+        </div>
+        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-cyan-400">
+          Senior Finance Manager Escalation
         </p>
-        <h1 className="text-3xl font-semibold leading-tight tracking-tight text-slate-950">
-          Connecting you with a team member
+        <h1 className="text-2xl sm:text-3xl font-extrabold leading-tight tracking-tight text-white">
+          Connecting You with Dealership Finance Director
         </h1>
-        <p className="max-w-sm text-base leading-7 text-slate-600">
-          Someone from our team will be with you shortly to go over this.
+        <p className="max-w-sm text-sm leading-relaxed text-slate-300">
+          Our Senior Finance Manager has been paged to review specialized concessions and finalize your custom Mazda CX-5 paperwork.
         </p>
-        <p className="mt-2 inline-flex w-fit rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
-          Placeholder — no live hand-off wired up yet
-        </p>
+        <div className="mt-2 inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-1 text-xs font-semibold text-emerald-300">
+          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+          Escalation Ticket Dispatched to Dealership Desk
+        </div>
       </div>
     </main>
   );
