@@ -163,4 +163,22 @@ describe("Two-Agent Automated Call Testing (Agent 1 Max vs Agent 2 Customer Simu
       expect(turnWithRate.avatarText).not.toContain("APR");
     }
   });
+
+  it("Conversational Robustness: Evaluates compound preset variations ('Yeah, yeah, okay, go on') as progression", async () => {
+    const { classifyCustomerInputRuleBased } = await import("./beat-controller");
+    const compoundAffirmations = [
+      "Yeah, yeah, okay, go on",
+      "yeah go on",
+      "ok sure go ahead",
+      "sounds good to me",
+      "yep definitely carry on",
+      "alright continue",
+      "yes I did that",
+    ];
+
+    for (const phrase of compoundAffirmations) {
+      const classification = classifyCustomerInputRuleBased(phrase, 2);
+      expect(classification.intent).toBe("agree");
+    }
+  });
 });

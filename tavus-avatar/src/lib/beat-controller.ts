@@ -296,36 +296,67 @@ export function classifyCustomerInputRuleBased(
     return { intent: "tech_check_ack", topic_beat_ids: [] };
   }
 
-  // 9. Explicit Agree / Affirm
-  const agreeTokens = [
-    "yes",
-    "yeah",
-    "yep",
-    "sure",
-    "ok",
-    "okay",
-    "right",
-    "sounds good",
-    "continue",
-    "go on",
-    "makes sense",
-    "understood",
-    "i understand",
-    "i understood",
-    "with you",
-    "he did",
-    "i did",
-    "they did",
-    "we did",
-    "got it",
-    "i got",
-    "i have",
-  ];
-  if (agreeTokens.some((t) => norm === t || norm.startsWith(`${t} `) || norm.includes(` ${t} `) || norm.endsWith(` ${t}`))) {
+  // 9. Comprehensive Natural Affirmation / Progression
+  // Handles compound colloquial variations ("yeah, yeah, okay, go on", "ok sure sounds good", "carry on", etc.)
+  if (isAffirmativeOrProgression(norm)) {
     return { intent: "agree", topic_beat_ids: [] };
   }
 
   return { intent: "other", topic_beat_ids: [] };
+}
+
+/**
+ * Robust affirmative & conversational progression evaluator.
+ * Eliminates confusion with preset answers by recognizing any combination of natural affirmations.
+ */
+export function isAffirmativeOrProgression(norm: string): boolean {
+  const words = norm.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return false;
+
+  // Never treat tech check as sales affirmative
+  const techCheckPhrases = ["see you", "hear you", "can see", "can hear", "loud and clear"];
+  if (techCheckPhrases.some((tcp) => norm.includes(tcp))) return false;
+
+  // Explicit negations are NOT affirmations
+  const negationWords = new Set(["no", "not", "dont", "nope", "never", "stop", "wait", "hold"]);
+  if (words.some((w) => negationWords.has(w))) return false;
+
+  // Explicit questions asking for information or rates are NOT simple progression
+  const nonAffirmativeWords = new Set(["what", "why", "how", "who", "where", "when", "which", "rate", "apr", "cost", "price", "payment", "trade"]);
+  if (words.some((w) => nonAffirmativeWords.has(w))) return false;
+
+  // If the sentence starts with an affirmative anchor and has no questions/negations:
+  const affirmativeAnchors = ["yes", "yeah", "yep", "yup", "yea", "sure", "ok", "okay", "alright", "right", "sounds good", "go on", "go ahead"];
+  if (affirmativeAnchors.some((a) => norm === a || norm.startsWith(`${a} `))) {
+    return true;
+  }
+
+  // Full vocabulary of affirmative & progression tokens
+  const affirmativeVocabulary = new Set([
+    "yes", "yeah", "yep", "yup", "yea", "sure", "ok", "okay", "k",
+    "right", "alright", "all", "good", "sounds", "great", "fine", "cool",
+    "continue", "go", "on", "ahead", "proceed", "carry", "moving", "forward",
+    "makes", "sense", "understood", "understand", "with", "you",
+    "he", "she", "they", "we", "i", "did", "have", "got", "it", "that", "done", "already",
+    "drove", "test", "car", "vehicle",
+    "definitely", "absolutely", "please", "ready", "set", "perfect", "true", "to", "me"
+  ]);
+
+  if (words.every((w) => affirmativeVocabulary.has(w))) {
+    return true;
+  }
+
+  // Common multi-word progression phrases
+  const commonPhrases = [
+    "go on", "go ahead", "carry on", "sounds good", "makes sense",
+    "i understand", "i understood", "with you", "let's do it", "lets do it",
+    "all right", "all set", "take your time", "i drove it", "we drove it"
+  ];
+  if (commonPhrases.some((p) => norm.includes(p))) {
+    return true;
+  }
+
+  return false;
 }
 
 // LLM Classifier using fast model with temperature: 0
@@ -807,17 +838,25 @@ export async function processControllerTurn(
 
     case "other":
     default: {
-      // Speak nothing new, resume with the next undelivered beat
+      // Prepared for everything: Answer customer's question or off-script comment directly,
+      // then seamlessly bridge into the next undelivered beat
+      let dynamicAnswer = "";
+      const trimmed = customerTranscript.trim();
+      if (trimmed.length > 2) {
+        dynamicAnswer = await generateConstrainedOffScriptResponse(customerTranscript, state);
+      }
+
       const nextBeatId = state.current_beat + 1;
       if (nextBeatId <= 22) {
         state.current_beat = nextBeatId;
         state.delivered_beats.push(nextBeatId);
         const nextBeat = BEATS.find((b) => b.id === nextBeatId)!;
-        textToSpeak = getFullBeatUtterance(nextBeat, state.dealConfig);
+        const nextUtterance = getFullBeatUtterance(nextBeat, state.dealConfig);
+        textToSpeak = dynamicAnswer ? `${dynamicAnswer} ${nextUtterance}` : nextUtterance;
         beatType = nextBeat.type;
         toolCalls = getBeatToolCalls(nextBeatId);
       } else {
-        textToSpeak = HANDOFF_LINE;
+        textToSpeak = dynamicAnswer ? `${dynamicAnswer} ${HANDOFF_LINE}` : HANDOFF_LINE;
         state.is_stopped = true;
         beatType = "stop";
       }
