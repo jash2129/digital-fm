@@ -44,6 +44,7 @@ export type ClassifierIntent =
   | "restart_request"
   | "human_request"
   | "ai_question"
+  | "tech_check_ack"
   | "other";
 
 export interface ClassificationResult {
@@ -278,6 +279,23 @@ export function classifyCustomerInputRuleBased(
     return { intent: "no", topic_beat_ids: [] };
   }
 
+  // 8.5. Tech check & video/audio connection confirmation (e.g. "I can see you", "Yeah I can see you", "Loud and clear")
+  // MUST NOT advance sales script beats (e.g. Qualifying questions)
+  const isTechCheckPhrase =
+    norm.includes("see you") ||
+    norm.includes("hear you") ||
+    norm.includes("hear and see") ||
+    norm.includes("see and hear") ||
+    norm.includes("loud and clear") ||
+    norm.includes("can see") ||
+    norm.includes("can hear") ||
+    norm.includes("i see you") ||
+    norm.includes("i hear you");
+
+  if (isTechCheckPhrase) {
+    return { intent: "tech_check_ack", topic_beat_ids: [] };
+  }
+
   // 9. Explicit Agree / Affirm
   const agreeTokens = [
     "yes",
@@ -405,8 +423,17 @@ export async function generateStep0Turn(
   step0Turns: number,
   dealConfig = DEFAULT_DEAL_CONFIG
 ): Promise<{ text: string; moveToBeat1: boolean }> {
-  // Turn 1: customer confirmed audio/video ("i can see you", "yes", etc.) -> build rapport & deliver formal greeting
-  if (step0Turns <= 1) {
+  const norm = customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+  const isTechAck =
+    norm.includes("see you") ||
+    norm.includes("hear you") ||
+    norm.includes("loud and clear") ||
+    norm.includes("can see") ||
+    norm.includes("can hear");
+
+  // Turn 1 (or repeated tech acknowledgment): customer confirmed audio/video ("i can see you", "yes", etc.)
+  // Build rapport & deliver formal greeting asking how their experience was
+  if (step0Turns <= 1 || isTechAck) {
     let rapportText = STEP_0_RAPPORT_LINE;
     rapportText = rapportText.replace(/\{\{vehicle_year\}\}/g, dealConfig.vehicle_year);
     rapportText = rapportText.replace(/\{\{vehicle_make\}\}/g, dealConfig.vehicle_make);
@@ -759,6 +786,21 @@ export async function processControllerTurn(
         textToSpeak = `${AI_DISCLOSURE_LINE} ${HANDOFF_LINE}`;
         state.is_stopped = true;
         beatType = "stop";
+      }
+      break;
+    }
+
+    case "tech_check_ack": {
+      // Customer confirmed tech check / video / audio status.
+      // Do NOT advance script beats. Re-prompt current beat question politely.
+      const currentBeat = BEATS.find((b) => b.id === state.current_beat);
+      if (currentBeat) {
+        const currentUtterance = getFullBeatUtterance(currentBeat, state.dealConfig);
+        textToSpeak = `Great! ${currentUtterance}`;
+        beatType = currentBeat.type;
+      } else {
+        textToSpeak = "Great, glad the audio and video are working well!";
+        beatType = "wait";
       }
       break;
     }

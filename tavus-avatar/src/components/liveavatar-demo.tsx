@@ -632,27 +632,21 @@ export function LiveAvatarDemo() {
 
       setLatestUserTranscript(currentSpoken);
 
-      // 3. Faster end-of-speech detection:
-      // Uses END_OF_SPEECH_MS (650ms), does not wait for Chrome's own final result.
+      // 3. Debounced end-of-speech detection:
+      // Uses natural silence pause so multi-word sentences (e.g. "Yeah, I can see you") are never fragmented into separate turns
       if (silenceEndTimerRef.current) clearTimeout(silenceEndTimerRef.current);
+      const delayMs = finalTranscript.trim() ? 250 : SPEED_AND_BARGE_IN_CONFIG.END_OF_SPEECH_MS;
       silenceEndTimerRef.current = setTimeout(() => {
-        const spoken = (interimText || finalTranscript || currentSpoken).trim();
+        const spoken = (finalTranscript || interimText || currentSpoken).trim();
         if (spoken.length > 0 && !isGrokProcessingRef.current) {
           console.log(
-            `[speech-recognition] Fast silence timeout (${SPEED_AND_BARGE_IN_CONFIG.END_OF_SPEECH_MS}ms) fired turn dispatch:`,
+            `[speech-recognition] Speech silence timeout (${delayMs}ms) fired turn dispatch:`,
             spoken
           );
           setIsUserSpeaking(false);
           void sendToGrok(spoken);
         }
-      }, SPEED_AND_BARGE_IN_CONFIG.END_OF_SPEECH_MS);
-
-      // If finalTranscript arrives earlier, dispatch immediately
-      if (finalTranscript.trim() && !isGrokProcessingRef.current) {
-        if (silenceEndTimerRef.current) clearTimeout(silenceEndTimerRef.current);
-        setIsUserSpeaking(false);
-        void sendToGrok(finalTranscript.trim());
-      }
+      }, delayMs);
     };
 
     let restartTimer: any = null;
