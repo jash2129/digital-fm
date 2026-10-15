@@ -261,7 +261,10 @@ export function classifyCustomerInputRuleBased(
     norm === "not really" ||
     norm === "i don t understand" ||
     norm.startsWith("no ") ||
-    norm.endsWith(" no")
+    norm.endsWith(" no") ||
+    norm.includes(" no ") ||
+    norm.includes("still no") ||
+    norm.includes("no thanks")
   ) {
     return { intent: "no", topic_beat_ids: [] };
   }
