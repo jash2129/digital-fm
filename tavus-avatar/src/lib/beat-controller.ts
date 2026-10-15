@@ -8,6 +8,8 @@ import {
   HANDOFF_LINE,
   AI_DISCLOSURE_LINE,
   STEP_0_GREETING,
+  STEP_0_RAPPORT_LINE,
+  STEP_0_TRANSITION_LINE,
 } from "./max-lines";
 
 export interface Beat {
@@ -59,8 +61,15 @@ export interface ControllerDecision {
   isScriptComplete?: boolean;
 }
 
-// In-memory session state store for controller turns
-const activeStates = new Map<string, CallState>();
+// In-memory session state store for controller turns persisted across Next.js dev reloads
+const globalForBeatController = globalThis as unknown as {
+  activeStates?: Map<string, CallState>;
+};
+export const activeStates =
+  globalForBeatController.activeStates ?? new Map<string, CallState>();
+if (process.env.NODE_ENV !== "production") {
+  globalForBeatController.activeStates = activeStates;
+}
 
 export function getOrCreateCallState(sessionId: string, dealConfig = DEFAULT_DEAL_CONFIG): CallState {
   if (!activeStates.has(sessionId)) {
@@ -270,7 +279,30 @@ export function classifyCustomerInputRuleBased(
   }
 
   // 9. Explicit Agree / Affirm
-  const agreeTokens = ["yes", "yeah", "yep", "sure", "ok", "okay", "right", "sounds good", "continue", "go on", "makes sense", "understood", "i understand", "with you"];
+  const agreeTokens = [
+    "yes",
+    "yeah",
+    "yep",
+    "sure",
+    "ok",
+    "okay",
+    "right",
+    "sounds good",
+    "continue",
+    "go on",
+    "makes sense",
+    "understood",
+    "i understand",
+    "i understood",
+    "with you",
+    "he did",
+    "i did",
+    "they did",
+    "we did",
+    "got it",
+    "i got",
+    "i have",
+  ];
   if (agreeTokens.some((t) => norm === t || norm.startsWith(`${t} `) || norm.includes(` ${t} `) || norm.endsWith(` ${t}`))) {
     return { intent: "agree", topic_beat_ids: [] };
   }
@@ -283,9 +315,15 @@ export async function classifyWithLLM(
   customerTranscript: string,
   state: CallState
 ): Promise<ClassificationResult> {
+  // Ultra-Fast Fast-Path: Deterministically classify common affirmations, objections, and standard requests in <1ms without remote LLM roundtrip lag
+  const fastRuleResult = classifyCustomerInputRuleBased(customerTranscript, state.current_beat);
+  if (fastRuleResult.intent !== "other") {
+    return fastRuleResult;
+  }
+
   const apiKey = process.env.XAI_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
-    return classifyCustomerInputRuleBased(customerTranscript, state.current_beat);
+    return fastRuleResult;
   }
 
   const isXai = Boolean(process.env.XAI_API_KEY);
@@ -343,7 +381,7 @@ Otherwise: []`;
     });
 
     if (!res.ok) {
-      return classifyCustomerInputRuleBased(customerTranscript, state.current_beat);
+      return fastRuleResult;
     }
 
     const data = await res.json();
@@ -357,42 +395,31 @@ Otherwise: []`;
     };
   } catch (err) {
     console.warn("[beat-controller] LLM classification error, falling back to rule-based:", err);
-    return classifyCustomerInputRuleBased(customerTranscript, state.current_beat);
+    return fastRuleResult;
   }
 }
 
-// Step 0 Natural Exchange Generator (max 2 short turns, strictly limited, no products/coverage/options)
+// Step 0 Dynamic Rapport Generator (CONTEXT_RULES.md Stage 0 & Step 1)
 export async function generateStep0Turn(
   customerTranscript: string,
-  step0Turns: number
+  step0Turns: number,
+  dealConfig = DEFAULT_DEAL_CONFIG
 ): Promise<{ text: string; moveToBeat1: boolean }> {
-  // If user clearly confirms audio/video ("Yes, I can hear you", "All good", "Loud and clear")
-  // or reached maximum 2 turns:
-  if (step0Turns >= 1) {
+  // Turn 1: customer confirmed audio/video ("i can see you", "yes", etc.) -> build rapport & deliver formal greeting
+  if (step0Turns <= 1) {
+    let rapportText = STEP_0_RAPPORT_LINE;
+    rapportText = rapportText.replace(/\{\{vehicle_year\}\}/g, dealConfig.vehicle_year);
+    rapportText = rapportText.replace(/\{\{vehicle_make\}\}/g, dealConfig.vehicle_make);
+    rapportText = rapportText.replace(/\{\{vehicle_model\}\}/g, dealConfig.vehicle_model);
     return {
-      text: "",
-      moveToBeat1: true,
+      text: formatSpeechText(rapportText),
+      moveToBeat1: false,
     };
   }
 
-  const norm = customerTranscript.toLowerCase();
-  if (
-    norm.includes("yes") ||
-    norm.includes("yeah") ||
-    norm.includes("hear you") ||
-    norm.includes("see you") ||
-    norm.includes("all good") ||
-    norm.includes("loud and clear")
-  ) {
-    return {
-      text: "",
-      moveToBeat1: true,
-    };
-  }
-
-  // Short natural greeting acknowledgment without products/coverage/options
+  // Turn 2: customer answered rapport question ("it was great", "good", "fine", etc.) -> smooth transition into Beat 1 Legal Disclosure
   return {
-    text: "Great to connect with you today.",
+    text: STEP_0_TRANSITION_LINE,
     moveToBeat1: true,
   };
 }
@@ -536,13 +563,13 @@ export async function processControllerTurn(
   // ===========================================================================
   if (!state.step0_completed) {
     state.step0_turns++;
-    const step0Result = await generateStep0Turn(customerTranscript, state.step0_turns);
+    const step0Result = await generateStep0Turn(customerTranscript, state.step0_turns, state.dealConfig);
 
     if (step0Result.moveToBeat1) {
       state.step0_completed = true;
       state.current_beat = 1;
       const beat1 = BEATS.find((b) => b.id === 1)!;
-      const utterance = getFullBeatUtterance(beat1, state.dealConfig);
+      const utterance = step0Result.text || getFullBeatUtterance(beat1, state.dealConfig);
       state.last_spoken_text = utterance;
       state.delivered_beats.push(1);
 

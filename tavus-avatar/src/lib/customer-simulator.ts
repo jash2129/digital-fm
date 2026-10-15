@@ -26,9 +26,17 @@ export async function generateCustomerResponse(params: {
   const { persona, lastMaxSpeech, currentBeatId, turnIndex } = params;
 
   // Step 0 Tech Check / Greeting handling
-  if (currentBeatId === 0 || lastMaxSpeech.toLowerCase().includes("hear and see me alright")) {
+  if (lastMaxSpeech.toLowerCase().includes("hear and see me alright")) {
     return {
       spokenText: "Yes, I can hear and see you alright Max.",
+      isBargeIn: false,
+    };
+  }
+
+  // Step 0 Rapport & Formal Greeting response
+  if (currentBeatId === 0 || lastMaxSpeech.toLowerCase().includes("experience")) {
+    return {
+      spokenText: "The sales team was great today, everything went smoothly.",
       isBargeIn: false,
     };
   }

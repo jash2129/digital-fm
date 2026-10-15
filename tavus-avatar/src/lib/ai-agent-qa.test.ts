@@ -118,19 +118,22 @@ describe("Two-Agent Automated Call Testing (Agent 1 Max vs Agent 2 Customer Simu
     const result = await runSimulatedCall("cooperative", 5);
     expect(result.timingLogs.length).toBe(5);
 
-    // Turn 1 should be Beat 1
-    expect(result.timingLogs[0].avatarText).toContain("Before I start I just want to let you know");
-    // Turn 2 should be Beat 2
-    expect(result.timingLogs[1].avatarText).toContain("2026 Mazda CX five");
+    // Turn 0: Stage 0 Rapport & Formal Greeting
+    expect(result.timingLogs[0].avatarText).toContain("congratulations on your 2026 Mazda CX five");
+    // Turn 1: Beat 1 Legal Disclosure
+    expect(result.timingLogs[1].avatarText).toContain("this transaction is recorded audio and video");
+    // Turn 2: Beat 2
+    expect(result.timingLogs[2].avatarText).toContain("2026 Mazda CX five");
     // Median turn latency should be under 2.5s
     const medianLatency = result.timingLogs[Math.floor(result.timingLogs.length / 2)].gaps.total_latency_ms;
     expect(medianLatency).toBeLessThan(2500);
   });
 
   it("Persona 2: Price Skeptic triggers DEFER_LINE before Beat 22", async () => {
-    const result = await runSimulatedCall("price_skeptic", 4);
-    // Turn 2 should defer price with DEFER_LINE
-    expect(result.timingLogs[1].avatarText).toContain(DEFER_LINE);
+    const result = await runSimulatedCall("price_skeptic", 5);
+    // After rapport & disclosure, asks price and triggers DEFER_LINE
+    const priceTurn = result.timingLogs.find((t) => t.userInput.toLowerCase().includes("how much"));
+    expect(priceTurn?.avatarText).toContain(DEFER_LINE);
   });
 
   it("Persona 3: Interrupter tests barge-in cutoffs and achieves 100% honor rate", async () => {
@@ -141,11 +144,13 @@ describe("Two-Agent Automated Call Testing (Agent 1 Max vs Agent 2 Customer Simu
   });
 
   it("Persona 4: Objection Heavy executes LEAD_IN_NO on 1st No and HANDOFF_LINE on 2nd consecutive No", async () => {
-    const result = await runSimulatedCall("objection_heavy", 4);
-    // Turn 1: 1st No -> LEAD_IN_NO
-    expect(result.timingLogs[1].avatarText).toContain(LEAD_IN_NO);
-    // Turn 2: 2nd consecutive No -> HANDOFF_LINE
-    expect(result.timingLogs[2].avatarText).toBe(HANDOFF_LINE);
+    const result = await runSimulatedCall("objection_heavy", 5);
+    // 1st No -> LEAD_IN_NO
+    const firstNoTurn = result.timingLogs.find((t) => t.userInput.toLowerCase().includes("no"));
+    expect(firstNoTurn?.avatarText).toContain(LEAD_IN_NO);
+    // 2nd consecutive No -> HANDOFF_LINE
+    const lastTurn = result.timingLogs[result.timingLogs.length - 1];
+    expect(lastTurn.avatarText).toBe(HANDOFF_LINE);
   });
 
   it("Persona 5: Off-Script intercepts financial questions and defers without quoting rates", async () => {

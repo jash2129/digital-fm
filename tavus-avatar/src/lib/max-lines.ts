@@ -28,6 +28,15 @@ export const HANDOFF_LINE = "Let me bring in my colleague to go over the rest wi
 // Status: APPROVED
 export const AI_DISCLOSURE_LINE = "I'm an AI finance assistant.";
 
-// Step 0 Greeting line spoken before Beat 1
+// Step 0 Tech Check line spoken when call connects
 // Status: APPROVED
 export const STEP_0_GREETING = "Can you hear and see me alright?";
+
+// Stage 0 Rapport & Formal Greeting line (CONTEXT_RULES.md Stage 0 & Step 1)
+// Status: APPROVED
+export const STEP_0_RAPPORT_LINE = "Awesome, great to connect with you! First of all, congratulations on your {{vehicle_year}} {{vehicle_make}} {{vehicle_model}}, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?";
+
+// Stage 0 Transition into Legal Disclosure
+// Status: APPROVED
+export const STEP_0_TRANSITION_LINE = "Glad to hear that! Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.";
+
