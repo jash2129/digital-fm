@@ -23,46 +23,62 @@ export async function createLiveAvatarSession(): Promise<LiveAvatarSessionResult
   }
 
   const requestedAvatarId = process.env.HEYGEN_AVATAR_ID?.trim() || FALLBACK_PUBLIC_AVATAR_ID;
+  const FALLBACK_PUBLIC_PREVIEW =
+    "https://files2.heygen.ai/avatar/v3/e20ac0c902184ff793e75ae4e139b7dc_45600/preview_target.webp";
 
   // Verify avatar status
   let effectiveAvatarId = requestedAvatarId;
   let effectiveVoiceId = FALLBACK_PUBLIC_VOICE_ID;
-  let avatarName = "Finance Manager Max";
-  let avatarPreviewUrl: string | null = null;
+  let avatarName = "Max (Finance Manager)";
+  let avatarPreviewUrl: string | null = FALLBACK_PUBLIC_PREVIEW;
   let isCustomAvatar = false;
 
   try {
+    // 1. Check custom avatars first
     const listRes = await fetch(`${LIVEAVATAR_API_BASE}/avatars`, {
       headers: { "X-API-KEY": apiKey },
       cache: "no-store",
     });
+    let foundAvatar: any = null;
     if (listRes.ok) {
       const listData = await listRes.json();
-      const userAvatar =
-        listData.data?.results?.find((a: any) => a.id === requestedAvatarId) ||
-        listData.data?.results?.[0];
-
-      if (userAvatar) {
-        avatarPreviewUrl = userAvatar.preview_url || null;
-        if (userAvatar.status === "ACTIVE") {
-          effectiveAvatarId = userAvatar.id;
-          avatarName = `Max (${userAvatar.name || "novus.ai6"} - Verified)`;
+      foundAvatar = listData.data?.results?.find((a: any) => a.id === requestedAvatarId);
+      if (foundAvatar) {
+        avatarPreviewUrl = foundAvatar.preview_url || FALLBACK_PUBLIC_PREVIEW;
+        if (foundAvatar.status === "ACTIVE") {
+          effectiveAvatarId = foundAvatar.id;
+          avatarName = `Max (${foundAvatar.name || "novus.ai6"} - Verified)`;
           isCustomAvatar = true;
-          if (userAvatar.default_voice?.id) {
-            effectiveVoiceId = userAvatar.default_voice.id;
+          if (foundAvatar.default_voice?.id) {
+            effectiveVoiceId = foundAvatar.default_voice.id;
           }
-        } else {
-          console.warn(
-            `[liveavatar] Custom avatar ${userAvatar.id} is currently "${userAvatar.status}". Using active public avatar stream until deployment completes.`
-          );
-          effectiveAvatarId = FALLBACK_PUBLIC_AVATAR_ID;
-          effectiveVoiceId = FALLBACK_PUBLIC_VOICE_ID;
-          avatarName = `Max (${userAvatar.name || "novus.ai6"} - Deploying)`;
+        }
+      }
+    }
+
+    // 2. If not a custom avatar, check public avatars
+    if (!foundAvatar) {
+      const publicRes = await fetch(`${LIVEAVATAR_API_BASE}/avatars/public?page_size=50`, {
+        headers: { "X-API-KEY": apiKey },
+        cache: "no-store",
+      });
+      if (publicRes.ok) {
+        const publicData = await publicRes.json();
+        const pubAvatar =
+          publicData.data?.results?.find((a: any) => a.id === requestedAvatarId) ||
+          publicData.data?.results?.find((a: any) => a.id === FALLBACK_PUBLIC_AVATAR_ID);
+        if (pubAvatar) {
+          effectiveAvatarId = pubAvatar.id;
+          effectiveVoiceId = pubAvatar.default_voice?.id || FALLBACK_PUBLIC_VOICE_ID;
+          avatarName = `Max (${pubAvatar.name || "Default Avatar"})`;
+          avatarPreviewUrl = pubAvatar.preview_url || FALLBACK_PUBLIC_PREVIEW;
         }
       }
     }
   } catch (err) {
-    console.warn("[liveavatar] Could not check avatar list, attempting requested avatar directly:", err);
+    console.warn("[liveavatar] Could not check avatar list, using fallback public avatar:", err);
+    effectiveAvatarId = FALLBACK_PUBLIC_AVATAR_ID;
+    effectiveVoiceId = FALLBACK_PUBLIC_VOICE_ID;
   }
 
   // Step 1: Create session token
