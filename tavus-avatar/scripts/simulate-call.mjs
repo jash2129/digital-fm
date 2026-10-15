@@ -12,9 +12,9 @@ const personaArg = args.find(a => a.startsWith("--persona="))?.split("=")[1] || 
 console.log(`[Simulator] Running multi-agent automated QA (Persona: ${personaArg})...\n`);
 
 // Run the automated test suite using vitest
-const vitest = spawnSync("npx", ["vitest", "run", "src/lib/ai-agent-qa.test.ts"], {
+const npxCmd = process.platform === "win32" ? "npx.cmd" : "npx";
+const vitest = spawnSync(npxCmd, ["vitest", "run", "src/lib/ai-agent-qa.test.ts"], {
   stdio: "inherit",
-  shell: true,
   cwd: path.resolve(process.cwd())
 });
 
@@ -38,7 +38,6 @@ if (fs.existsSync(logsDir)) {
     console.log("================================================================================");
     spawnSync("python", ["../scripts/calculate-latency.py", latestLog], {
       stdio: "inherit",
-      shell: true,
       cwd: path.resolve(process.cwd())
     });
   }
