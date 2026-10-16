@@ -165,6 +165,8 @@ export function getBeatToolCalls(beatId: number): Array<{ name: string; args: Re
       return [{ name: "show_pricing", args: { product: "tire_wheel" } }];
     case 18:
       return [{ name: "show_pricing", args: { product: "maintenance" } }];
+    case 20:
+      return [{ name: "show_pricing", args: { product: "gap" } }];
     case 22:
       return [{ name: "show_payment_breakdown", args: { daily_rate: 4 } }];
     default:

@@ -874,6 +874,10 @@ export function LiveAvatarDemo() {
 
     setIsConnecting(true);
     setError(null);
+    setActiveOverlay(null);
+    setShownProducts([]);
+    setActiveProduct(null);
+    setDailyRate(4.0);
 
     try {
       // Step 1: Create session via our server route
@@ -1783,121 +1787,34 @@ export function LiveAvatarDemo() {
                 </div>
 
                 {/* Document Canvas Content */}
-                <div className="flex-1 overflow-y-auto no-scrollbar p-6 sm:p-10">
-                  <div className="mx-auto max-w-4xl space-y-6 pr-0 sm:pr-56">
-                    {activeOverlay === "warranty_terms" && (
-                      <div className="space-y-6">
-                        <div className="rounded-3xl border border-sky-400/30 bg-slate-900/70 p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-sky-300">
-                            Factory Warranty Breakdown
-                          </span>
-                          <h2 className="mt-4 text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                            Two Manufacturer Warranties, Not One
-                          </h2>
-                          <p className="mt-2 text-sm sm:text-base text-slate-300 leading-relaxed">
-                            Manufacturer warranties are defect-only coverage against mis-design, mis-build, or mis-installation as stated on page 4 of the owner manual.
-                          </p>
-
-                          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                            <div className="rounded-2xl border border-sky-500/20 bg-sky-500/10 p-5">
-                              <span className="text-xs font-bold text-sky-400 uppercase tracking-wide">Base Limited</span>
-                              <div className="mt-2 text-2xl font-black text-white">3 Years / 36,000 Miles</div>
-                              <p className="mt-2 text-xs text-slate-300 leading-relaxed">
-                                Factory complementary defect coverage from bumper to bumper. Wear and tear is excluded.
-                              </p>
-                            </div>
-
-                            <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/10 p-5">
-                              <span className="text-xs font-bold text-indigo-400 uppercase tracking-wide">Powertrain Limited</span>
-                              <div className="mt-2 text-2xl font-black text-white">5 Years / 60,000 Miles</div>
-                              <p className="mt-2 text-xs text-slate-300 leading-relaxed">
-                                Strictly engine block and transmission internal defects. Does not cover electronics or peripheral sensors.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeOverlay === "cost_breakdown" && (
-                      <div className="space-y-6">
-                        <div className="rounded-3xl border border-amber-400/30 bg-slate-900/70 p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-300">
-                            Service Department Rates
-                          </span>
-                          <h2 className="mt-4 text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                            Modern Vehicle Repair & Diagnostic Economics
-                          </h2>
-                          <p className="mt-2 text-sm sm:text-base text-slate-300 leading-relaxed">
-                            Today's vehicles are high-performance computers on wheels. Repair costs are driven by master technician electronic labor.
-                          </p>
-
-                          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-5">
-                              <span className="text-xs font-bold text-amber-400 uppercase tracking-wide">Labor Rate</span>
-                              <div className="mt-2 text-3xl font-black text-white">$185.00 <span className="text-sm font-normal text-slate-400">/ hr</span></div>
-                              <p className="mt-2 text-xs text-slate-300 leading-relaxed">
-                                Dealership certified diagnostic and sensor calibration rate.
-                              </p>
-                            </div>
-
-                            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-5">
-                              <span className="text-xs font-bold text-emerald-400 uppercase tracking-wide">Average Module Replacement</span>
-                              <div className="mt-2 text-3xl font-black text-emerald-300">$2,400 – $4,200</div>
-                              <p className="mt-2 text-xs text-slate-300 leading-relaxed">
-                                Touchscreens, lane assist radar, and electronic control units.
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeOverlay === "four_square" && (
-                      <div className="space-y-6">
-                        <div className="rounded-3xl border border-emerald-400/30 bg-slate-900/70 p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
-                          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-300">
-                            Protection Summary
-                          </span>
-                          <h2 className="mt-4 text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-                            Comprehensive Vehicle Protection Package
-                          </h2>
-                          <div className="mt-4 flex items-baseline gap-2">
-                            <span className="text-4xl sm:text-5xl font-black text-white">
-                              ${typeof dailyRate === "number" ? dailyRate.toFixed(2) : dailyRate || "4.00"}
-                            </span>
-                            <span className="text-base font-semibold text-slate-400">/ day investment</span>
-                          </div>
-
-                          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                            <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-4">
-                              <div className="text-sm font-bold text-white">✓ VSC Protection</div>
-                              <div className="text-xs text-sky-300 mt-1">Bumper to Bumper</div>
-                            </div>
-                            <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-4">
-                              <div className="text-sm font-bold text-white">✓ Tire & Wheel</div>
-                              <div className="text-xs text-sky-300 mt-1">Road Hazard</div>
-                            </div>
-                            <div className="rounded-2xl border border-white/10 bg-slate-800/50 p-4">
-                              <div className="text-sm font-bold text-white">✓ Maintenance</div>
-                              <div className="text-xs text-sky-300 mt-1">Factory Scheduled</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeOverlay !== "warranty_terms" &&
-                      activeOverlay !== "cost_breakdown" &&
-                      activeOverlay !== "four_square" && (
+                <div className="flex-1 overflow-y-auto no-scrollbar relative w-full h-full">
+                  {activeOverlay === "warranty_terms" && <WarrantyTermsPage />}
+                  {activeOverlay === "cost_breakdown" && <CostBreakdownPage />}
+                  {activeOverlay === "four_square" && (
+                    <DigitalFourSquareMenu
+                      shownProducts={shownProducts}
+                      activeProduct={activeProduct}
+                      dailyRate={dailyRate}
+                    />
+                  )}
+                  {activeOverlay === "pricing_ladder" && <PricingLadderPage />}
+                  {activeOverlay === "deal_summary" && <DealSummaryPage />}
+                  {activeOverlay === "escalate" && <EscalatePage />}
+                  {activeOverlay !== "warranty_terms" &&
+                    activeOverlay !== "cost_breakdown" &&
+                    activeOverlay !== "four_square" &&
+                    activeOverlay !== "pricing_ladder" &&
+                    activeOverlay !== "deal_summary" &&
+                    activeOverlay !== "escalate" && (
+                      <div className="p-8">
                         <div className="rounded-3xl border border-white/15 bg-slate-900/70 p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
                           <h2 className="text-2xl font-extrabold text-white">2026 Mazda CX-5 Consultation</h2>
                           <p className="mt-2 text-sm text-slate-300 leading-relaxed">
                             Review in progress. Your finance documentation is being prepared.
                           </p>
                         </div>
-                      )}
-                  </div>
+                      </div>
+                    )}
                 </div>
               </div>
             )}
