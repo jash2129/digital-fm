@@ -1853,16 +1853,49 @@ export function LiveAvatarDemo() {
                 className="h-full w-full object-cover"
               />
 
-              {/* Status Indicator */}
-              <div className="absolute bottom-2 left-2 z-20 flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-950/80 px-2.5 py-1 backdrop-blur-md">
-                <span
-                  className={`size-1.5 rounded-full ${
-                    isAvatarSpeaking ? "bg-sky-400 animate-ping" : "bg-emerald-400"
-                  }`}
-                />
-                <span className="text-[10px] font-semibold tracking-wider uppercase text-slate-300">
-                  {isAvatarSpeaking ? "Speaking" : "Live"}
-                </span>
+              {/* Enhanced Active Presence & Reactive Equalizer */}
+              <div className="absolute bottom-2 left-2 z-20 flex items-center gap-2 rounded-full border border-white/15 bg-slate-950/85 px-3 py-1.5 backdrop-blur-md shadow-lg">
+                {isAvatarSpeaking ? (
+                  <>
+                    <span className="size-2 rounded-full bg-sky-400 animate-pulse shadow-[0_0_8px_rgba(56,189,248,0.8)]" />
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-sky-300">
+                      Speaking
+                    </span>
+                  </>
+                ) : isGrokThinking ? (
+                  <>
+                    <span className="size-2 rounded-full bg-amber-400 animate-ping shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-amber-300">
+                      Reviewing...
+                    </span>
+                  </>
+                ) : isUserSpeaking ? (
+                  <>
+                    <span className="size-2 rounded-full bg-emerald-400 animate-ping shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-emerald-300">
+                      Listening
+                    </span>
+                    {/* Live Micro-Equalizer Reacting to Voice Activity */}
+                    <div className="flex items-end gap-0.5 h-2.5">
+                      {[0.4, 0.9, 0.6, 1.0].map((h, idx) => (
+                        <span
+                          key={idx}
+                          className="w-0.5 rounded-full bg-emerald-400 transition-all duration-75"
+                          style={{
+                            height: `${Math.max(3, Math.min(10, (micVolume / 100) * 10 * h))}px`,
+                          }}
+                        />
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <span className="size-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.5)]" />
+                    <span className="text-[10px] font-semibold tracking-wider uppercase text-slate-300">
+                      Live
+                    </span>
+                  </>
+                )}
               </div>
             </div>
 
@@ -2013,10 +2046,23 @@ export function LiveAvatarDemo() {
               >
                 <span
                   className={`size-2 rounded-full ${
-                    isMicMuted ? "bg-rose-400" : isUserSpeaking ? "bg-emerald-400" : "bg-sky-400"
+                    isMicMuted ? "bg-rose-400" : isUserSpeaking ? "bg-emerald-400 animate-ping" : "bg-sky-400"
                   }`}
                 />
                 <span>{isMicMuted ? "Mic Muted" : isUserSpeaking ? "Listening..." : "Mic On"}</span>
+                {!isMicMuted && isUserSpeaking && (
+                  <div className="flex items-end gap-0.5 h-2.5 ml-1">
+                    {[0.5, 1.0, 0.7].map((h, idx) => (
+                      <span
+                        key={idx}
+                        className="w-0.5 rounded-full bg-emerald-300 transition-all duration-75"
+                        style={{
+                          height: `${Math.max(3, Math.min(10, (micVolume / 100) * 10 * h))}px`,
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
               </button>
 
               {/* Instant Barge-in / Interrupt Button */}
@@ -2100,7 +2146,7 @@ function TranscriptPanel({
       : latestUserTranscript || "Waiting for your question...";
   const replicaText =
     isThinking
-      ? "Max is formulating a response..."
+      ? "Max is reviewing your paperwork..."
       : replicaSpeaking && !latestReplicaTranscript
       ? "Max is speaking..."
       : latestReplicaTranscript || "Max's responses appear here.";
@@ -2109,8 +2155,8 @@ function TranscriptPanel({
     <div
       className={`absolute z-30 transition-all duration-300 pointer-events-none ${
         isOverlayActive
-          ? "bottom-20 left-1/2 -translate-x-1/2 max-w-2xl w-[92%] sm:w-[34rem]"
-          : "bottom-24 left-4 sm:left-6 max-w-xl w-[calc(100vw-2rem)] sm:w-[32rem]"
+          ? "bottom-28 left-1/2 -translate-x-1/2 max-w-2xl w-[92%] sm:w-[34rem]"
+          : "bottom-28 left-4 sm:left-6 max-w-xl w-[calc(100vw-2rem)] sm:w-[32rem]"
       } rounded-[1.75rem] border border-white/10 bg-slate-950/80 p-3 shadow-[0_24px_80px_rgba(0,0,0,0.6)] backdrop-blur-2xl`}
     >
       <div className="space-y-1.5 pointer-events-auto">
