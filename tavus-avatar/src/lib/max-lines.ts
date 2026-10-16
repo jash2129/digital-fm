@@ -40,3 +40,19 @@ export const STEP_0_RAPPORT_LINE = "Awesome, great to connect with you! First of
 // Status: APPROVED
 export const STEP_0_TRANSITION_LINE = "Glad to hear that! Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.";
 
+// Natural Conversational Affirmative Transition Bridges
+// Gives Max active-listening charisma rather than sounding like an automated script runner
+// Status: APPROVED
+export const BEAT_TRANSITION_BRIDGES: Record<number, string> = {
+  3: "Awesome!",
+  4: "Great.",
+  5: "Gotcha.",
+  6: "Right on.",
+  7: "Right!",
+  8: "Exactly.",
+  11: "Now,",
+  13: "And look,",
+  16: "So,",
+};
+
+

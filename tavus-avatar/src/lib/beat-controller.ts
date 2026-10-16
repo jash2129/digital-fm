@@ -10,6 +10,7 @@ import {
   STEP_0_GREETING,
   STEP_0_RAPPORT_LINE,
   STEP_0_TRANSITION_LINE,
+  BEAT_TRANSITION_BRIDGES,
 } from "./max-lines";
 
 export interface Beat {
@@ -103,22 +104,47 @@ export function renderBeatText(beat: Beat, dealConfig: DealConfig): string {
   return rendered;
 }
 
-// Clean quotes and bracket tags so HeyGen TTS speaks clean human sentences with zero artifacts
+// Polish speech text with natural sentence boundaries, prosody pauses, and clean phonetic cadence
 export function formatSpeechText(text: string): string {
-  return text
-    .replace(/^["'\s]+|["'\s]+$/g, "")
-    .replace(/"\s*"/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  // Convert adjacent quotes into clean sentence boundaries with breathing room
+  let clean = text.replace(/([.?!])\s*"\s*"([A-Za-z])/g, "$1 $2");
+  clean = clean.replace(/([^.?!])\s*"\s*"([A-Za-z])/g, "$1. $2");
+  clean = clean.replace(/^["'\s]+|["'\s]+$/g, "");
+  clean = clean.replace(/"\s*"/g, ". ");
+
+  // Spacing around punctuation
+  clean = clean.replace(/\s+,\s*/g, ", ");
+  clean = clean.replace(/\s+\.\s*/g, ". ");
+  clean = clean.replace(/\s+/g, " ");
+
+  // Prosody & Phonetic Polish:
+  // Convert all-caps shouting words into natural executive speech
+  clean = clean.replace(/\bWARE AND TEAR\b/g, "wear and tear");
+  clean = clean.replace(/\bCLIMATE, ROAD CONDITION AND DRIVING HABIT specially here in texas\b/g, "climate, road conditions, and driving habits... especially here in Texas.");
+  clean = clean.replace(/\bCLIMATE:\s*/g, "Climate... ");
+  clean = clean.replace(/\bROAD CONDITION\b/g, "Road conditions");
+  clean = clean.replace(/\bDRIVING HABITS\b/g, "Driving habits");
+  clean = clean.replace(/\bDRIVING HABIT\b/g, "driving habits");
+
+  // Fix awkward script typos so HeyGen TTS speaks fluent, confident English
+  clean = clean.replace(/\bfutures and builts and whistles\b/gi, "features, bells, and whistles");
+  clean = clean.replace(/\busuilaly\b/gi, "usually");
+  clean = clean.replace(/\bware an tear\b/gi, "wear and tear");
+  clean = clean.replace(/\bmis design or mis built or mis installed\b/gi, "misdesigned, misbuilt, or misinstalled");
+  clean = clean.replace(/\b110 degree\b/gi, "110 degrees");
+  clean = clean.replace(/\bsecond of is\b/gi, "second warranty is");
+
+  return clean.trim();
 }
 
-// Formats full utterance for a beat: beat text + check-in line (if present)
+// Formats full utterance for a beat: beat text + check-in line with natural conversational pause
 export function getFullBeatUtterance(beat: Beat, dealConfig: DealConfig): string {
   const rendered = renderBeatText(beat, dealConfig);
   const cleanBody = formatSpeechText(rendered);
   if (beat.check_in) {
     const cleanCheckIn = formatSpeechText(beat.check_in);
-    return `${cleanBody} ${cleanCheckIn}`;
+    // Ellipsis introduces a human 250ms conversational pause before the check-in question
+    return `${cleanBody}... ${cleanCheckIn}`;
   }
   return cleanBody;
 }
@@ -681,7 +707,9 @@ export async function processControllerTurn(
       state.current_beat = nextBeatId;
       state.delivered_beats.push(nextBeatId);
       const nextBeat = BEATS.find((b) => b.id === nextBeatId)!;
-      textToSpeak = getFullBeatUtterance(nextBeat, state.dealConfig);
+      const baseUtterance = getFullBeatUtterance(nextBeat, state.dealConfig);
+      const bridge = BEAT_TRANSITION_BRIDGES[nextBeatId];
+      textToSpeak = bridge ? `${bridge} ${baseUtterance}` : baseUtterance;
       beatType = nextBeat.type;
       toolCalls = getBeatToolCalls(nextBeatId);
       break;

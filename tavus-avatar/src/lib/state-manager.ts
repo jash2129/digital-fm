@@ -284,9 +284,14 @@ export class NegotiationStateManager {
    * Prevents premature verification: identity verification is strictly prohibited
    * unless verbal close is complete.
    */
-  public setStep(step: PipelineStep): void {
-    if (step === "verification") {
-      if (this.state.call_state.current_step !== "close") {
+  public setStep(step: PipelineStep | string): void {
+    const isVerification = step === "verification" || step === "STEP_7_VERIFICATION";
+    const isClose =
+      this.state.call_state.current_step === "close" ||
+      this.state.call_state.current_step === ("STEP_6_CLOSE" as any);
+
+    if (isVerification) {
+      if (!isClose) {
         throw new Error(
           "Protocol Violation: Cannot verify identity before verbal close is complete.",
         );
@@ -294,7 +299,7 @@ export class NegotiationStateManager {
       this.state.call_state.verification_locked = false;
     }
 
-    this.state.call_state.current_step = step;
+    this.state.call_state.current_step = step as PipelineStep;
   }
 
   public setCanvasView(view: CanvasView): void {

@@ -27,15 +27,22 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
   });
 
   describe("Unit Constraints", () => {
-    it("Step 0 begins with greeting and transitions to Beat 1", async () => {
+    it("Step 0 begins with greeting, builds rapport, and transitions to Beat 1", async () => {
+      // Turn 1: Tech check response -> builds human rapport
       const decision1 = await processControllerTurn(sessionId, "Yes, I can hear and see you fine");
-      expect(decision1.beatId).toBe(1);
-      expect(decision1.state.step0_completed).toBe(true);
-      expect(decision1.textToSpeak).toContain("Before I start I just want to let you know this transaction is recorded audio and video");
+      expect(decision1.beatId).toBe(0);
+      expect(decision1.textToSpeak).toContain("great to connect with you");
+
+      // Turn 2: Rapport response -> transitions to Beat 1 with disclosure
+      const decision2 = await processControllerTurn(sessionId, "The team was great today");
+      expect(decision2.beatId).toBe(1);
+      expect(decision2.state.step0_completed).toBe(true);
+      expect(decision2.textToSpeak).toContain("this transaction is recorded audio and video");
     });
 
     it("pointer never moves backward", async () => {
-      await processControllerTurn(sessionId, "Yes, I can hear you"); // Beat 1
+      await processControllerTurn(sessionId, "Yes, I can hear you");
+      await processControllerTurn(sessionId, "Team was great"); // Beat 1
       let previousBeat = 1;
 
       const userInputs = ["sounds good", "yes", "okay", "tell me more", "yeah"];
@@ -50,7 +57,8 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
     });
 
     it("delivered_beats never repeats except via rules in 3.5 (no rule or repeat request)", async () => {
-      await processControllerTurn(sessionId, "Yes"); // Beat 1
+      await processControllerTurn(sessionId, "Yes");
+      await processControllerTurn(sessionId, "Great"); // Beat 1
       const state = getOrCreateCallState(sessionId);
       expect(state.delivered_beats).toEqual([1]);
 
@@ -79,16 +87,17 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
     });
 
     it("two beats are never sent in one speak call", async () => {
-      await processControllerTurn(sessionId, "Yes"); // Beat 1
+      await processControllerTurn(sessionId, "Yes");
+      await processControllerTurn(sessionId, "Great"); // Beat 1
       for (let i = 2; i <= 22; i++) {
         const decision = await processControllerTurn(sessionId, "yes", DEFAULT_DEAL_CONFIG, {
           intent: "agree",
           topic_beat_ids: [],
         });
 
-        // Verify that the text corresponds only to beat i (plus its check_in), not containing beat i+1
+        // Verify that the text corresponds only to beat i (plus its check_in & optional bridge), not containing beat i+1
         const currentBeatText = getFullBeatUtterance(BEATS.find((b) => b.id === i)!, DEFAULT_DEAL_CONFIG);
-        expect(decision.textToSpeak).toBe(currentBeatText);
+        expect(decision.textToSpeak).toContain(currentBeatText);
 
         if (i < 22) {
           const nextBeat = BEATS.find((b) => b.id === i + 1)!;
@@ -117,7 +126,14 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
           userInput: "Yes, loud and clear!",
           intent: "agree",
           topic_beat_ids: [],
-          expectedKeyword: "Before I start",
+          expectedKeyword: "great to connect with you",
+        },
+        {
+          stepName: "Step 0 Rapport Response -> Beat 1",
+          userInput: "Everything went smoothly today!",
+          intent: "agree",
+          topic_beat_ids: [],
+          expectedKeyword: "recorded audio and video",
         },
         {
           stepName: "1. agree -> advances to Beat 2",
@@ -145,7 +161,7 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
           userInput: "Okay, yes, I get it now",
           intent: "agree",
           topic_beat_ids: [],
-          expectedKeyword: "futures and builts and whistles",
+          expectedKeyword: "features, bells, and whistles",
         },
         {
           stepName: "5. garbled -> GARBLED_LINE once, listens again",
@@ -227,7 +243,8 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
     });
 
     it("two 'No's in a row triggers handoff", async () => {
-      await processControllerTurn(sessionId, "Yes"); // Beat 1
+      await processControllerTurn(sessionId, "Yes");
+      await processControllerTurn(sessionId, "Great"); // Beat 1
       await processControllerTurn(sessionId, "Yes", DEFAULT_DEAL_CONFIG, { intent: "agree", topic_beat_ids: [] }); // Beat 2
 
       // First No
@@ -245,10 +262,12 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
     });
 
     it("completes script after Beat 22 with HANDOFF_LINE and onScriptComplete", async () => {
-      await processControllerTurn(sessionId, "Yes"); // Beat 1
+      await processControllerTurn(sessionId, "Yes");
+      await processControllerTurn(sessionId, "Great"); // Beat 1
 
       // Fast forward to Beat 22
       const state = getOrCreateCallState(sessionId);
+      state.step0_completed = true;
       state.current_beat = 21;
       state.delivered_beats = Array.from({ length: 21 }, (_, i) => i + 1);
 
