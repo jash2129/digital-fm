@@ -55,4 +55,13 @@ export const BEAT_TRANSITION_BRIDGES: Record<number, string> = {
   16: "So,",
 };
 
+// Spoken when customer asks to pause, hold on, or take a moment
+export const PAUSE_LINE = "Take all the time you need, I'm right here whenever you're ready.";
+
+// Spoken when customer feels rushed or asks Max to slow down
+export const SLOW_DOWN_LINE = "I completely understand, it is a lot of information. Let's take it one step at a time.";
+
+// Spoken when customer compliments the vehicle
+export const COMPLIMENT_LINE = "It really is a fantastic car, you're going to love driving it!";
+
 

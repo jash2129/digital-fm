@@ -11,6 +11,9 @@ import {
   STEP_0_RAPPORT_LINE,
   STEP_0_TRANSITION_LINE,
   BEAT_TRANSITION_BRIDGES,
+  PAUSE_LINE,
+  SLOW_DOWN_LINE,
+  COMPLIMENT_LINE,
 } from "./max-lines";
 
 export interface Beat {
@@ -46,6 +49,9 @@ export type ClassifierIntent =
   | "human_request"
   | "ai_question"
   | "tech_check_ack"
+  | "pause_request"
+  | "overwhelmed"
+  | "compliment"
   | "other";
 
 export interface ClassificationResult {
@@ -324,6 +330,53 @@ export function classifyCustomerInputRuleBased(
     return { intent: "tech_check_ack", topic_beat_ids: [] };
   }
 
+  // 8.6. Pause / Hold request (e.g. "wait a second", "hold on", "give me a moment", "let me think")
+  // Do NOT advance beat or treat as cold negation/abandonment
+  if (
+    norm.includes("hold on") ||
+    norm.includes("wait a sec") ||
+    norm.includes("wait a minute") ||
+    norm.includes("wait a moment") ||
+    norm.includes("one second") ||
+    norm.includes("one sec") ||
+    norm.includes("give me a second") ||
+    norm.includes("give me a sec") ||
+    norm.includes("give me a minute") ||
+    norm.includes("give me a moment") ||
+    norm.includes("let me think") ||
+    norm.includes("hang on") ||
+    norm.includes("hold up")
+  ) {
+    return { intent: "pause_request", topic_beat_ids: [] };
+  }
+
+  // 8.7. Overwhelmed / Pace adjustment request (e.g. "slow down", "too fast", "moving too fast", "lot of information")
+  if (
+    norm.includes("slow down") ||
+    norm.includes("too fast") ||
+    norm.includes("moving too fast") ||
+    norm.includes("lot of info") ||
+    norm.includes("lot of information") ||
+    norm.includes("overwhelmed")
+  ) {
+    return { intent: "overwhelmed", topic_beat_ids: [] };
+  }
+
+  // 8.8. Vehicle compliment / excitement (e.g. "I love this car", "beautiful vehicle", "drove like a dream")
+  if (
+    norm.includes("love this car") ||
+    norm.includes("love the car") ||
+    norm.includes("beautiful car") ||
+    norm.includes("great car") ||
+    norm.includes("drove like a dream") ||
+    norm.includes("love the color") ||
+    norm.includes("gorgeous car") ||
+    norm.includes("amazing car") ||
+    norm.includes("amazing vehicle")
+  ) {
+    return { intent: "compliment", topic_beat_ids: [] };
+  }
+
   // 9. Comprehensive Natural Affirmation / Progression
   // Handles compound colloquial variations ("yeah, yeah, okay, go on", "ok sure sounds good", "carry on", etc.)
   if (isAffirmativeOrProgression(norm)) {
@@ -422,6 +475,9 @@ Intents:
 - "restart_request": Customer asks to restart from the very beginning.
 - "human_request": Customer asks for a human manager or real person.
 - "ai_question": Customer asks if Max is an AI / robot / real person.
+- "pause_request": Customer asks to hold on, pause, or take a moment.
+- "overwhelmed": Customer asks Max to slow down or expresses information overload.
+- "compliment": Customer compliments the vehicle, features, or experience.
 - "other": Off-topic greeting or comment.
 
 Topic Beat IDs:
@@ -702,6 +758,7 @@ export async function processControllerTurn(
         state.is_stopped = true;
         textToSpeak = HANDOFF_LINE;
         beatType = "stop";
+        toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
         onScriptComplete(state);
         break;
       }
@@ -724,6 +781,7 @@ export async function processControllerTurn(
         state.is_stopped = true;
         textToSpeak = HANDOFF_LINE;
         beatType = "stop";
+        toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
         onScriptComplete(state);
       } else {
         // Speak lead-in line LEAD_IN_NO, then the same beat once more plus its check-in
@@ -775,6 +833,7 @@ export async function processControllerTurn(
         textToSpeak = `${dynamicLeadIn} ${HANDOFF_LINE}`;
         state.is_stopped = true;
         beatType = "stop";
+        toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
       }
       break;
     }
@@ -828,7 +887,46 @@ export async function processControllerTurn(
       state.is_stopped = true;
       textToSpeak = HANDOFF_LINE;
       beatType = "stop";
+      toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
       onScriptComplete(state);
+      break;
+    }
+
+    case "pause_request": {
+      // Customer asked to pause or hold on. Respectfully acknowledge and retain current beat
+      textToSpeak = PAUSE_LINE;
+      beatType = "wait";
+      toolCalls = [];
+      break;
+    }
+
+    case "overwhelmed": {
+      // Customer asked to slow down. Reassure and re-prompt current check-in without skipping
+      const currentBeat = BEATS.find((b) => b.id === state.current_beat);
+      const checkIn = currentBeat?.check_in ? formatSpeechText(currentBeat.check_in) : "";
+      textToSpeak = checkIn ? `${SLOW_DOWN_LINE} ${checkIn}` : SLOW_DOWN_LINE;
+      beatType = "wait";
+      toolCalls = [];
+      break;
+    }
+
+    case "compliment": {
+      // Acknowledge excitement and advance to next beat
+      const nextBeatId = state.current_beat + 1;
+      if (nextBeatId <= 22) {
+        state.current_beat = nextBeatId;
+        state.delivered_beats.push(nextBeatId);
+        const nextBeat = BEATS.find((b) => b.id === nextBeatId)!;
+        const nextUtterance = getFullBeatUtterance(nextBeat, state.dealConfig);
+        textToSpeak = `${COMPLIMENT_LINE} ${nextUtterance}`;
+        beatType = nextBeat.type;
+        toolCalls = getBeatToolCalls(nextBeatId);
+      } else {
+        textToSpeak = `${COMPLIMENT_LINE} ${HANDOFF_LINE}`;
+        state.is_stopped = true;
+        beatType = "stop";
+        toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
+      }
       break;
     }
 
@@ -847,6 +945,7 @@ export async function processControllerTurn(
         textToSpeak = `${AI_DISCLOSURE_LINE} ${HANDOFF_LINE}`;
         state.is_stopped = true;
         beatType = "stop";
+        toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
       }
       break;
     }
@@ -889,6 +988,7 @@ export async function processControllerTurn(
         textToSpeak = dynamicAnswer ? `${dynamicAnswer} ${HANDOFF_LINE}` : HANDOFF_LINE;
         state.is_stopped = true;
         beatType = "stop";
+        toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
       }
       break;
     }

@@ -17,6 +17,9 @@ import {
   HANDOFF_LINE,
   AI_DISCLOSURE_LINE,
   STEP_0_GREETING,
+  PAUSE_LINE,
+  SLOW_DOWN_LINE,
+  COMPLIMENT_LINE,
 } from "./max-lines";
 
 describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
@@ -310,6 +313,53 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       expect(coffeeResponse).not.toContain("apr");
       expect(coffeeResponse).not.toContain("interest");
     });
+
+    it("Phase 4: pause_request holds state gracefully without advancing beat pointer", async () => {
+      await processControllerTurn(sessionId, "Yes");
+      await processControllerTurn(sessionId, "Great"); // Beat 1
+      await processControllerTurn(sessionId, "Yes", DEFAULT_DEAL_CONFIG, { intent: "agree", topic_beat_ids: [] }); // Beat 2
+
+      const stateBefore = getOrCreateCallState(sessionId);
+      expect(stateBefore.current_beat).toBe(2);
+
+      // Customer asks to pause
+      const pauseDecision = await processControllerTurn(sessionId, "Hold on a second let me check something");
+      expect(pauseDecision.intent).toBe("pause_request");
+      expect(pauseDecision.textToSpeak).toBe(PAUSE_LINE);
+      expect(pauseDecision.beatId).toBe(2);
+      expect(pauseDecision.state.current_beat).toBe(2); // Did NOT skip
+    });
+
+    it("Phase 4: overwhelmed requests slow down and re-prompts current beat check-in", async () => {
+      await processControllerTurn(sessionId, "Yes");
+      await processControllerTurn(sessionId, "Great"); // Beat 1
+
+      const slowDecision = await processControllerTurn(sessionId, "You're moving too fast, that's a lot of information");
+      expect(slowDecision.intent).toBe("overwhelmed");
+      expect(slowDecision.textToSpeak).toContain(SLOW_DOWN_LINE);
+      expect(slowDecision.state.current_beat).toBe(1);
+    });
+
+    it("Phase 4: vehicle compliments share customer excitement and advance naturally", async () => {
+      await processControllerTurn(sessionId, "Yes");
+      await processControllerTurn(sessionId, "Great"); // Beat 1
+
+      const complimentDecision = await processControllerTurn(sessionId, "I really love this car, it drove like a dream");
+      expect(complimentDecision.intent).toBe("compliment");
+      expect(complimentDecision.textToSpeak).toContain(COMPLIMENT_LINE);
+      expect(complimentDecision.beatId).toBe(2);
+    });
+
+    it("Phase 4: human requests and terminal handoffs dispatch escalate toolCall", async () => {
+      await processControllerTurn(sessionId, "Yes");
+      await processControllerTurn(sessionId, "Great"); // Beat 1
+
+      const humanDecision = await processControllerTurn(sessionId, "I need to speak to a human manager");
+      expect(humanDecision.intent).toBe("human_request");
+      expect(humanDecision.textToSpeak).toBe(HANDOFF_LINE);
+      expect(humanDecision.toolCalls).toEqual([{ name: "show_content", args: { item: "escalate" } }]);
+    });
   });
 });
+
 
