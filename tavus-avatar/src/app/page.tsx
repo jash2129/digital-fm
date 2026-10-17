@@ -15,8 +15,10 @@ const LiveAvatarDemo = dynamic(
 
 export default function Home() {
   const [engine, setEngine] = useState<"heygen" | "tavus">("heygen");
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("engine") === "tavus") {
@@ -26,9 +28,12 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="relative h-screen w-full bg-slate-950 overflow-hidden flex flex-col">
+    <div className="relative h-screen w-full bg-slate-950 overflow-hidden flex flex-col" suppressHydrationWarning>
       {/* Engine Selector Badge - positioned at bottom left so it never overlaps header controls */}
-      <div className="fixed bottom-3 left-4 z-50 flex items-center gap-1 rounded-full border border-white/20 bg-slate-900/95 p-1 backdrop-blur-2xl shadow-2xl">
+      <div
+        className="fixed bottom-3 left-4 z-50 flex items-center gap-1 rounded-full border border-white/20 bg-slate-900/95 p-1 backdrop-blur-2xl shadow-2xl"
+        suppressHydrationWarning
+      >
         <button
           onClick={() => setEngine("heygen")}
           type="button"
@@ -53,8 +58,8 @@ export default function Home() {
         </button>
       </div>
 
-      <div className="flex-1 w-full min-h-0 overflow-hidden relative">
-        {engine === "heygen" ? <LiveAvatarDemo /> : <TavusDemo />}
+      <div className="flex-1 w-full min-h-0 overflow-hidden relative" suppressHydrationWarning>
+        {mounted && (engine === "heygen" ? <LiveAvatarDemo /> : <TavusDemo />)}
       </div>
     </div>
   );

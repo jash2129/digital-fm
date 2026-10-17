@@ -101,7 +101,7 @@ export default function CallInspectorPage() {
   const totalDuration = analysis?.totalDurationSec || 45;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans" suppressHydrationWarning>
       {/* Top Navigation Bar */}
       <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur px-6 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-50">
         <div className="flex items-center gap-3">
