@@ -81,36 +81,62 @@ export function shouldCutMaxOff(spoken: string): boolean {
     }
   }
 
-  // 3. Any reply of 3 or more words cuts Max off
-  if (words.length >= SPEED_AND_BARGE_IN_CONFIG.MIN_WORDS_ANY_BARGE_IN) {
+  // 3. User questions starting with interrogatives cut Max off
+  if (
+    norm.startsWith("who ") ||
+    norm.startsWith("what ") ||
+    norm.startsWith("why ") ||
+    norm.startsWith("how ") ||
+    norm.startsWith("can i ") ||
+    norm.startsWith("could you ") ||
+    norm.startsWith("excuse me")
+  ) {
     return true;
   }
 
   return false;
 }
 
-// Anti-echo without dropping real questions: only reject when near-exact reflection (>= 80% ordered words match)
-export function isNearExactEcho(userTranscript: string, lastAvatarText: string): boolean {
-  if (!userTranscript || !lastAvatarText) return false;
+// Anti-echo without dropping real questions: rejects when user transcript matches any recent avatar text
+export function isNearExactEcho(
+  userTranscript: string,
+  recentAvatarSources: string | string[] | Array<{ text: string }>
+): boolean {
+  if (!userTranscript) return false;
   const userWords = userTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim().split(/\s+/).filter(Boolean);
-  const avatarWords = lastAvatarText.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim().split(/\s+/).filter(Boolean);
+  if (userWords.length < 2) return false;
 
-  if (userWords.length < SPEED_AND_BARGE_IN_CONFIG.ANTI_ECHO_MIN_WORDS) {
-    return false;
+  let sources: string[] = [];
+  if (typeof recentAvatarSources === "string") {
+    sources = [recentAvatarSources];
+  } else if (Array.isArray(recentAvatarSources)) {
+    sources = recentAvatarSources.map((s: any) => (typeof s === "string" ? s : s?.text || "")).filter(Boolean);
   }
 
-  let matchCount = 0;
-  let searchIdx = 0;
-  for (const uWord of userWords) {
-    const foundIdx = avatarWords.indexOf(uWord, searchIdx);
-    if (foundIdx !== -1) {
-      matchCount++;
-      searchIdx = foundIdx + 1;
+  for (const src of sources) {
+    const avatarWords = src.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim().split(/\s+/).filter(Boolean);
+    if (avatarWords.length === 0) continue;
+
+    // Check direct substring
+    const userClean = userWords.join(" ");
+    const srcClean = avatarWords.join(" ");
+    if (srcClean.includes(userClean) || userClean.includes(srcClean)) {
+      return true;
+    }
+
+    // Check word overlap: if >= 50% of user words match avatar words
+    const avatarSet = new Set(avatarWords);
+    let matchCount = 0;
+    for (const uWord of userWords) {
+      if (avatarSet.has(uWord)) matchCount++;
+    }
+    const ratio = matchCount / userWords.length;
+    if (ratio >= 0.5 && matchCount >= 3) {
+      return true;
     }
   }
 
-  const ratio = matchCount / userWords.length;
-  return ratio >= SPEED_AND_BARGE_IN_CONFIG.ANTI_ECHO_MATCH_RATIO;
+  return false;
 }
 
 export function LiveAvatarDemo() {
@@ -592,17 +618,14 @@ export function LiveAvatarDemo() {
         continuePauseTimerRef.current = null;
       }
 
-      // 1. Anti-echo without dropping real questions:
-      // Only reject when transcript is near-exact reflection of Max's last spoken text (>= 80% ordered words match)
-      if (
-        isAvatarSpeakingRef.current &&
-        isNearExactEcho(currentSpoken, lastSpokenByAvatarRef.current || "")
-      ) {
-        console.warn(
-          `[anti-echo] REJECTED transcript as echo (match >= ${
-            SPEED_AND_BARGE_IN_CONFIG.ANTI_ECHO_MATCH_RATIO * 100
-          }%): "${currentSpoken}" against avatar text: "${lastSpokenByAvatarRef.current}"`
-        );
+      // 1. Anti-echo filter:
+      // Drop any transcript that reflects recent avatar speech (speaker-to-mic leakage)
+      const isEcho = isNearExactEcho(currentSpoken, [
+        lastSpokenByAvatarRef.current,
+        ...recentAvatarTextsRef.current.map((r) => r.text),
+      ]);
+      if (isEcho) {
+        console.warn(`[anti-echo] REJECTED transcript as speaker echo: "${currentSpoken}"`);
         return;
       }
 
@@ -638,14 +661,46 @@ export function LiveAvatarDemo() {
       const delayMs = finalTranscript.trim() ? 250 : SPEED_AND_BARGE_IN_CONFIG.END_OF_SPEECH_MS;
       silenceEndTimerRef.current = setTimeout(() => {
         const spoken = (finalTranscript || interimText || currentSpoken).trim();
-        if (spoken.length > 0 && !isGrokProcessingRef.current) {
-          console.log(
-            `[speech-recognition] Speech silence timeout (${delayMs}ms) fired turn dispatch:`,
-            spoken
-          );
-          setIsUserSpeaking(false);
-          void sendToGrok(spoken);
+        if (!spoken || isGrokProcessingRef.current) return;
+
+        // CRITICAL ACOUSTIC ECHO GUARD:
+        const timeSinceAvatarStop = Date.now() - (avatarFinishedAtRef.current || 0);
+
+        // 1. Discard any transcript that matches recent avatar utterances
+        if (
+          isNearExactEcho(spoken, [
+            lastSpokenByAvatarRef.current,
+            ...recentAvatarTextsRef.current.map((r) => r.text),
+          ])
+        ) {
+          console.warn("[liveavatar] Discarded speech in silence timer as avatar echo:", spoken);
+          return;
         }
+
+        // 2. If Max is still speaking and user did NOT say an explicit cutoff word/question, discard as speaker leakage!
+        if (isAvatarSpeakingRef.current && !shouldCutMaxOff(spoken)) {
+          console.warn("[liveavatar] Discarded speech during avatar playback as speaker leakage:", spoken);
+          return;
+        }
+
+        // 3. For 1500ms after avatar stops speaking, Web Speech API delayed packets can still arrive:
+        if (
+          timeSinceAvatarStop < 1500 &&
+          isNearExactEcho(spoken, [
+            lastSpokenByAvatarRef.current,
+            ...recentAvatarTextsRef.current.map((r) => r.text),
+          ])
+        ) {
+          console.warn("[liveavatar] Discarded delayed post-avatar speaker echo:", spoken);
+          return;
+        }
+
+        console.log(
+          `[speech-recognition] Speech silence timeout (${delayMs}ms) fired turn dispatch:`,
+          spoken
+        );
+        setIsUserSpeaking(false);
+        void sendToGrok(spoken);
       }, delayMs);
     };
 

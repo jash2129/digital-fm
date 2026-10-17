@@ -45,6 +45,7 @@ export type ClassifierIntent =
   | "question_out_of_script"
   | "price_ask"
   | "garbled"
+  | "avatar_echo"
   | "repeat_request"
   | "restart_request"
   | "human_request"
@@ -188,6 +189,67 @@ export function onScriptComplete(state: CallState): void {
   state.is_stopped = true;
 }
 
+/**
+ * Detects whether an incoming customer transcript is actually an acoustic echo
+ * of Max's voice leaking through laptop speakers into the microphone.
+ */
+export function isAvatarScriptEcho(transcript: string): boolean {
+  const norm = transcript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+  if (!norm) return false;
+
+  const echoPhrases = [
+    "great to connect with you",
+    "congratulations on your",
+    "thank you for buying with us",
+    "handling your paperwork",
+    "how has your experience been",
+    "recorded audio and video",
+    "required by the law",
+    "before you sign any paperwork",
+    "make sure you understand first",
+    "agreed to buy a new",
+    "chance to drive the vehicle",
+    "walkaround and showed you",
+    "bells and whistles",
+    "builts and whistles",
+    "understanding of the warranty",
+    "what s your understanding",
+    "whats your understanding",
+    "warranty that comes with the vehicle",
+    "did the sales person go over",
+    "more information about the warranty",
+    "base limited warranty",
+    "power train which is referring",
+    "defect only stated in the manual",
+    "page number 4",
+    "mis design or mis built",
+    "ware and tear",
+    "wear and tear",
+    "climate road condition",
+    "climate can go over 110",
+    "potholes everywhere",
+    "driving habits the way i drive",
+    "service place and the first thing",
+    "diagnose the vehicle",
+    "reserve the right to determine",
+    "engine by itself can cost",
+    "luck of the draw",
+    "sorry i didn t catch",
+    "sorry i didn't catch",
+    "allow me to go over it really quick",
+    "cover that in just a moment",
+    "colleague to cover right after",
+    "bring in my colleague",
+    "make a note of that for my colleague",
+    "i'm an ai finance assistant",
+    "take all the time you need",
+    "let's slow down a bit",
+    "i'm max your digital finance manager"
+  ];
+
+  return echoPhrases.some((phrase) => norm.includes(phrase));
+}
+
 // Deterministic rule-based classification fallback (also used for unit/simulation tests)
 export function classifyCustomerInputRuleBased(
   transcript: string,
@@ -198,6 +260,11 @@ export function classifyCustomerInputRuleBased(
 
   if (words.length === 0) {
     return { intent: "garbled", topic_beat_ids: [] };
+  }
+
+  // 0. Avatar Script Echo Protection: Never treat Max's own script echoed from laptop speakers as user progression
+  if (isAvatarScriptEcho(transcript)) {
+    return { intent: "avatar_echo", topic_beat_ids: [] };
   }
 
   // 1. Human request
@@ -417,6 +484,9 @@ export function isAffirmativeOrProgression(norm: string): boolean {
   const words = norm.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim().split(/\s+/).filter(Boolean);
   if (words.length === 0) return false;
 
+  // Never treat avatar script echo as customer affirmative
+  if (isAvatarScriptEcho(norm)) return false;
+
   // Never treat tech check as sales affirmative
   const techCheckPhrases = ["see you", "hear you", "can see", "can hear", "loud and clear"];
   if (techCheckPhrases.some((tcp) => norm.includes(tcp))) return false;
@@ -569,6 +639,19 @@ export async function generateStep0Turn(
     norm.includes("loud and clear") ||
     norm.includes("can see") ||
     norm.includes("can hear");
+
+  // Prevent avatar echo from advancing Step 0 into Beat 1
+  if (isAvatarScriptEcho(customerTranscript)) {
+    console.warn(`[beat-controller] Step 0 detected avatar script echo: "${customerTranscript}". Staying on Step 0.`);
+    let rapportText = STEP_0_RAPPORT_LINE;
+    rapportText = rapportText.replace(/\{\{vehicle_year\}\}/g, dealConfig.vehicle_year);
+    rapportText = rapportText.replace(/\{\{vehicle_make\}\}/g, dealConfig.vehicle_make);
+    rapportText = rapportText.replace(/\{\{vehicle_model\}\}/g, dealConfig.vehicle_model);
+    return {
+      text: formatSpeechText(rapportText),
+      moveToBeat1: false,
+    };
+  }
 
   // Turn 1 (or repeated tech acknowledgment): customer confirmed audio/video ("i can see you", "yes", etc.)
   // Build rapport & deliver formal greeting asking how their experience was
@@ -887,6 +970,22 @@ export async function processControllerTurn(
       // Speak GARBLED_LINE once, listen again
       textToSpeak = GARBLED_LINE;
       beatType = "wait";
+      break;
+    }
+
+    case "avatar_echo": {
+      // Acoustic self-echo from laptop speakers: do NOT speak GARBLED_LINE (avoids echo loops).
+      // Simply re-prompt the current beat or check-in without advancing state.current_beat.
+      const currentBeat = BEATS.find((b) => b.id === state.current_beat);
+      if (currentBeat) {
+        textToSpeak = currentBeat.check_in
+          ? formatSpeechText(currentBeat.check_in)
+          : getFullBeatUtterance(currentBeat, state.dealConfig);
+        beatType = "wait";
+      } else {
+        textToSpeak = STEP_0_GREETING;
+        beatType = "wait";
+      }
       break;
     }
 

@@ -381,6 +381,40 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       expect(idDecision2.textToSpeak).toContain(IDENTITY_LINE);
       expect(idDecision2.beatId).toBe(2); // Stays on Beat 2, does NOT skip to Beat 3!
     });
+
+    it("Acoustic Echo Protection: Rejects laptop speaker echo and prevents skipping questions", async () => {
+      // Step 0 Turn 1: Tech check
+      const t1 = await processControllerTurn(sessionId, "Hey.");
+      expect(t1.intent).toBe("step0");
+      expect(t1.beatId).toBe(0);
+
+      // Acoustic echo of Max's rapport line from call 999f4cf1-48d7-497f-bfff-755d7df3990a
+      const echo1 = "awesome great to connect with you first of all";
+      const echoDecision = await processControllerTurn(sessionId, echo1);
+      // Must NOT advance to Beat 1 or 2!
+      expect(echoDecision.beatId).toBe(0);
+
+      // Customer actually responds to rapport
+      const realT2 = await processControllerTurn(sessionId, "It was great, everyone was super helpful");
+      expect(realT2.beatId).toBe(1); // Enters Beat 1 legal disclosure
+
+      // Laptop mic hears Max's Beat 1 text leaked from speakers
+      const echo2 = "awesome great to connect with you first of all congratulate";
+      const echoOnBeat1 = await processControllerTurn(sessionId, echo2);
+      expect(echoOnBeat1.intent).toBe("avatar_echo");
+      expect(echoOnBeat1.beatId).toBe(1); // MUST NOT SKIP TO BEAT 2!
+
+      // Max says "Sorry, I didn't catch that." and mic echoes it back
+      const echoGarbled = "sorry i didn't catch that";
+      const echoOnGarbled = await processControllerTurn(sessionId, echoGarbled);
+      expect(echoOnGarbled.intent).toBe("avatar_echo");
+      expect(echoOnGarbled.beatId).toBe(1); // MUST NOT SKIP BEAT!
+      expect(echoOnGarbled.textToSpeak).not.toBe(GARBLED_LINE); // Prevents infinite echo loop!
+
+      // Actual customer agrees to Beat 1 disclosure
+      const realAgreeBeat1 = await processControllerTurn(sessionId, "Yes, I understand", DEFAULT_DEAL_CONFIG, { intent: "agree", topic_beat_ids: [] });
+      expect(realAgreeBeat1.beatId).toBe(2); // Safely advances to Beat 2!
+    });
   });
 });
 
