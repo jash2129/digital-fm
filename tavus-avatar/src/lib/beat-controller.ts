@@ -14,6 +14,7 @@ import {
   PAUSE_LINE,
   SLOW_DOWN_LINE,
   COMPLIMENT_LINE,
+  IDENTITY_LINE,
 } from "./max-lines";
 
 export interface Beat {
@@ -52,6 +53,7 @@ export type ClassifierIntent =
   | "pause_request"
   | "overwhelmed"
   | "compliment"
+  | "identity_question"
   | "other";
 
 export interface ClassificationResult {
@@ -208,6 +210,27 @@ export function classifyCustomerInputRuleBased(
     norm.includes("transfer me")
   ) {
     return { intent: "human_request", topic_beat_ids: [] };
+  }
+
+  // 1.5. Identity questions (e.g. "who's this", "who are you", "what's your name", "who am i talking to", "yeah who's this")
+  if (
+    norm.includes("who is this") ||
+    norm.includes("whos this") ||
+    norm.includes("who s this") ||
+    norm.includes("who is speaking") ||
+    norm.includes("who are you") ||
+    norm.includes("who am i talking") ||
+    norm.includes("who am i speaking") ||
+    norm.includes("what is your name") ||
+    norm.includes("whats your name") ||
+    norm.includes("what s your name") ||
+    norm.includes("who is that") ||
+    norm.includes("who s that") ||
+    norm.includes("who that") ||
+    norm.includes("who this") ||
+    norm === "who"
+  ) {
+    return { intent: "identity_question", topic_beat_ids: [] };
   }
 
   // 2. AI Question
@@ -478,6 +501,7 @@ Intents:
 - "pause_request": Customer asks to hold on, pause, or take a moment.
 - "overwhelmed": Customer asks Max to slow down or expresses information overload.
 - "compliment": Customer compliments the vehicle, features, or experience.
+- "identity_question": Customer asks who Max is, what his name is, or who they are speaking with.
 - "other": Off-topic greeting or comment.
 
 Topic Beat IDs:
@@ -926,6 +950,23 @@ export async function processControllerTurn(
         state.is_stopped = true;
         beatType = "stop";
         toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
+      }
+      break;
+    }
+
+    case "identity_question": {
+      // Customer asked who Max is. Answer clearly, and re-prompt current beat without advancing!
+      const currentBeat = BEATS.find((b) => b.id === state.current_beat);
+      if (currentBeat) {
+        const checkInOrUtterance = currentBeat.check_in
+          ? `${IDENTITY_LINE} ${formatSpeechText(currentBeat.check_in)}`
+          : `${IDENTITY_LINE} ${getFullBeatUtterance(currentBeat, state.dealConfig)}`;
+        textToSpeak = checkInOrUtterance;
+        beatType = currentBeat.type;
+        toolCalls = getBeatToolCalls(state.current_beat);
+      } else {
+        textToSpeak = IDENTITY_LINE;
+        beatType = "wait";
       }
       break;
     }

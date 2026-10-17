@@ -64,4 +64,7 @@ export const SLOW_DOWN_LINE = "I completely understand, it is a lot of informati
 // Spoken when customer compliments the vehicle
 export const COMPLIMENT_LINE = "It really is a fantastic car, you're going to love driving it!";
 
+// Spoken when customer asks who Max is or for his identity/name
+export const IDENTITY_LINE = "I'm Max, your digital finance manager today.";
+
 

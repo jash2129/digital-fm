@@ -20,6 +20,7 @@ import {
   PAUSE_LINE,
   SLOW_DOWN_LINE,
   COMPLIMENT_LINE,
+  IDENTITY_LINE,
 } from "./max-lines";
 
 describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
@@ -358,6 +359,27 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       expect(humanDecision.intent).toBe("human_request");
       expect(humanDecision.textToSpeak).toBe(HANDOFF_LINE);
       expect(humanDecision.toolCalls).toEqual([{ name: "show_content", args: { item: "escalate" } }]);
+    });
+
+    it("Identity questions ('who is this') identify Max and re-prompt current beat without advancing", async () => {
+      await processControllerTurn(sessionId, "Yes");
+      await processControllerTurn(sessionId, "Great"); // Beat 1
+
+      // Customer asks "who's this" on Beat 1
+      const idDecision1 = await processControllerTurn(sessionId, "Who's this");
+      expect(idDecision1.intent).toBe("identity_question");
+      expect(idDecision1.textToSpeak).toContain(IDENTITY_LINE);
+      expect(idDecision1.beatId).toBe(1); // Stays on Beat 1!
+
+      // Customer agrees on disclosure -> advances to Beat 2
+      const decBeat2 = await processControllerTurn(sessionId, "Okay", DEFAULT_DEAL_CONFIG, { intent: "agree", topic_beat_ids: [] });
+      expect(decBeat2.beatId).toBe(2);
+
+      // Customer interrupts on Beat 2 with "who are you"
+      const idDecision2 = await processControllerTurn(sessionId, "Who are you again");
+      expect(idDecision2.intent).toBe("identity_question");
+      expect(idDecision2.textToSpeak).toContain(IDENTITY_LINE);
+      expect(idDecision2.beatId).toBe(2); // Stays on Beat 2, does NOT skip to Beat 3!
     });
   });
 });
