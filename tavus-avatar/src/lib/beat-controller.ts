@@ -55,6 +55,7 @@ export type ClassifierIntent =
   | "overwhelmed"
   | "compliment"
   | "identity_question"
+  | "greeting_check"
   | "other";
 
 export interface ClassificationResult {
@@ -298,6 +299,21 @@ export function classifyCustomerInputRuleBased(
     norm === "who"
   ) {
     return { intent: "identity_question", topic_beat_ids: [] };
+  }
+
+  // 1.8. Mid-call presence checks / greetings (e.g. "hey", "hello", "hi", "hey max", "are you there")
+  // Do NOT treat as off-script question (which generated "How can I assist you today?" and jumped beats)
+  if (
+    norm === "hey" ||
+    norm === "hi" ||
+    norm === "hello" ||
+    norm === "hey max" ||
+    norm === "hello max" ||
+    norm === "hi max" ||
+    norm.includes("are you there") ||
+    norm.includes("you there")
+  ) {
+    return { intent: "greeting_check", topic_beat_ids: [] };
   }
 
   // 2. AI Question
@@ -1065,6 +1081,24 @@ export async function processControllerTurn(
         toolCalls = getBeatToolCalls(state.current_beat);
       } else {
         textToSpeak = IDENTITY_LINE;
+        beatType = "wait";
+      }
+      break;
+    }
+
+    case "greeting_check": {
+      // Customer checked presence mid-call ("hey", "hello", "are you there").
+      // Reassure presence and re-prompt current beat WITHOUT advancing the script!
+      const currentBeat = BEATS.find((b) => b.id === state.current_beat);
+      if (currentBeat) {
+        const checkInOrUtterance = currentBeat.check_in
+          ? `I'm right here with you! ${formatSpeechText(currentBeat.check_in)}`
+          : `I'm right here with you! ${getFullBeatUtterance(currentBeat, state.dealConfig)}`;
+        textToSpeak = checkInOrUtterance;
+        beatType = currentBeat.type;
+        toolCalls = getBeatToolCalls(state.current_beat);
+      } else {
+        textToSpeak = "I'm right here with you! Can you hear and see me alright?";
         beatType = "wait";
       }
       break;

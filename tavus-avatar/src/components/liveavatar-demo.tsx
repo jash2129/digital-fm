@@ -1600,6 +1600,18 @@ export function LiveAvatarDemo() {
               <span className="hidden sm:inline">{isMicMuted ? "Muted" : "Mic Live"}</span>
             </button>
 
+            {/* Call Inspector Quick-Link */}
+            <a
+              href={`/inspector${sessionId ? `?session=${sessionId}` : ""}`}
+              target="_blank"
+              rel="noreferrer"
+              className="hidden lg:flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold tracking-wider border border-purple-500/40 bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 transition shadow-inner"
+              title="Open Second-by-Second Call Experience Inspector"
+            >
+              <span>⏱️</span>
+              <span>Inspector</span>
+            </a>
+
             {/* Canonical Red End Consultation Button */}
             <button
               onClick={handleEnd}
@@ -1813,6 +1825,17 @@ export function LiveAvatarDemo() {
                       <span className="font-semibold text-white">Tester Note:</span> Please wear headphones for demos to eliminate room speaker echo and ensure seamless barge-in.
                     </div>
                   </div>
+
+                  {/* Call Experience Inspector Link */}
+                  <a
+                    href="/inspector"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full mt-3 rounded-xl border border-purple-500/30 bg-purple-950/40 hover:bg-purple-900/60 text-purple-200 px-4 py-2.5 text-xs font-semibold flex items-center justify-center gap-2 transition shadow-inner"
+                  >
+                    <span>⏱️</span>
+                    <span>Open Second-by-Second Call Inspector</span>
+                  </a>
                 </div>
               </div>
             </div>

@@ -415,7 +415,21 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       const realAgreeBeat1 = await processControllerTurn(sessionId, "Yes, I understand", DEFAULT_DEAL_CONFIG, { intent: "agree", topic_beat_ids: [] });
       expect(realAgreeBeat1.beatId).toBe(2); // Safely advances to Beat 2!
     });
+
+    it("Mid-Call Presence Check: 'Hey' does NOT generate 'How can I assist you today?' or advance beats", async () => {
+      await processControllerTurn(sessionId, "Yes");
+      await processControllerTurn(sessionId, "It was great"); // Beat 1
+      await processControllerTurn(sessionId, "Yes", DEFAULT_DEAL_CONFIG, { intent: "agree", topic_beat_ids: [] }); // Beat 2
+
+      // Customer says "Hey" on Beat 2
+      const heyTurn = await processControllerTurn(sessionId, "Hey.");
+      expect(heyTurn.intent).toBe("greeting_check");
+      expect(heyTurn.textToSpeak).toContain("I'm right here with you!");
+      expect(heyTurn.textToSpeak).not.toContain("How can I assist you today?"); // Never stitch generic bot greeting!
+      expect(heyTurn.beatId).toBe(2); // Stays on Beat 2!
+    });
   });
 });
+
 
 
