@@ -18,10 +18,14 @@ import {
   AI_DISCLOSURE_LINE,
   STEP_0_GREETING,
   PAUSE_LINE,
+  LISTENING_LINE,
   SLOW_DOWN_LINE,
   COMPLIMENT_LINE,
   IDENTITY_LINE,
+  VEHICLE_DISCREPANCY_LINE,
+  MANUFACTURER_VS_DEALER_LINE,
 } from "./max-lines";
+import { shouldCutMaxOff, isIncompleteUtterance } from "../components/liveavatar-demo";
 
 describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
   const sessionId = "test_controller_session";
@@ -37,7 +41,21 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       expect(decision1.beatId).toBe(0);
       expect(decision1.textToSpeak).toContain("great to connect with you");
 
-      // Turn 2: Rapport response -> transitions to Beat 1 with disclosure
+      // Turn 2: Customer asks who Max is -> answers identity and continues rapport without prematurely rushing to Beat 1
+      const qSessionId = `step0_q_${Date.now()}`;
+      await processControllerTurn(qSessionId, "Yes");
+      const idDecision = await processControllerTurn(qSessionId, "Wait, who are you?");
+      expect(idDecision.beatId).toBe(0);
+      expect(idDecision.state.step0_completed).toBe(false);
+      expect(idDecision.textToSpeak).toContain("digital finance manager");
+
+      // Customer asks if it's a sales call -> reassures directly without rushing to Beat 1
+      const salesDecision = await processControllerTurn(qSessionId, "Is this a sales call?");
+      expect(salesDecision.beatId).toBe(0);
+      expect(salesDecision.state.step0_completed).toBe(false);
+      expect(salesDecision.textToSpeak).toContain("Not at all! This isn't a sales call");
+
+      // Turn 3: Customer answers rapport question -> transitions to Beat 1 with disclosure
       const decision2 = await processControllerTurn(sessionId, "The team was great today");
       expect(decision2.beatId).toBe(1);
       expect(decision2.state.step0_completed).toBe(true);
@@ -265,7 +283,7 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       expect(dec2.beatType).toBe("stop");
     });
 
-    it("completes script after Beat 22 with HANDOFF_LINE and onScriptComplete", async () => {
+    it("completes script after Beat 25 with HANDOFF_LINE and onScriptComplete", async () => {
       await processControllerTurn(sessionId, "Yes");
       await processControllerTurn(sessionId, "Great"); // Beat 1
 
@@ -283,8 +301,32 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       expect(dec22.beatId).toBe(22);
       expect(dec22.textToSpeak).toContain("four dollars a day");
 
-      // After Beat 22: agree
-      const finalTurn = await processControllerTurn(sessionId, "makes sense", DEFAULT_DEAL_CONFIG, {
+      // Beat 23 (Negotiation)
+      const dec23 = await processControllerTurn(sessionId, "sounds good", DEFAULT_DEAL_CONFIG, {
+        intent: "agree",
+        topic_beat_ids: [],
+      });
+      expect(dec23.beatId).toBe(23);
+      expect(dec23.textToSpeak).toContain("most value in");
+
+      // Beat 24 (Close)
+      const dec24 = await processControllerTurn(sessionId, "agree", DEFAULT_DEAL_CONFIG, {
+        intent: "agree",
+        topic_beat_ids: [],
+      });
+      expect(dec24.beatId).toBe(24);
+      expect(dec24.textToSpeak).toContain("to confirm");
+
+      // Beat 25 (Verification)
+      const dec25 = await processControllerTurn(sessionId, "yes let's move forward", DEFAULT_DEAL_CONFIG, {
+        intent: "agree",
+        topic_beat_ids: [],
+      });
+      expect(dec25.beatId).toBe(25);
+      expect(dec25.textToSpeak).toContain("verify your full legal name");
+
+      // After Beat 25: Terminal Handoff
+      const finalTurn = await processControllerTurn(sessionId, "Alex Smith 742 Evergreen Terrace", DEFAULT_DEAL_CONFIG, {
         intent: "agree",
         topic_beat_ids: [],
       });
@@ -428,8 +470,141 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       expect(heyTurn.textToSpeak).not.toContain("How can I assist you today?"); // Never stitch generic bot greeting!
       expect(heyTurn.beatId).toBe(2); // Stays on Beat 2!
     });
+
+    it("Interjections: 'Let me tell you something' responds with LISTENING_LINE and holds current beat", async () => {
+      await processControllerTurn(sessionId, "Yes");
+      await processControllerTurn(sessionId, "It was great"); // Beat 1
+      await processControllerTurn(sessionId, "Yes", DEFAULT_DEAL_CONFIG, { intent: "agree", topic_beat_ids: [] }); // Beat 2
+
+      const interjectionTurn = await processControllerTurn(sessionId, "Let me tell you something.");
+      expect(interjectionTurn.intent).toBe("pause_request");
+      expect(interjectionTurn.textToSpeak).toBe(LISTENING_LINE);
+      expect(interjectionTurn.beatId).toBe(2); // Stays on current beat, listening to caller!
+    });
+
+    it("Beat 4 Qualifying Answer: 'he explained about some of the warranties' advances cleanly to Beat 5", async () => {
+      const state = getOrCreateCallState(sessionId);
+      state.step0_completed = true;
+      state.current_beat = 4;
+
+      const warrantyAnswerTurn = await processControllerTurn(sessionId, "he explained about some of the warranties");
+      expect(warrantyAnswerTurn.intent).toBe("agree");
+      expect(warrantyAnswerTurn.beatId).toBe(5); // Cleanly advances to Beat 5!
+    });
+
+    it("Beat 4 Qualifying Answer 'No' / 'No he did not tell me anything' transitions directly into Beat 6 warranty presentation without escalation", async () => {
+      const state = getOrCreateCallState(sessionId);
+      state.step0_completed = true;
+      state.current_beat = 4;
+
+      // Customer says "No he did not tell me anything" or "I'm not really"
+      const noWarrantyTurn = await processControllerTurn(sessionId, "No he did not tell me anything");
+      expect(noWarrantyTurn.intent).toBe("no");
+      expect(noWarrantyTurn.beatId).toBe(6);
+      expect(noWarrantyTurn.textToSpeak).toContain("Allow me to go over it really quick to make sure that you understand everything");
+      expect(noWarrantyTurn.textToSpeak).toContain("Also, if you have any questions, please do not hesitate to stop me and ask me");
+      expect(noWarrantyTurn.textToSpeak).toContain("Mazda is like any other manufacturer");
+      expect(noWarrantyTurn.textToSpeak).not.toContain("bring in my colleague");
+      expect(noWarrantyTurn.toolCalls).toEqual([{ name: "show_content", args: { item: "warranty_terms" } }]);
+      expect(noWarrantyTurn.state.is_stopped).toBe(false);
+    });
+
+    it("Barge-in detector shouldCutMaxOff honors conversational phrases like 'let me tell you' and multi-word replies", () => {
+      expect(shouldCutMaxOff("let me tell you something")).toBe(true);
+      expect(shouldCutMaxOff("let me finish")).toBe(true);
+      expect(shouldCutMaxOff("listen to me")).toBe(true);
+      expect(shouldCutMaxOff("wait a second")).toBe(true);
+      expect(shouldCutMaxOff("what are you saying")).toBe(true);
+      expect(shouldCutMaxOff("actually that is not what happened")).toBe(true);
+      expect(shouldCutMaxOff("when I speak something")).toBe(true);
+      expect(shouldCutMaxOff("I have a question")).toBe(true);
+      expect(shouldCutMaxOff("wait")).toBe(true);
+      expect(shouldCutMaxOff("stop")).toBe(true);
+      expect(shouldCutMaxOff("no")).toBe(true);
+      expect(shouldCutMaxOff("can you hear me")).toBe(true);
+      // Pure backchannel should NOT cut off
+      expect(shouldCutMaxOff("yeah")).toBe(false);
+      expect(shouldCutMaxOff("uh huh")).toBe(false);
+      expect(shouldCutMaxOff("okay")).toBe(false);
+      expect(shouldCutMaxOff("mhm")).toBe(false);
+    });
+
+    it("EQ Adaptation: Frustrated customer triggers EQ_DEESCALATION_LINE without advancing beat", async () => {
+      await processControllerTurn(sessionId, "Yes");
+      await processControllerTurn(sessionId, "It was great"); // Beat 1
+      await processControllerTurn(sessionId, "Yes", DEFAULT_DEAL_CONFIG, { intent: "agree", topic_beat_ids: [] }); // Beat 2
+
+      const frustratedTurn = await processControllerTurn(sessionId, "I have been waiting for hours, hurry up and don't waste my time!");
+      expect(frustratedTurn.intent).toBe("customer_frustrated");
+      expect(frustratedTurn.textToSpeak).toContain("I hear you 100 percent. You've had a long day at the dealership");
+      expect(frustratedTurn.beatId).toBe(2); // Validates and holds beat with empathy
+    });
+
+    it("EQ Adaptation: Anxious/doubtful customer triggers EQ_REASSURANCE_LINE with psychological safety", async () => {
+      await processControllerTurn(sessionId, "Yes");
+      await processControllerTurn(sessionId, "It was great"); // Beat 1
+      await processControllerTurn(sessionId, "Yes", DEFAULT_DEAL_CONFIG, { intent: "agree", topic_beat_ids: [] }); // Beat 2
+
+      const anxiousTurn = await processControllerTurn(sessionId, "I'm really nervous and scared of hidden costs, this is my first car.");
+      expect(anxiousTurn.intent).toBe("customer_anxious");
+      expect(anxiousTurn.textToSpeak).toContain("Take a deep breath—buying a car is a huge milestone");
+      expect(anxiousTurn.beatId).toBe(2); // Provides psychological safety without pressure
+    });
+
+    it("EQ Adaptation: Excited/humor customer triggers EQ_EXCITEMENT_LINE and advances naturally", async () => {
+      await processControllerTurn(sessionId, "Yes");
+      await processControllerTurn(sessionId, "It was great"); // Beat 1
+
+      const excitedTurn = await processControllerTurn(sessionId, "Haha that's hilarious Max, you're funny!");
+      expect(excitedTurn.intent).toBe("compliment");
+      expect(excitedTurn.textToSpeak).toContain("I love that energy! That new car is an absolute head-turner");
+      expect(excitedTurn.beatId).toBe(2); // Advances with shared excitement
+    });
+
+    it("isIncompleteUtterance detects trailing hesitation and incomplete dangling clauses", () => {
+      expect(isIncompleteUtterance("uh does this provided by")).toBe(true);
+      expect(isIncompleteUtterance("Let me please confirm that should I buy this from the")).toBe(true);
+      expect(isIncompleteUtterance("new warranty or should i")).toBe(true);
+      expect(isIncompleteUtterance("Wait, I wanted to ask about")).toBe(true);
+      expect(isIncompleteUtterance("Yes, I drove it and it was great")).toBe(false);
+      expect(isIncompleteUtterance("That sounds fair to me")).toBe(false);
+    });
+
+    it("Vehicle Discrepancy: Customer correcting vehicle model triggers vehicle_discrepancy without reciting default car", async () => {
+      await processControllerTurn(sessionId, "Yes");
+      await processControllerTurn(sessionId, "It was great"); // Beat 1
+
+      // Customer interrupts with car correction ("No, uh, I was buying, uh, Maybach.")
+      const turn = await processControllerTurn(sessionId, "No, uh, I was buying, uh, Maybach.");
+      expect(turn.intent).toBe("vehicle_discrepancy");
+      expect(turn.textToSpeak).toContain("Maybach");
+      expect(turn.textToSpeak).toContain("thank you for catching that");
+      expect(turn.textToSpeak).not.toContain("Mazda CX five");
+      expect(turn.state.dealConfig.vehicle_model).toBe("Maybach");
+      expect(turn.beatId).toBe(2);
+      expect(turn.beatType).toBe("wait");
+    });
+
+    it("Manufacturer vs Dealer: Customer asking about manufacturer coverage receives clear direct explanation", async () => {
+      await processControllerTurn(sessionId, "Yes");
+      await processControllerTurn(sessionId, "It was great"); // Beat 1
+      await processControllerTurn(sessionId, "Yes", DEFAULT_DEAL_CONFIG, { intent: "agree", topic_beat_ids: [] }); // Beat 2
+
+      // Customer asks if coverage is provided by manufacturer or if they should buy new one
+      const turn = await processControllerTurn(
+        sessionId,
+        "Uh, does this provided by the manufacturer or uh, should I buy the new one?"
+      );
+      expect(turn.intent).toBe("manufacturer_vs_dealer");
+      expect(turn.textToSpeak).toContain("The factory warranty comes directly from the manufacturer");
+      expect(turn.textToSpeak).toContain("dealership's comprehensive coverage");
+      // Must NOT dump 3 wear-and-tear recaps
+      expect(turn.textToSpeak).not.toContain("As a quick recap, wear and tear from climate, roads, and driving causes ninety-five percent of breakdowns. As a recap, potholes");
+      expect(turn.beatType).toBe("wait");
+    });
   });
 });
+
 
 
 

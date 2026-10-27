@@ -32,7 +32,7 @@
   {
     "id": 6,
     "type": "wait",
-    "text": "\"Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one.\" \"The first warranty is 3 years thirty six thousand mile Base limited warranty\" \"The second of is five years sixty thousand mile power train which is referring to the engine and the transmission , im sure you and i agree thats a very good complementary warranty from the manufacturer\"",
+    "text": "\"Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one.\" \"The first warranty is five years sixty thousand mile Base limited warranty\" \"The second is ten years hundred thousand mile powertrain which is referring to the engine and the transmission, im sure you and i agree thats a very good complementary warranty from the manufacturer\"",
     "check_in": "right?"
   },
   {
@@ -92,7 +92,7 @@
   {
     "id": 16,
     "type": "wait",
-    "text": "\"Thats why we recommend to you to wrap the true blanket cover warranty around the vehicle which is 7 years hundred thousand mile warranty BUMBER TO BUMBER and what i mean by that is a warranty will cover everything in the vehicle as far as engine transmission drive axle four wheel drive the suspension the steering the cooling system the electric the breaks the AC air condition sensors all the electronics and technology and the labor with zero deductible any where you go we kindly asking you to come here when you need to service the car we only get the benefits when you come visit any of our service locations across the metroplex\"",
+    "text": "\"Thats why we recommend to you to wrap the true blanket cover warranty around the vehicle which is 10 years hundred thousand mile warranty BUMBER TO BUMBER and what i mean by that is a warranty will cover everything in the vehicle as far as engine transmission drive axle four wheel drive the suspension the steering the cooling system the electric the breaks the AC air condition sensors all the electronics and technology and the labor with zero deductible any where you go we kindly asking you to come here when you need to service the car we only get the benefits when you come visit any of our service locations across the metroplex\"",
     "check_in": "Are you with me?"
   },
   {
@@ -104,7 +104,7 @@
   {
     "id": 18,
     "type": "continue",
-    "text": "\"We also include for you the 4 years maintenance package that cover all your full synthetic oil change filters and tire rotation so instead you pay for a hundred twenty five dollar for every oil change plus 29 dollar for filter plus a hundred fourty dollar for tire rotation every time you go to service your vehicle no say good buy to all that\"",
+    "text": "\"We also include for you the 5 years maintenance package that cover all your full synthetic oil change filters and tire rotation so instead you pay for a hundred twenty five dollar for every oil change plus 29 dollar for filter plus a hundred fourty dollar for tire rotation every time you go to service your vehicle no say good buy to all that\"",
     "check_in": null
   },
   {
@@ -116,19 +116,37 @@
   {
     "id": 20,
     "type": "continue",
-    "text": "\"Now let me recap what i just said you get\" \"7 years hundred thousand mile BUMBER TO BUMBER WARRANTY THAT COVERS ALL THE MECHANIC BREAKE DOWN ALL THE ELECTRONIC BREAKE DOWN ALL THE PARTS ALL THE LABOR WITH ZERO deductible you pay nothing out of your pocket every time you fix the vehicle\"",
+    "text": "\"Now let me recap what i just said you get\" \"10 years hundred thousand mile BUMBER TO BUMBER WARRANTY THAT COVERS ALL THE MECHANIC BREAKE DOWN ALL THE ELECTRONIC BREAKE DOWN ALL THE PARTS ALL THE LABOR WITH ZERO deductible you pay nothing out of your pocket every time you fix the vehicle\"",
     "check_in": null
   },
   {
     "id": 21,
     "type": "continue",
-    "text": "\"You also get the 5 years tire and wheels cover, cover all the tires and wheels for the next five years and finally your maintenance cover for 4 years cover all your full synthetic oil change all your filters and tire rotation so you don't have to worry about paying anything in the future and like i said the only thing you have to worry about is paying for your Gas\"",
+    "text": "\"You also get the 5 years tire and wheels cover, cover all the tires and wheels for the next five years and finally your maintenance cover for 5 years cover all your full synthetic oil change all your filters and tire rotation so you don't have to worry about paying anything in the future and like i said the only thing you have to worry about is paying for your Gas\"",
     "check_in": null
   },
   {
     "id": 22,
     "type": "wait",
     "text": "\"You can get everything i just mentioned for only {{per_day_price}} a day a coffee a day and everything is covered in your vehicle not even that a coffee a day from starbucks is 8 dollars and sixty cent for less then half a cup of a coffee a day you will get everything covered so you don't have to worry about paying anyone anything in the future\"",
+    "check_in": null
+  },
+  {
+    "id": 23,
+    "type": "wait",
+    "text": "\"Which two of those do you see the most value in? We want to make sure you get the exact coverage that makes the most sense for your driving habits.\"",
+    "check_in": "Does that sound fair?"
+  },
+  {
+    "id": 24,
+    "type": "wait",
+    "text": "\"Great, so to confirm, we're moving forward with full vehicle protection for four dollars a day on your 2026 Mazda CX-5.\"",
+    "check_in": "Are you ready to finalize?"
+  },
+  {
+    "id": 25,
+    "type": "wait",
+    "text": "\"Now that we've confirmed your paperwork, let me quickly verify your full legal name, spelling, and current mailing address before final signature.\"",
     "check_in": null
   }
 ]

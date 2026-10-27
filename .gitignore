@@ -53,3 +53,13 @@ tavus-avatar/public/globe.svg
 tavus-avatar/public/next.svg
 tavus-avatar/public/vercel.svg
 tavus-avatar/public/window.svg
+
+# media recordings & logs
+*.webm
+tavus-avatar/logs-heygen/
+tavus-avatar/public/logs-heygen/
+tavus-avatar/src/app/logs-heygen/
+tavus-avatar/scratch/
+testing-skill/node_modules/
+testing-skill/__pycache__/
+__pycache__/

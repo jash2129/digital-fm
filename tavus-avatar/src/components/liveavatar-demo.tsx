@@ -15,9 +15,9 @@ import { CallSummaryScreen } from "@/components/CallSummaryScreen";
 // All thresholds in one central object for easy tuning without hunting
 // =============================================================================
 export const SPEED_AND_BARGE_IN_CONFIG = {
-  // End of speech silence threshold in milliseconds (minimum 500ms, start at 650ms)
-  // Does not wait for Chrome's own final result.
-  END_OF_SPEECH_MS: 650,
+  // End of speech silence threshold in milliseconds (natural human pauses 1200-1400ms)
+  // Prevents cutting off human callers mid-sentence while they breathe or formulate words
+  END_OF_SPEECH_MS: 1400,
 
   // Single words / short phrases that immediately cut Max off:
   BARGE_IN_CUTOFF_WORDS: [
@@ -29,12 +29,24 @@ export const SPEED_AND_BARGE_IN_CONFIG = {
     "what",
     "hang on",
     "one second",
+    "let me",
+    "let me tell you",
+    "let me speak",
+    "let me explain",
+    "let me finish",
+    "let me complete",
+    "listen",
+    "hear me out",
+    "hear me",
+    "actually",
+    "excuse me",
+    "hold up",
   ],
 
-  // Minimum words of any reply to trigger cut-off (e.g. 3 or more words):
-  MIN_WORDS_ANY_BARGE_IN: 3,
+  // Minimum words of any reply to trigger cut-off (5 or more substantive words):
+  MIN_WORDS_ANY_BARGE_IN: 5,
 
-  // Words that do NOT cut Max off (treated as backchannel, letting him finish):
+  // Words and phrases that do NOT cut Max off (treated as backchannel, letting him finish):
   BACKCHANNEL_WORDS: [
     "mhm",
     "uh huh",
@@ -45,6 +57,28 @@ export const SPEED_AND_BARGE_IN_CONFIG = {
     "right",
     "sure",
     "go on",
+    "he did",
+    "yeah he did",
+    "yes he did",
+    "i did",
+    "yes i did",
+    "i drove",
+    "i drove it",
+    "yes i drove",
+    "it was nice",
+    "was nice",
+    "listening",
+    "i m listening",
+    "im listening",
+    "i am listening",
+    "good please",
+    "please go on",
+    "go ahead",
+    "makes sense",
+    "gotcha",
+    "all right",
+    "alright",
+    "sounds good",
   ],
 
   // Anti-echo ordered word match threshold (reject only if 80%+ matches avatar):
@@ -66,45 +100,103 @@ export function shouldCutMaxOff(spoken: string): boolean {
   const words = norm.split(/\s+/).filter(Boolean);
   if (words.length === 0) return false;
 
-  // 1. Explicit backchannel words do NOT cut Max off
-  if (SPEED_AND_BARGE_IN_CONFIG.BACKCHANNEL_WORDS.includes(norm)) {
+  // 1. Explicit passive backchannel murmurs do NOT cut Max off
+  const PASSIVE_BACKCHANNELS = new Set([
+    "mhm",
+    "uh huh",
+    "uh-huh",
+    "uhhuh",
+    "mm",
+    "hmm",
+    "yeah",
+    "yes",
+    "okay",
+    "ok",
+    "right",
+    "sure",
+    "yep",
+    "gotcha",
+    "uh",
+    "um",
+    "ah",
+  ]);
+
+  if (PASSIVE_BACKCHANNELS.has(norm)) {
     return false;
   }
-  if (words.every((w) => SPEED_AND_BARGE_IN_CONFIG.BACKCHANNEL_WORDS.includes(w))) {
+  // Single-word passive acknowledgment
+  if (words.length === 1 && PASSIVE_BACKCHANNELS.has(words[0])) {
+    return false;
+  }
+  // Repetitive backchannel mutterings (e.g. "yeah yeah", "uh huh")
+  if (words.every((w) => PASSIVE_BACKCHANNELS.has(w))) {
     return false;
   }
 
-  // 2. Cutoff single words/phrases cut Max off immediately
+  // 2. Explicit cutoff words/phrases cut Max off immediately
   for (const cutoff of SPEED_AND_BARGE_IN_CONFIG.BARGE_IN_CUTOFF_WORDS) {
-    if (norm === cutoff || norm.startsWith(`${cutoff} `) || norm.endsWith(` ${cutoff}`) || norm.includes(` ${cutoff} `)) {
+    if (
+      norm === cutoff ||
+      norm.startsWith(`${cutoff} `) ||
+      norm.endsWith(` ${cutoff}`) ||
+      norm.includes(` ${cutoff} `)
+    ) {
       return true;
     }
   }
 
-  // 3. User questions starting with interrogatives cut Max off
+  // 3. User questions starting with interrogatives or intent openers cut Max off
   if (
     norm.startsWith("who ") ||
     norm.startsWith("what ") ||
     norm.startsWith("why ") ||
     norm.startsWith("how ") ||
+    norm.startsWith("when ") ||
+    norm.startsWith("where ") ||
+    norm.startsWith("which ") ||
     norm.startsWith("can i ") ||
+    norm.startsWith("can you ") ||
     norm.startsWith("could you ") ||
+    norm.startsWith("could i ") ||
+    norm.startsWith("is that ") ||
+    norm.startsWith("is it ") ||
+    norm.startsWith("is this ") ||
+    norm.startsWith("does it ") ||
+    norm.startsWith("does that ") ||
+    norm.startsWith("do you ") ||
+    norm.startsWith("will it ") ||
+    norm.startsWith("would it ") ||
+    norm.startsWith("tell me ") ||
+    norm.startsWith("i have ") ||
+    norm.startsWith("i want ") ||
+    norm.startsWith("i need ") ||
     norm.startsWith("excuse me")
   ) {
+    return true;
+  }
+
+  // 4. Any substantive speech of 2 or more words that is not a pure backchannel cuts Max off immediately!
+  if (words.length >= 2) {
+    return true;
+  }
+
+  // 5. Single words that are NOT passive backchannels (e.g. "wait", "stop", "no", "listen", "actually", "hey", "hello", "max")
+  if (words.length === 1 && !PASSIVE_BACKCHANNELS.has(words[0])) {
     return true;
   }
 
   return false;
 }
 
-// Anti-echo without dropping real questions: rejects when user transcript matches any recent avatar text
+// Anti-echo without dropping real questions: rejects only when user transcript is an unambiguous speaker echo
 export function isNearExactEcho(
   userTranscript: string,
   recentAvatarSources: string | string[] | Array<{ text: string }>
 ): boolean {
   if (!userTranscript) return false;
   const userWords = userTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim().split(/\s+/).filter(Boolean);
-  if (userWords.length < 2) return false;
+  // Real acoustic echo requires multiple words; short human phrases (1-3 words) are NEVER echo
+  if (userWords.length < 4) return false;
 
   let sources: string[] = [];
   if (typeof recentAvatarSources === "string") {
@@ -113,29 +205,59 @@ export function isNearExactEcho(
     sources = recentAvatarSources.map((s: any) => (typeof s === "string" ? s : s?.text || "")).filter(Boolean);
   }
 
+  const userClean = userWords.join(" ");
+
   for (const src of sources) {
     const avatarWords = src.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim().split(/\s+/).filter(Boolean);
     if (avatarWords.length === 0) continue;
 
-    // Check direct substring
-    const userClean = userWords.join(" ");
     const srcClean = avatarWords.join(" ");
-    if (srcClean.includes(userClean) || userClean.includes(srcClean)) {
+
+    // Exact phrase match: only if at least 5 consecutive words are identical
+    if (userWords.length >= 5 && srcClean.includes(userClean)) {
       return true;
     }
 
-    // Check word overlap: if >= 50% of user words match avatar words
-    const avatarSet = new Set(avatarWords);
-    let matchCount = 0;
-    for (const uWord of userWords) {
-      if (avatarSet.has(uWord)) matchCount++;
-    }
-    const ratio = matchCount / userWords.length;
-    if (ratio >= 0.5 && matchCount >= 3) {
-      return true;
+    // High word overlap: if >= 80% of user words match avatar words in an utterance of 5+ words
+    if (userWords.length >= 5) {
+      const avatarSet = new Set(avatarWords);
+      let matchCount = 0;
+      for (const uWord of userWords) {
+        if (avatarSet.has(uWord)) matchCount++;
+      }
+      const ratio = matchCount / userWords.length;
+      if (ratio >= 0.8 && matchCount >= 4) {
+        return true;
+      }
     }
   }
 
+  return false;
+}
+
+// Incomplete clause / trailing hesitation detector: prevents cutting callers off mid-thought
+export function isIncompleteUtterance(spoken: string): boolean {
+  const norm = spoken.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+  const words = norm.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return false;
+  const lastWord = words[words.length - 1];
+  const danglingWords = new Set([
+    "by", "the", "from", "that", "and", "or", "uh", "um", "so", "to",
+    "of", "in", "at", "for", "with", "if", "should", "can", "could",
+    "would", "is", "are", "a", "an", "which", "what", "than", "as",
+    "like", "because", "but", "about"
+  ]);
+  if (danglingWords.has(lastWord)) return true;
+  if (words.length >= 2 && words[words.length - 2] === "from" && lastWord === "the") return true;
+  if (words.length >= 2 && words[words.length - 2] === "or" && lastWord === "uh") return true;
+  if (words.length >= 2 && words[words.length - 2] === "or" && lastWord === "should") return true;
+  if (
+    words.length >= 2 &&
+    ["should", "can", "could", "would", "do", "did", "will", "if"].includes(words[words.length - 2]) &&
+    ["i", "we", "you"].includes(lastWord)
+  ) {
+    return true;
+  }
   return false;
 }
 
@@ -148,13 +270,18 @@ export function LiveAvatarDemo() {
   const [avatarName, setAvatarName] = useState<string>("Max (Finance Manager)");
   const [isAvatarSpeaking, setIsAvatarSpeaking] = useState(false);
   const [isUserSpeaking, setIsUserSpeaking] = useState(false);
+  const isUserSpeakingRef = useRef(false);
+  const setUserSpeaking = useCallback((val: boolean) => {
+    isUserSpeakingRef.current = val;
+    setIsUserSpeaking(val);
+  }, []);
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [canPlaybackAudio, setCanPlaybackAudio] = useState(true);
   const [isGrokThinking, setIsGrokThinking] = useState(false);
 
-  // Verified Avatar Preview URL (novus.ai6) & Remote Tracks
+  // Verified Avatar Preview URL (Dexter Lawyer - US English) & Remote Tracks
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(
-    "https://static.liveavatar.com/spaces/956ee8af13524a9684f952c54e4cb223/image_uploads/abdf763e-0460-4e16-b2ad-c1545fd63adf"
+    "https://files2.heygen.ai/avatar/v3/e20ac0c902184ff793e75ae4e139b7dc_45600/preview_target.webp"
   );
   const [remoteVideoTrack, setRemoteVideoTrack] = useState<RemoteTrack | null>(null);
   const [remoteAudioTrack, setRemoteAudioTrack] = useState<RemoteTrack | null>(null);
@@ -221,6 +348,8 @@ export function LiveAvatarDemo() {
   const lastSpokenByAvatarRef = useRef<string>("");
   const recentAvatarTextsRef = useRef<Array<{ text: string; timestamp: number }>>([]);
   const avatarFinishedAtRef = useRef<number>(0);
+  const lastInterruptedAtRef = useRef<number>(0);
+  const isListeningRef = useRef<boolean>(false);
 
   // LiveKit WebRTC references
   const roomRef = useRef<Room | null>(null);
@@ -367,6 +496,18 @@ export function LiveAvatarDemo() {
       // Restore volume before Max's next utterance starts
       setRemoteAudioMutedLocally(false);
 
+      // Transition avatar from listening posture to speaking
+      try {
+        const stopListeningPayload = new TextEncoder().encode(
+          JSON.stringify({
+            event_type: "avatar.stop_listening",
+            event: "avatar.stop_listening",
+          })
+        );
+        await room.localParticipant.publishData(stopListeningPayload, { reliable: true, topic: "agent-control" });
+        isListeningRef.current = false;
+      } catch (err) {}
+
       // Immediately set speaking flag to prevent race condition before speak_started event
       setIsAvatarSpeaking(true);
       isAvatarSpeakingRef.current = true;
@@ -418,25 +559,42 @@ export function LiveAvatarDemo() {
     }
 
     try {
-      console.log("[liveavatar] Sending avatar.interrupt (barge-in)");
+      console.log("[liveavatar] Sending avatar.interrupt and switching to avatar.start_listening (barge-in)");
       // Instant local mute on barge-in
       setRemoteAudioMutedLocally(true);
 
-      const payload = new TextEncoder().encode(
+      const interruptPayload = new TextEncoder().encode(
         JSON.stringify({
           event_type: "avatar.interrupt",
           event: "avatar.interrupt",
+          type: "avatar.interrupt",
+          action: "interrupt",
         })
       );
-      await room.localParticipant.publishData(payload, { reliable: true, topic: "agent-control" });
+      await room.localParticipant.publishData(interruptPayload, { reliable: true, topic: "agent-control" });
+
+      // Switch avatar into interactive listening / head-nod state
+      const startListeningPayload = new TextEncoder().encode(
+        JSON.stringify({
+          event_type: "avatar.start_listening",
+          event: "avatar.start_listening",
+          type: "avatar.start_listening",
+          action: "start_listening",
+        })
+      );
+      await room.localParticipant.publishData(startListeningPayload, { reliable: true, topic: "agent-control" });
+
       setIsAvatarSpeaking(false);
       isAvatarSpeakingRef.current = false;
+      isListeningRef.current = true;
+      setUserSpeaking(true);
+      lastInterruptedAtRef.current = Date.now();
       avatarFinishedAtRef.current = Date.now();
-      setCurrentReplicaText((prev) => (prev ? `${prev} — [Interrupted]` : ""));
+      setCurrentReplicaText((prev) => (prev ? `${prev} — [Listening...]` : ""));
     } catch (err) {
       console.error("[liveavatar] Failed to interrupt avatar:", err);
     }
-  }, [setRemoteAudioMutedLocally]);
+  }, [setRemoteAudioMutedLocally, setUserSpeaking]);
 
   // ---------------------------------------------------------------------------
   // Handle Chat with Grok & Tool Execution
@@ -463,7 +621,7 @@ export function LiveAvatarDemo() {
       ];
       conversationHistoryRef.current = updatedHistory;
       setMessages(updatedHistory);
-      setIsUserSpeaking(false);
+      setUserSpeaking(false);
 
       // Initialize turn timing instrumentation
       const speechEndTime = userSpeechEndTimestampRef.current || Date.now();
@@ -605,9 +763,10 @@ export function LiveAvatarDemo() {
           finalTranscript += transcript;
         } else {
           interimText += transcript;
-          setIsUserSpeaking(true);
         }
       }
+
+      setUserSpeaking(true);
 
       const currentSpoken = (interimText || finalTranscript).trim();
       if (!currentSpoken) return;
@@ -618,19 +777,8 @@ export function LiveAvatarDemo() {
         continuePauseTimerRef.current = null;
       }
 
-      // 1. Anti-echo filter:
-      // Drop any transcript that reflects recent avatar speech (speaker-to-mic leakage)
-      const isEcho = isNearExactEcho(currentSpoken, [
-        lastSpokenByAvatarRef.current,
-        ...recentAvatarTextsRef.current.map((r) => r.text),
-      ]);
-      if (isEcho) {
-        console.warn(`[anti-echo] REJECTED transcript as speaker echo: "${currentSpoken}"`);
-        return;
-      }
-
-      // 2. Barge-in on short words, with filter:
-      // Cutoff words immediately cut Max off; backchannel words let him finish
+      // 1. Instant Barge-In Cutoff:
+      // If Max is speaking and the user speaks ANY substantive words, interrupt him instantly!
       if (isAvatarSpeakingRef.current && shouldCutMaxOff(currentSpoken)) {
         console.log("[liveavatar] Barge-in triggered by user speech:", currentSpoken);
         bargeInsRef.current.push({
@@ -651,22 +799,55 @@ export function LiveAvatarDemo() {
         }
         setRemoteAudioMutedLocally(true);
         void interruptAvatar();
+      } else if (isAvatarSpeakingRef.current) {
+        // User speech did not trigger cut-off; check if this is microphone acoustic echo
+        const isEcho = isNearExactEcho(currentSpoken, [
+          lastSpokenByAvatarRef.current,
+          ...recentAvatarTextsRef.current.map((r) => r.text),
+        ]);
+        if (isEcho) {
+          console.warn(`[anti-echo] REJECTED transcript as speaker echo: "${currentSpoken}"`);
+          return;
+        }
       }
 
       setLatestUserTranscript(currentSpoken);
 
-      // 3. Debounced end-of-speech detection:
-      // Uses natural silence pause so multi-word sentences (e.g. "Yeah, I can see you") are never fragmented into separate turns
+      // 2. Debounced end-of-speech detection:
+      // Uses natural silence pause so multi-word sentences are never fragmented into separate turns
       if (silenceEndTimerRef.current) clearTimeout(silenceEndTimerRef.current);
-      const delayMs = finalTranscript.trim() ? 250 : SPEED_AND_BARGE_IN_CONFIG.END_OF_SPEECH_MS;
+
+      const timeSinceInterrupted = Date.now() - (lastInterruptedAtRef.current || 0);
+      const isRecentBargeIn = timeSinceInterrupted < 4000;
+      const isIncomplete = isIncompleteUtterance(currentSpoken);
+
+      let delayMs = SPEED_AND_BARGE_IN_CONFIG.END_OF_SPEECH_MS;
+      if (isIncomplete) {
+        // User is mid-sentence pausing before finishing clause: hold 2500ms
+        delayMs = Math.max(delayMs, 2500);
+      } else if (isRecentBargeIn) {
+        // Just interrupted Max: give full floor to speak without rushing to cut them off
+        delayMs = Math.max(delayMs, 1800);
+      } else if (finalTranscript.trim()) {
+        delayMs = 1200;
+      }
+
       silenceEndTimerRef.current = setTimeout(() => {
         const spoken = (finalTranscript || interimText || currentSpoken).trim();
         if (!spoken || isGrokProcessingRef.current) return;
 
+        // Ignore isolated single filler words like 'uh', 'um'
+        const pureFillers = new Set(["uh", "um", "ah", "er"]);
+        const normWords = spoken.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim().split(/\s+/).filter(Boolean);
+        if (normWords.length === 1 && pureFillers.has(normWords[0])) {
+          console.log("[speech-recognition] Discarding isolated filler word:", spoken);
+          return;
+        }
+
         // CRITICAL ACOUSTIC ECHO GUARD:
         const timeSinceAvatarStop = Date.now() - (avatarFinishedAtRef.current || 0);
 
-        // 1. Discard any transcript that matches recent avatar utterances
+        // 1. Discard any transcript that matches recent avatar utterances (true echo only)
         if (
           isNearExactEcho(spoken, [
             lastSpokenByAvatarRef.current,
@@ -677,10 +858,15 @@ export function LiveAvatarDemo() {
           return;
         }
 
-        // 2. If Max is still speaking and user did NOT say an explicit cutoff word/question, discard as speaker leakage!
-        if (isAvatarSpeakingRef.current && !shouldCutMaxOff(spoken)) {
-          console.warn("[liveavatar] Discarded speech during avatar playback as speaker leakage:", spoken);
-          return;
+        // 2. If Max is still speaking when silence timer fires:
+        if (isAvatarSpeakingRef.current) {
+          if (!shouldCutMaxOff(spoken)) {
+            console.warn("[liveavatar] Discarded speech during avatar playback as speaker leakage:", spoken);
+            return;
+          }
+          // User spoke an intentional turn: cut off Max immediately!
+          console.log("[liveavatar] Interrupting Max in silence timer due to user speech:", spoken);
+          void interruptAvatar();
         }
 
         // 3. For 1500ms after avatar stops speaking, Web Speech API delayed packets can still arrive:
@@ -699,7 +885,7 @@ export function LiveAvatarDemo() {
           `[speech-recognition] Speech silence timeout (${delayMs}ms) fired turn dispatch:`,
           spoken
         );
-        setIsUserSpeaking(false);
+        setUserSpeaking(false);
         void sendToGrok(spoken);
       }, delayMs);
     };
@@ -720,12 +906,12 @@ export function LiveAvatarDemo() {
       if (e.error !== "no-speech" && e.error !== "aborted") {
         console.warn("[speech-recognition warning]:", e.error);
       }
-      setIsUserSpeaking(false);
+      setUserSpeaking(false);
       scheduleRestart(600);
     };
 
     recognizer.onend = () => {
-      setIsUserSpeaking(false);
+      setUserSpeaking(false);
       scheduleRestart(300);
     };
 
@@ -1100,16 +1286,30 @@ export function LiveAvatarDemo() {
               avatarWatchdogTimerRef.current = null;
             }
 
-            // Section 3.3: continue beats pause 1000ms. If user does not speak, send next beat.
+            // Put avatar in attentive listening / head-nod state while waiting for user response
+            try {
+              const startListeningPayload = new TextEncoder().encode(
+                JSON.stringify({
+                  event_type: "avatar.start_listening",
+                  event: "avatar.start_listening",
+                  type: "avatar.start_listening",
+                  action: "start_listening",
+                })
+              );
+              void room.localParticipant.publishData(startListeningPayload, { reliable: true, topic: "agent-control" });
+              isListeningRef.current = true;
+            } catch (listenErr) {}
+
+            // Section 3.3: continue beats pause 3500ms. If user does not speak, send next beat.
             if (lastBeatTypeRef.current === "continue" && isConnectedRef.current && !isUserSpeakingRef.current) {
               if (continuePauseTimerRef.current) clearTimeout(continuePauseTimerRef.current);
-              console.log("[beat-controller] Continue beat finished. Pausing 1000ms before auto-advancing to next beat...");
+              console.log("[beat-controller] Continue beat finished. Pausing 3500ms before auto-advancing to next beat...");
               continuePauseTimerRef.current = setTimeout(() => {
                 if (isConnectedRef.current && !isUserSpeakingRef.current && !isGrokProcessingRef.current) {
-                  console.log("[beat-controller] 1000ms pause elapsed without user speech. Advancing to next beat!");
+                  console.log("[beat-controller] 3500ms pause elapsed without user speech. Advancing to next beat!");
                   void sendToGrok("proceed");
                 }
-              }, 1000);
+              }, 3500);
             }
           }
         } catch {
@@ -1141,18 +1341,21 @@ export function LiveAvatarDemo() {
         console.warn("[liveavatar] room.startAudio() deferred:", audioErr);
       }
 
-      // Stop LiveAvatar's internal chatbot from listening to mic audio (Grok handles dialog exclusively)
+      // Put avatar in active listening and attentive expression posture
       try {
-        const stopListeningPayload = new TextEncoder().encode(
+        const startListeningPayload = new TextEncoder().encode(
           JSON.stringify({
-            event_type: "avatar.stop_listening",
-            event: "avatar.stop_listening",
+            event_type: "avatar.start_listening",
+            event: "avatar.start_listening",
+            type: "avatar.start_listening",
+            action: "start_listening",
           })
         );
-        await room.localParticipant.publishData(stopListeningPayload, { reliable: true, topic: "agent-control" });
-        console.log("[liveavatar] Published avatar.stop_listening to agent-control");
-      } catch (stopErr) {
-        console.warn("[liveavatar] Failed to publish stop_listening:", stopErr);
+        await room.localParticipant.publishData(startListeningPayload, { reliable: true, topic: "agent-control" });
+        console.log("[liveavatar] Published avatar.start_listening to agent-control");
+        isListeningRef.current = true;
+      } catch (listenErr) {
+        console.warn("[liveavatar] Failed to publish start_listening on connection:", listenErr);
       }
 
       // Immediately scan remote participants for tracks that subscribed during room connection
@@ -1752,7 +1955,7 @@ export function LiveAvatarDemo() {
                         <img
                           src={avatarPreviewUrl}
                           alt="Verified Avatar Max"
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover object-top"
                         />
                       ) : (
                         <span className="flex items-center justify-center h-full text-2xl">👤</span>
@@ -1901,16 +2104,33 @@ export function LiveAvatarDemo() {
             <div
               className={
                 activeOverlay
-                  ? "absolute right-6 top-16 z-30 h-[135px] w-[180px] sm:h-[160px] sm:w-[220px] overflow-hidden rounded-2xl border-2 border-sky-400/60 bg-slate-950/95 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur transition-all duration-500 ease-in-out"
-                  : "absolute inset-0 z-0 h-full w-full bg-black transition-all duration-500 ease-in-out overflow-hidden"
+                  ? "absolute right-6 top-16 z-30 h-[180px] w-[135px] sm:h-[220px] sm:w-[165px] overflow-hidden rounded-2xl border-2 border-sky-400/60 bg-slate-950/95 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur transition-all duration-500 ease-in-out flex items-center justify-center"
+                  : "absolute inset-0 z-0 h-full w-full bg-slate-950 transition-all duration-500 ease-in-out overflow-hidden flex items-center justify-center pt-14 pb-24 px-4"
               }
             >
+              {/* Ambient Studio Lighting Backdrop (blends letterbox gracefully without cropping) */}
+              {!activeOverlay && (
+                <div className="absolute inset-0 pointer-events-none overflow-hidden select-none">
+                  {avatarPreviewUrl ? (
+                    <img
+                      src={avatarPreviewUrl}
+                      alt=""
+                      aria-hidden="true"
+                      className="h-full w-full object-cover blur-3xl opacity-25 scale-125 transform-gpu"
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-slate-950" />
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-950/90" />
+                </div>
+              )}
+
               {/* Fallback portrait avatar before live video stream arrives */}
               {!remoteVideoTrack && avatarPreviewUrl && (
                 <img
                   src={avatarPreviewUrl}
                   alt={avatarName}
-                  className="h-full w-full object-cover"
+                  className="relative z-10 max-h-full max-w-full object-contain object-center drop-shadow-[0_15px_40px_rgba(0,0,0,0.85)]"
                 />
               )}
 
@@ -1928,7 +2148,7 @@ export function LiveAvatarDemo() {
                 playsInline
                 muted
                 poster={avatarPreviewUrl || undefined}
-                className="h-full w-full object-cover"
+                className="relative z-10 max-h-full max-w-full object-contain object-center drop-shadow-[0_15px_40px_rgba(0,0,0,0.85)]"
               />
 
               {/* Enhanced Active Presence & Reactive Equalizer */}

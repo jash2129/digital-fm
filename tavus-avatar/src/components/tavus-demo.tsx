@@ -843,14 +843,14 @@ function TavusSession({
         <div
           className={
             overlayState
-              ? "absolute right-4 top-4 z-20 h-[96px] w-[128px] overflow-hidden rounded-[1.1rem] border border-white/15 bg-slate-950/90 shadow-2xl backdrop-blur transition-all duration-300 sm:h-[108px] sm:w-[144px] md:h-[120px] md:w-[160px]"
-              : "absolute inset-0 z-0 h-full w-full bg-black transition-all duration-300"
+              ? "absolute right-4 top-4 z-20 h-[160px] w-[120px] overflow-hidden rounded-[1.1rem] border border-white/15 bg-slate-950/90 shadow-2xl backdrop-blur transition-all duration-300 sm:h-[180px] sm:w-[135px] md:h-[200px] md:w-[150px] flex items-center justify-center"
+              : "absolute inset-0 z-0 h-full w-full bg-black transition-all duration-300 flex items-center justify-center pt-14 pb-24 px-4"
           }
         >
           {avatarSessionId ? (
             <DailyVideo
-              className="h-full w-full bg-slate-950 object-cover"
-              fit="cover"
+              className="h-full w-full bg-slate-950 object-contain object-center"
+              fit="contain"
               sessionId={avatarSessionId}
               type="video"
             />

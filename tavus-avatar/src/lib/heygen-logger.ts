@@ -61,11 +61,25 @@ export function getHeygenLogsDir() {
 }
 
 export function getHeygenLogPath(sessionId: string) {
-  return resolve(getHeygenLogsDir(), `${sessionId}.json`);
+  const direct = resolve(getHeygenLogsDir(), `${sessionId}.json`);
+  if (existsSync(direct)) return direct;
+  const match = sessionId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+  if (match) {
+    const fallback = resolve(getHeygenLogsDir(), `${match[0]}.json`);
+    if (existsSync(fallback)) return fallback;
+  }
+  return direct;
 }
 
 export function getHeygenAudioPath(sessionId: string) {
-  return resolve(getHeygenLogsDir(), `${sessionId}.webm`);
+  const direct = resolve(getHeygenLogsDir(), `${sessionId}.webm`);
+  if (existsSync(direct)) return direct;
+  const match = sessionId.match(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i);
+  if (match) {
+    const fallback = resolve(getHeygenLogsDir(), `${match[0]}.webm`);
+    if (existsSync(fallback)) return fallback;
+  }
+  return direct;
 }
 
 export function saveHeygenTranscript(logData: HeygenCallLog): void {

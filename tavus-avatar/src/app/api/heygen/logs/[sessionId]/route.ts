@@ -11,7 +11,15 @@ export async function POST(
       return NextResponse.json({ error: "Missing session ID" }, { status: 400 });
     }
 
-    const body = await request.json();
+    let body: any = {};
+    try {
+      const text = await request.text();
+      if (text && text.trim()) {
+        body = JSON.parse(text);
+      }
+    } catch {
+      body = {};
+    }
     const existingLog = getHeygenTranscript(sessionId) || ({} as any);
     const logData: HeygenCallLog = {
       sessionId,

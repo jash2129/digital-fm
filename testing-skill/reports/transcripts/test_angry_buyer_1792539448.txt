@@ -1,0 +1,199 @@
+=== TEST TRANSCRIPT: test_angry_buyer_1792539448 ===
+Persona: angry_buyer | Mode: TEXT | Duration: 12.14s
+Inspector URL: http://localhost:3000/inspector?session=test_angry_buyer_1792539448
+--------------------------------------------------------------------------------
+[3.65s] Max (AI) (+3ms):
+  "Awesome, great to connect with you! First of all, congratulations on your 2026 Mazda CX five, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?"
+
+[3.65s] Customer (Angry Buyer):
+  "I've been waiting for three hours, let's hurry this up."
+
+[3.66s] Max (AI) (+4ms):
+  "I hear you completely—you've had a long day at the dealership, so I promise to keep this crisp, transparent, and direct. Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay."
+
+[3.66s] Customer (Angry Buyer):
+  "Fine, as long as it's quick, keep going."
+
+[4.78s] Max (AI) (+1128ms):
+  "First I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork, have you got the chance to drive the vehicle that you are buying."
+
+[4.78s] Customer (Angry Buyer):
+  "Yeah, I drove it. What else?"
+
+[5.75s] Max (AI) (+964ms):
+  "Awesome! When you came back from the test drive, the sales person did the walkaround and showed you all the features, bells, and whistles in the car."
+
+[5.75s] Customer (Angry Buyer):
+  "Yeah, I drove it. What else?"
+
+[6.58s] Max (AI) (+826ms):
+  "Great. What's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?"
+
+[6.58s] Customer (Angry Buyer):
+  "The salesman said it has full warranty, make it brief."
+
+[7.35s] Max (AI) (+771ms):
+  "Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one. The first warranty is five years sixty thousand mile Base limited warranty. The second is ten years hundred thousand mile powertrain which is referring to the engine and the transmission, im sure you and i agree thats a very good complementary warranty from the manufacturer"
+
+[7.35s] Customer (Angry Buyer):
+  "Yeah, sure, factory warranty is good. What else do I need to know?"
+
+[7.35s] Max (AI):
+  "Gotcha. There is actually more information about the warranty i need to go over with you to make sure you do understand everything.... Is that okay?"
+
+[7.35s] Customer (Angry Buyer):
+  "Fine, just keep it brief."
+
+[8.21s] Max (AI) (+857ms) [TOOLS: show_content]:
+  "Right on. Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one. The first warranty is five years sixty thousand mile Base limited warranty. The second is ten years hundred thousand mile powertrain which is referring to the engine and the transmission, im sure you and i agree thats a very good complementary warranty from the manufacturer... right?"
+
+[8.21s] Customer (Angry Buyer):
+  "Yeah, sure, factory warranty is good. What else do I need to know?"
+
+[9.03s] Max (AI) (+820ms):
+  "Right! but what you do not know that this warranty is a defect only stated in the manual book of the vehicle in the glovebox page number four saying that this warranty from the manufacturer is against any thing that is misdesigned, misbuilt, or misinstalled.... You understand?"
+
+[9.03s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[9.03s] Max (AI) (+1ms):
+  "You understand?"
+
+[9.03s] Customer (Angry Buyer):
+  "Fine, just keep it brief."
+
+[12.11s] Max (AI) (+3080ms):
+  "Exactly. Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.11s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.11s] Max (AI):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.11s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.11s] Max (AI) (+1ms):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.11s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.11s] Max (AI) (+1ms):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.11s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.11s] Max (AI):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.11s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.11s] Max (AI):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.11s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.12s] Max (AI):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.12s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.12s] Max (AI):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.12s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.12s] Max (AI):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.12s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.12s] Max (AI):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.12s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.12s] Max (AI):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.12s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.12s] Max (AI):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.12s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.12s] Max (AI) (+1ms):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.12s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.12s] Max (AI):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.12s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.12s] Max (AI) (+1ms):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.13s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.13s] Max (AI) (+1ms):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.13s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.13s] Max (AI):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.13s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.13s] Max (AI):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.13s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.13s] Max (AI) (+1ms):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.13s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.13s] Max (AI):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.13s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.13s] Max (AI) (+1ms):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.13s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.13s] Max (AI) (+1ms):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+
+[12.13s] Customer (Angry Buyer):
+  "I understand wear and tear, let's hear what the package covers."
+
+[12.14s] Max (AI):
+  "Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+

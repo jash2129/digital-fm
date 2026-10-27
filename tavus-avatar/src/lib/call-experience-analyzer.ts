@@ -98,13 +98,16 @@ export function analyzeCallExperience(log: HeygenCallLog): CallExperienceAnalysi
 
   // Process timing logs into blocks
   timingLogs.forEach((turn, idx) => {
-    const userEndRelSec = Math.max(0, (turn.timestamps.user_speech_end - minTimeMs) / 1000);
-    const userStartRelSec = Math.max(0, userEndRelSec - Math.max(0.6, turn.userInput.split(/\s+/).length * 0.3));
-    const avatarStartRelSec = turn.timestamps.avatar_audio_start 
+    const userInputStr = turn.userInput || "";
+    const avatarTextStr = turn.avatarText || "";
+    const userEndRelSec = Math.max(0, ((turn.timestamps?.user_speech_end || minTimeMs) - minTimeMs) / 1000);
+    const userWordsCount = userInputStr.split(/\s+/).filter(Boolean).length;
+    const userStartRelSec = Math.max(0, userEndRelSec - Math.max(0.6, userWordsCount * 0.3));
+    const avatarStartRelSec = turn.timestamps?.avatar_audio_start 
       ? Math.max(0, (turn.timestamps.avatar_audio_start - minTimeMs) / 1000)
       : userEndRelSec + 0.8;
 
-    const words = turn.avatarText.trim().split(/\s+/).filter(Boolean);
+    const words = avatarTextStr.trim().split(/\s+/).filter(Boolean);
     const estimatedSpokenSec = Math.max(1.2, words.length / 2.6);
     let avatarEndRelSec = avatarStartRelSec + estimatedSpokenSec;
 
@@ -128,9 +131,12 @@ export function analyzeCallExperience(log: HeygenCallLog): CallExperienceAnalysi
       avatarEndRelSec = interruptedAtSec;
     }
 
-    // Check if user input was acoustic echo
-    const isEcho = isAvatarScriptEcho(turn.userInput) || 
-      (idx > 0 && timingLogs[idx - 1]?.avatarText.toLowerCase().includes(turn.userInput.toLowerCase().trim()));
+    // Check if user input was patched/display-only
+    const isPatched = (turn as any).inputType === "PATCHED_DISPLAY_ONLY" || userInputStr === "Call Start" || userInputStr === "[NO_CUSTOMER_INPUT]";
+
+    // Check if user input was acoustic echo (ignore patched inputs)
+    const isEcho = !isPatched && (isAvatarScriptEcho(userInputStr) || 
+      (idx > 0 && (timingLogs[idx - 1]?.avatarText || "").toLowerCase().includes(userInputStr.toLowerCase().trim())));
 
     if (isEcho) {
       echoCount++;

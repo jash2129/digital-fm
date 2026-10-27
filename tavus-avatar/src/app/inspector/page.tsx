@@ -38,8 +38,14 @@ export default function CallInspectorPage() {
         const data = await res.json();
         const list: SessionSummary[] = data.sessions || [];
         setSessions(list);
-        if (list.length > 0) {
-          // Default to latest call
+        
+        // Prioritize session from query params ?session=...
+        const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+        const qSession = params?.get("session");
+
+        if (qSession) {
+          setSelectedSessionId(qSession);
+        } else if (list.length > 0) {
           setSelectedSessionId(list[0].sessionId);
         }
       } catch (err: any) {
@@ -101,7 +107,7 @@ export default function CallInspectorPage() {
   const totalDuration = analysis?.totalDurationSec || 45;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans" suppressHydrationWarning>
+    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex flex-col font-sans overflow-y-auto" suppressHydrationWarning>
       {/* Top Navigation Bar */}
       <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur px-6 py-4 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-50">
         <div className="flex items-center gap-3">

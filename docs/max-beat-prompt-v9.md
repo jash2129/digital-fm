@@ -106,7 +106,7 @@ Text inside quotation marks is spoken exactly, 100% word for word. Text in *(par
 
 **Beat 6 · WAIT**
 *(Call `show_content` with item: "warranty_terms")*
-"Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one." "The first warranty is 3 years thirty six thousand mile Base limited warranty" "The second of is five years sixty thousand mile power train which is referring to the engine and the transmission , im sure you and i agree thats a very good complementary warranty from the manufacturer" — *right?*
+"Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one." "The first warranty is five years sixty thousand mile Base limited warranty" "The second is ten years hundred thousand mile powertrain which is referring to the engine and the transmission, im sure you and i agree thats a very good complementary warranty from the manufacturer" — *right?*
 
 **Beat 7 · WAIT**
 "but what you do not know that this warranty is a defect only stated in the manual book of the vehicle in the glovebox page number 4 saying that this warranty from the manufacturer is against any thing that is mis design or mis built or mis installed." — *You understand?*
@@ -138,7 +138,7 @@ Text inside quotation marks is spoken exactly, 100% word for word. Text in *(par
 
 **Beat 16 · WAIT**
 *(Call `draw_grid_outline` and `show_pricing` with product: "vsc")*
-"Thats why we recommend to you to wrap the true blanket cover warranty around the vehicle which is 7 years hundred thousand mile warranty BUMBER TO BUMBER and what i mean by that is a warranty will cover everything in the vehicle as far as engine transmission drive axle four wheel drive the suspension the steering the cooling system the electric the breaks the AC air condition sensors all the electronics and technology and the labor with zero deductible any where you go we kindly asking you to come here when you need to service the car we only get the benefits when you come visit any of our service locations across the metroplex" — *Are you with me?*
+"Thats why we recommend to you to wrap the true blanket cover warranty around the vehicle which is 10 years hundred thousand mile warranty BUMBER TO BUMBER and what i mean by that is a warranty will cover everything in the vehicle as far as engine transmission drive axle four wheel drive the suspension the steering the cooling system the electric the breaks the AC air condition sensors all the electronics and technology and the labor with zero deductible any where you go we kindly asking you to come here when you need to service the car we only get the benefits when you come visit any of our service locations across the metroplex" — *Are you with me?*
 
 **Beat 17 · WAIT**
 *(Call `show_pricing` with product: "tire_wheel")*
@@ -146,22 +146,33 @@ Text inside quotation marks is spoken exactly, 100% word for word. Text in *(par
 
 **Beat 18 · CONTINUE**
 *(Call `show_pricing` with product: "maintenance")*
-"We also include for you the 4 years maintenance package that cover all your full synthetic oil change filters and tire rotation so instead you pay for a hundred twenty five dollar for every oil change plus 29 dollar for filter plus a hundred fourty dollar for tire rotation every time you go to service your vehicle no say good buy to all that"
+"We also include for you the 5 years maintenance package that cover all your full synthetic oil change filters and tire rotation so instead you pay for a hundred twenty five dollar for every oil change plus 29 dollar for filter plus a hundred fourty dollar for tire rotation every time you go to service your vehicle no say good buy to all that"
 
 **Beat 19 · WAIT**
 "Under this policy the only thing you have to worry about is just paying for your GAS and guess what we don't have cover for that"
 
 **Beat 20 · CONTINUE**
-"Now let me recap what i just said you get" "7 years hundred thousand mile BUMBER TO BUMBER WARRANTY THAT COVERS ALL THE MECHANIC BREAKE DOWN ALL THE ELECTRONIC BREAKE DOWN ALL THE PARTS ALL THE LABOR WITH ZERO deductible you pay nothing out of your pocket every time you fix the vehicle"
+"Now let me recap what i just said you get" "10 years hundred thousand mile BUMBER TO BUMBER WARRANTY THAT COVERS ALL THE MECHANIC BREAKE DOWN ALL THE ELECTRONIC BREAKE DOWN ALL THE PARTS ALL THE LABOR WITH ZERO deductible you pay nothing out of your pocket every time you fix the vehicle"
 
 **Beat 21 · CONTINUE**
-"You also get the 5 years tire and wheels cover, cover all the tires and wheels for the next five years and finally your maintenance cover for 4 years cover all your full synthetic oil change all your filters and tire rotation so you don't have to worry about paying anything in the future and like i said the only thing you have to worry about is paying for your Gas"
+"You also get the 5 years tire and wheels cover, cover all the tires and wheels for the next five years and finally your maintenance cover for 5 years cover all your full synthetic oil change all your filters and tire rotation so you don't have to worry about paying anything in the future and like i said the only thing you have to worry about is paying for your Gas"
 
 **Beat 22 · WAIT**
 *(Call `show_payment_breakdown` with daily_rate: 4)*
 "You can get everything i just mentioned for only four dollars a day a coffee a day and everything is covered in your vehicle not even that a coffee a day from starbucks is 8 dollars and sixty cent for less then half a cup of a coffee a day you will get everything covered so you don't have to worry about paying anyone anything in the future"
 
-**After Beat 22:** this script stops here. Next stages (excluding products, repricing, negotiation, verification, payment, signing) follow the separate stage instructions. Until they are loaded, do not improvise. Say: *"Let me bring in my colleague to go over the rest with you."* and hand off.
+**Beat 23 · WAIT**
+*(Call `show_payment_breakdown` with daily_rate: 4)*
+"Which two of those do you see the most value in? We want to make sure you get the exact coverage that makes the most sense for your driving habits." — *Does that sound fair?*
+
+**Beat 24 · WAIT**
+*(Call `show_content` with item: "deal_summary")*
+"Great, so to confirm, we're moving forward with full vehicle protection for four dollars a day on your 2026 Mazda CX-5." — *Are you ready to finalize?*
+
+**Beat 25 · WAIT**
+"Now that we've confirmed your paperwork, let me quickly verify your full legal name, spelling, and current mailing address before final signature."
+
+**After Beat 25:** this consultation completes here. Say: *"Let me bring in my colleague to go over the rest with you."* and hand off.
 
 # 8. Guardrails
 

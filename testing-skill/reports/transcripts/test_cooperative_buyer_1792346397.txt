@@ -1,0 +1,78 @@
+=== TEST TRANSCRIPT: test_cooperative_buyer_1792346397 ===
+Persona: cooperative_buyer | Mode: text | Duration: 41.2s
+--------------------------------------------------------------------------------
+[4.49s] Max (AI) (+4ms):
+  "Awesome, great to connect with you! First of all, congratulations on your 2026 Mazda CX five, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?"
+
+[4.49s] Customer (Cooperative Buyer):
+  "Yes, it was great, the sales team was very helpful."
+
+[7.49s] Max (AI) (+3002ms):
+  "Awesome, great to connect with you! First of all, congratulations on your 2026 Mazda CX five, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?"
+
+[7.49s] Customer (Cooperative Buyer):
+  "Yes, it was great, the sales team was very helpful."
+
+[10.43s] Max (AI) (+2940ms):
+  "Awesome, great to connect with you! First of all, congratulations on your 2026 Mazda CX five, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?"
+
+[10.43s] Customer (Cooperative Buyer):
+  "Yes, it was great, the sales team was very helpful."
+
+[13.78s] Max (AI) (+3352ms):
+  "Awesome, great to connect with you! First of all, congratulations on your 2026 Mazda CX five, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?"
+
+[13.78s] Customer (Cooperative Buyer):
+  "Yes, it was great, the sales team was very helpful."
+
+[17.0s] Max (AI) (+3216ms):
+  "Awesome, great to connect with you! First of all, congratulations on your 2026 Mazda CX five, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?"
+
+[17.0s] Customer (Cooperative Buyer):
+  "Yes, it was great, the sales team was very helpful."
+
+[20.1s] Max (AI) (+3100ms):
+  "Awesome, great to connect with you! First of all, congratulations on your 2026 Mazda CX five, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?"
+
+[20.1s] Customer (Cooperative Buyer):
+  "Yes, it was great, the sales team was very helpful."
+
+[23.03s] Max (AI) (+2925ms):
+  "Awesome, great to connect with you! First of all, congratulations on your 2026 Mazda CX five, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?"
+
+[23.03s] Customer (Cooperative Buyer):
+  "Yes, it was great, the sales team was very helpful."
+
+[26.05s] Max (AI) (+3023ms):
+  "Awesome, great to connect with you! First of all, congratulations on your 2026 Mazda CX five, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?"
+
+[26.05s] Customer (Cooperative Buyer):
+  "Yes, it was great, the sales team was very helpful."
+
+[28.91s] Max (AI) (+2857ms):
+  "Awesome, great to connect with you! First of all, congratulations on your 2026 Mazda CX five, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?"
+
+[28.91s] Customer (Cooperative Buyer):
+  "Yes, it was great, the sales team was very helpful."
+
+[31.77s] Max (AI) (+2868ms):
+  "Awesome, great to connect with you! First of all, congratulations on your 2026 Mazda CX five, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?"
+
+[31.77s] Customer (Cooperative Buyer):
+  "Yes, it was great, the sales team was very helpful."
+
+[34.73s] Max (AI) (+2958ms):
+  "Awesome, great to connect with you! First of all, congratulations on your 2026 Mazda CX five, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?"
+
+[34.73s] Customer (Cooperative Buyer):
+  "Yes, it was great, the sales team was very helpful."
+
+[37.61s] Max (AI) (+2873ms):
+  "Awesome, great to connect with you! First of all, congratulations on your 2026 Mazda CX five, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?"
+
+[37.61s] Customer (Cooperative Buyer):
+  "Yes, it was great, the sales team was very helpful."
+
+[41.2s] Max (AI) (+3590ms):
+  "Awesome, great to connect with you! First of all, congratulations on your 2026 Mazda CX five, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?"
+

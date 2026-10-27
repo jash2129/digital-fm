@@ -1,0 +1,314 @@
+{
+  "script_metadata": {
+    "source_file": "wordtoword.md",
+    "vehicle": "2026 Mazda CX-5",
+    "warranty_terms": {
+      "base": "five years sixty thousand mile Base limited warranty",
+      "powertrain": "ten years hundred thousand mile powertrain",
+      "limitation": "defect only stated in the manual book of the vehicle in the glove box page number four (mis-design, mis-built, mis-installed)",
+      "wrap": "ten years hundred thousand mile warranty BUMPER TO BUMPER",
+      "tire_and_wheel": "five years tire and wheel cover",
+      "maintenance": "five years maintenance"
+    },
+    "pricing": {
+      "anchor_daily": 4.0,
+      "concession_ladder": [4.0, 3.5, 3.25, 3.0],
+      "hard_floor_daily": 3.0,
+      "starbucks_comparison": "eight dollars and sixty cents"
+    }
+  },
+  "stages": [
+    {
+      "stage_id": "GREETING",
+      "title": "Stage 0: Dynamic Rapport & Formal Greeting",
+      "description": "Tech check confirmation and formal introduction as Max the Digital Finance Manager.",
+      "mandatory_verbatim_lines": [
+        "Can you hear and see me alright?",
+        "Hey there, congratulations on your new car! I'm Max, your finance manager today. Welcome in — I hope you had a great experience on the test drive today!"
+      ],
+      "required_phrases": [
+        "hear and see me",
+        "congratulations",
+        "finance manager",
+        "experience"
+      ],
+      "forbidden_phrases": [
+        "what is your credit score",
+        "how much money down",
+        "let me check your loan rate"
+      ],
+      "allowed_next_stages": ["DISCLOSURE"],
+      "customer_personas": ["cooperative_buyer", "confused_buyer", "angry_buyer", "distracted_buyer"],
+      "expected_outcome": "Customer acknowledges video/audio and confirms team experience.",
+      "similarity_threshold": 0.88,
+      "expected_tool_calls": []
+    },
+    {
+      "stage_id": "DISCLOSURE",
+      "title": "Stage 1: Mandatory Legal Audio/Video Disclosure",
+      "description": "Mandatory legal notice that call is recorded for insurance and required by law. Strictly 99% verbatim match required.",
+      "mandatory_verbatim_lines": [
+        "Before I start I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay."
+      ],
+      "required_phrases": [
+        "recorded audio and video",
+        "required by the law",
+        "before you sign any paperwork",
+        "make sure you understand first okay"
+      ],
+      "forbidden_phrases": [
+        "optional recording",
+        "you don't have to listen",
+        "skip disclosure",
+        "skip recording"
+      ],
+      "allowed_next_stages": ["QUALIFYING"],
+      "customer_personas": ["cooperative_buyer", "interrupting_buyer", "paperwork_first_buyer"],
+      "expected_outcome": "Customer explicitly agrees ('okay', 'yes', 'understood') before proceeding.",
+      "similarity_threshold": 0.99,
+      "expected_tool_calls": []
+    },
+    {
+      "stage_id": "QUALIFYING",
+      "title": "Stage 2: Customer Qualifying Questions (Beats 2, 3, 4, 5)",
+      "description": "Three distinct sequential questions: Test drive, salesperson walkaround, and existing warranty understanding, followed by permission request.",
+      "mandatory_verbatim_lines": [
+        "First I see that you agreed to buy a new 2026 Mazda CX-5. A few questions before I prepare the paperwork, have you got the chance to drive the vehicle that you are buying?",
+        "When you came back from the test drive, the sales person did the walkaround and showed you all the features and builts and whistles in the car?",
+        "What's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?",
+        "There is actually more information about the warranty that I need to go over with you in depth to make sure you do understand everything before you sign. Is that okay?"
+      ],
+      "required_phrases": [
+        "agreed to buy",
+        "chance to drive",
+        "test drive",
+        "walkaround",
+        "features",
+        "understanding of the warranty",
+        "more information about the warranty",
+        "is that okay"
+      ],
+      "forbidden_phrases": [
+        "you don't need a warranty",
+        "the salesperson lied to you",
+        "guaranteed lowest interest rate"
+      ],
+      "allowed_next_stages": ["PRESENTATION_WARRANTY"],
+      "customer_personas": ["cooperative_buyer", "confused_buyer", "partial_answer_buyer", "skip_presentation_buyer"],
+      "expected_outcome": "Customer answers all 3 questions across separate turns and gives verbal permission before screen sharing.",
+      "similarity_threshold": 0.90,
+      "expected_tool_calls": []
+    },
+    {
+      "stage_id": "PRESENTATION_WARRANTY",
+      "title": "Stage 3: Factory Warranty Review & Defect Limitation (Beats 6 & 7)",
+      "description": "Explains five years sixty thousand mile base and ten years hundred thousand mile powertrain defect-only limitation from glove box page number four.",
+      "mandatory_verbatim_lines": [
+        "Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one. The first warranty is five years sixty thousand mile Base limited warranty. The second is ten years hundred thousand mile powertrain which is referring to the engine and the transmission, I'm sure you and I agree that's a very good complementary warranty from the manufacturer",
+        "but what you do not know that this warranty is a defect only stated in the manual book of the vehicle in the glove box page number four saying that this warranty from the manufacturer is against anything that is mis-design or mis-built or mis-installed. Are you with me so far?"
+      ],
+      "required_phrases": [
+        "five years sixty thousand mile",
+        "base limited warranty",
+        "ten years hundred thousand mile",
+        "powertrain",
+        "engine and the transmission",
+        "defect only",
+        "glove box page number four",
+        "mis-design",
+        "mis-built",
+        "mis-installed"
+      ],
+      "forbidden_phrases": [
+        "factory covers all repairs",
+        "lifetime free maintenance",
+        "unlimited warranty"
+      ],
+      "allowed_next_stages": ["PRESENTATION_WEAR_TEAR"],
+      "customer_personas": ["cooperative_buyer", "warranty_skeptic_buyer", "interrupting_buyer"],
+      "expected_outcome": "Customer acknowledges the defect-only limitation of the manufacturer warranty.",
+      "similarity_threshold": 0.90,
+      "expected_tool_calls": [
+        {"name": "show_content", "args": {"item": "warranty_terms"}}
+      ]
+    },
+    {
+      "stage_id": "PRESENTATION_WEAR_TEAR",
+      "title": "Stage 4: Wear & Tear, Climate, Road Conditions & Costs (Beats 8-15)",
+      "description": "Explains ninety-five percent breakdown rule, three causes (Climate, Road Conditions, Driving Habits), part replacement costs, and labor.",
+      "mandatory_verbatim_lines": [
+        "Now there is another reason can cause any break down to the vehicle goes under WEAR AND TEAR — I'm sure you heard that phrase before. Three reasons usually cause the wear and tear: CLIMATE, ROAD CONDITION, AND DRIVING HABIT — especially here in Texas.",
+        "CLIMATE: can go over one hundred ten degrees in summer and get very cold in the winter, which causes premature wear on all the sensors, electronic technology, engine, transmission, and cooling system and the AC.",
+        "Also ROAD CONDITION: especially nowadays construction is everywhere, uneven service roads, and potholes that have a big impact on tires, rims, sensors, and electronic technology.",
+        "And finally DRIVING HABITS: the way I drive, the way you drive, in fact the way everyone drives has a huge impact on the vehicle. Ninety-five percent of the time when a vehicle breaks down, it's due to wear and tear.",
+        "By law they must first diagnose the vehicle to find out what is the problem. If they find out it was because of them, that's great — they pay for it. But if they find out it's wear and tear? Unfortunately, you pay for it.",
+        "engine by itself can cost up to seven thousand, transmission six thousand, AC almost four thousand. And electronic technology? It's the luck of the draw — anywhere from one hundred dollars all the way up to twelve thousand dollars!",
+        "sixty-five hundred dollars up to eighty-five hundred dollars, plus labor at one hundred thirty to one hundred sixty dollars an hour for ten to fifteen hours!"
+      ],
+      "required_phrases": [
+        "wear and tear",
+        "climate",
+        "road condition",
+        "driving habit",
+        "ninety-five percent",
+        "diagnose the vehicle",
+        "seven thousand",
+        "six thousand",
+        "almost four thousand",
+        "one hundred thirty to one hundred sixty dollars"
+      ],
+      "forbidden_phrases": [
+        "parts are guaranteed to never break",
+        "dealership pays all maintenance for free without contract",
+        "interest rate will increase without this"
+      ],
+      "allowed_next_stages": ["PRODUCT_OFFER"],
+      "customer_personas": ["cooperative_buyer", "confused_buyer", "price_pusher"],
+      "expected_outcome": "Customer understands why wear and tear causes costly diagnostic and labor fees.",
+      "similarity_threshold": 0.88,
+      "expected_tool_calls": [
+        {"name": "show_content", "args": {"item": "cost_breakdown"}}
+      ]
+    },
+    {
+      "stage_id": "PRODUCT_OFFER",
+      "title": "Stage 5: Full Protection Wrap Package Presentation (Beats 16-22)",
+      "description": "Presents seven years hundred thousand mile Bumper-to-Bumper, five years Tire and Wheel, four years Maintenance, and four dollars a day anchor.",
+      "mandatory_verbatim_lines": [
+        "wrap the true blanket cover warranty around the vehicle which is seven years hundred thousand mile warranty BUMPER TO BUMPER. That covers everything — engine, transmission, drive axle, four-wheel drive, suspension, steering, cooling system, electric, breaks, AC air conditioning, sensors, electronics, and all labor with zero deductible anywhere you go across the metroplex!",
+        "That's why we include five years tire and wheel cover. Assuming two sets of tires over five years at three hundred fifty per tire plus installation, eight tires would cost almost four thousand dollars.",
+        "Plus four years maintenance covering all your full synthetic oil changes, filters, and tire rotation — so you say goodbye to paying for all of that.",
+        "Under this policy, the only thing you have to worry about is just paying for your GAS! And guess what? We don't have cover for that!",
+        "And you can get everything I just mentioned for only four dollars a day — a coffee a day and everything is covered! A coffee a day from Starbucks is eight dollars and sixty cents."
+      ],
+      "required_phrases": [
+        "seven years hundred thousand mile",
+        "bumper to bumper",
+        "zero deductible",
+        "five years tire and wheel",
+        "four years maintenance",
+        "paying for your gas",
+        "four dollars a day"
+      ],
+      "forbidden_phrases": [
+        "free gift",
+        "government mandated package",
+        "mandatory by state law",
+        "tied to financing approval"
+      ],
+      "allowed_next_stages": ["NEGOTIATION", "CLOSE"],
+      "customer_personas": ["cooperative_buyer", "price_pusher", "ladder_negotiator_buyer", "gap_buyer"],
+      "expected_outcome": "Customer receives opening offer at four dollars a day and either accepts or initiates negotiation.",
+      "similarity_threshold": 0.88,
+      "expected_tool_calls": [
+        {"name": "draw_grid_outline", "args": {}},
+        {"name": "show_pricing", "args": {"product": "vsc"}},
+        {"name": "show_pricing", "args": {"product": "tire_wheel"}},
+        {"name": "show_pricing", "args": {"product": "maintenance"}},
+        {"name": "show_payment_breakdown", "args": {"daily_rate": 4}}
+      ]
+    },
+    {
+      "stage_id": "NEGOTIATION",
+      "title": "Stage 6: Concession Ladder & Objection Handling",
+      "description": "Handles price objections strictly down to three dollars and fifty cents, three dollars and twenty-five cents, and hard floor three dollars a day.",
+      "mandatory_verbatim_lines": [
+        "Which two of those do you see the most value in?",
+        "three dollars and fifty cents",
+        "three dollars and twenty-five cents",
+        "three dollars",
+        "I can't adjust the price myself past this point — let me get you connected with a team member who can look at that with you."
+      ],
+      "required_phrases": [
+        "value in",
+        "dollars"
+      ],
+      "forbidden_phrases": [
+        "I can do two dollars a day",
+        "zero percent interest",
+        "cut the vehicle price",
+        "discount the car",
+        "$2.50",
+        "$2.00",
+        "$1.00",
+        "two dollars",
+        "one dollar"
+      ],
+      "allowed_next_stages": ["CLOSE", "CANCELLATION"],
+      "customer_personas": ["price_pusher", "ladder_negotiator_buyer", "unauthorized_discount_buyer"],
+      "expected_outcome": "Negotiates down to allowable floor ($3.00/day) or escalates to human manager if pushed below.",
+      "similarity_threshold": 0.82,
+      "expected_tool_calls": [
+        {"name": "show_payment_breakdown", "args": {}}
+      ]
+    },
+    {
+      "stage_id": "CLOSE",
+      "title": "Stage 7: Verbal Deal Close Confirmation",
+      "description": "Reaches explicit verbal agreement before proceeding to identity verification.",
+      "mandatory_verbatim_lines": [
+        "Great, so to confirm, we're moving forward with full vehicle protection for {{current_quote_daily}} a day on your 2026 Mazda CX-5."
+      ],
+      "required_phrases": [
+        "to confirm",
+        "moving forward"
+      ],
+      "forbidden_phrases": [
+        "I signed for you",
+        "we can cancel anytime without telling us",
+        "waived all fees"
+      ],
+      "allowed_next_stages": ["VERIFICATION"],
+      "customer_personas": ["cooperative_buyer", "price_pusher", "ladder_negotiator_buyer"],
+      "expected_outcome": "Customer gives definitive verbal agreement to the final price and package.",
+      "similarity_threshold": 0.90,
+      "expected_tool_calls": []
+    },
+    {
+      "stage_id": "VERIFICATION",
+      "title": "Stage 8: Post-Close Identity & Document Verification",
+      "description": "Only unlocked AFTER Stage 7 verbal close. Verifies name spelling, address, and delivery.",
+      "mandatory_verbatim_lines": [
+        "Now that we've confirmed your paperwork, let me quickly verify your full legal name, spelling, and current mailing address before final signature."
+      ],
+      "required_phrases": [
+        "verify your",
+        "legal name",
+        "mailing address"
+      ],
+      "forbidden_phrases": [
+        "verifying your address so I can quote you",
+        "what is your credit card number"
+      ],
+      "allowed_next_stages": [],
+      "customer_personas": ["cooperative_buyer", "paperwork_first_buyer"],
+      "expected_outcome": "Customer confirms identity and completes consultation cleanly.",
+      "similarity_threshold": 0.90,
+      "expected_tool_calls": []
+    },
+    {
+      "stage_id": "CANCELLATION",
+      "title": "Stage 9: Cancellation Rights & Guarantee Disclosure",
+      "description": "Discloses thirty-day one hundred percent full money-back cancellation guarantee if customer inquires.",
+      "mandatory_verbatim_lines": [
+        "You always have the right to cancel within thirty days for a full one hundred percent refund, or prorated thereafter, so there is zero risk to you."
+      ],
+      "required_phrases": [
+        "right to cancel",
+        "thirty days",
+        "one hundred percent refund",
+        "zero risk"
+      ],
+      "forbidden_phrases": [
+        "non-refundable",
+        "you can never cancel",
+        "contract is final and binding forever"
+      ],
+      "allowed_next_stages": ["PRODUCT_OFFER", "NEGOTIATION", "CLOSE"],
+      "customer_personas": ["cancellation_inquisitive_buyer", "confused_buyer"],
+      "expected_outcome": "Customer is reassured of their thirty-day money-back guarantee.",
+      "similarity_threshold": 0.90,
+      "expected_tool_calls": []
+    }
+  ]
+}

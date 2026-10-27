@@ -24,8 +24,8 @@ describe("3.1 Beats Data Integrity Test", () => {
   const sourcePath = path.resolve(__dirname, "../../../docs/max-beat-prompt-v9.md");
   const sourceContent = fs.readFileSync(sourcePath, "utf8");
 
-  it("has exactly 22 beats in beats.json", () => {
-    expect(beatsData).toHaveLength(22);
+  it("has exactly 25 beats in beats.json", () => {
+    expect(beatsData).toHaveLength(25);
   });
 
   beatsData.forEach((beat) => {

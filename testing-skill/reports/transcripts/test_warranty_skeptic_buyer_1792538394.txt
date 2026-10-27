@@ -1,0 +1,199 @@
+=== TEST TRANSCRIPT: test_warranty_skeptic_buyer_1792538394 ===
+Persona: warranty_skeptic_buyer | Mode: TEXT | Duration: 20.69s
+Inspector URL: http://localhost:3000/inspector?session=test_warranty_skeptic_buyer_1792538394
+--------------------------------------------------------------------------------
+[0.0s] Max (AI):
+  "Awesome, great to connect with you! First of all, congratulations on your 2026 Mazda CX five, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?"
+
+[0.0s] Customer (Buyer Asking About Warranty):
+  "I'm listening, please continue."
+
+[0.0s] Max (AI):
+  "Glad to hear that! Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay."
+
+[0.0s] Customer (Buyer Asking About Warranty):
+  "I'm listening, please continue."
+
+[0.77s] Max (AI) (+763ms):
+  "First I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork, have you got the chance to drive the vehicle that you are buying."
+
+[0.77s] Customer (Buyer Asking About Warranty):
+  "Yes, I drove it, runs great."
+
+[0.77s] Max (AI):
+  "Awesome! When you came back from the test drive, the sales person did the walkaround and showed you all the features, bells, and whistles in the car."
+
+[0.77s] Customer (Buyer Asking About Warranty):
+  "Yes, I drove it, runs great."
+
+[0.77s] Max (AI):
+  "Great. What's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?"
+
+[0.77s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[1.57s] Max (AI) (+805ms):
+  "Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one. The first warranty is five years sixty thousand mile Base limited warranty. The second is ten years hundred thousand mile powertrain which is referring to the engine and the transmission, im sure you and i agree thats a very good complementary warranty from the manufacturer"
+
+[1.57s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[2.34s] Max (AI) (+761ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Now there is another reason can cause any break down to the vehicle goes under wear and tear im sure you heard that phrase before. Three reasons usually cause the ware and tear. climate, road conditions, and driving habits... especially here in Texas.. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car Also Road conditions specially now days construction are everywhere and uneven service roads and potholes everywhere that can have big impact on the tires RIMS sensor electronic technology, engine transmission cooling system and tons of other parts on the vehicle And finally the Driving habits the way i drive the way you drive in fact the way everyone drives have a huge impact on the vehicle they are driving and those are the main three reasons can cause any break down to the vehicle ninety-five percent of the time when the vehicle break down it due to wear and tear Thats why we don't feel comfortable that we will leave you in a good position without a good warranty around the vehicle. Why because we do have a part department we know how much the parts cost engine by itself can cost up to seven thousand transmission six thousand AC almost four thousand electronic and technology is the luck of the draw could cost anywhere from hundred dollar all the way up to twelve thousand dollar if God forbid a sensor break down in the screens in the dashboard they cant just change that sensor that sensor is a part of a huge component they will have to take the whole thing out and replace it with a brand new one thats roughly sixty five hundred dollar part up to eighty five hundred dollar part depends on the vehicle thats not even include the labor charge labor will charge you anywhere between one hundred thirty to one hundred sixty dollars per hour depend on the quality of the technician they are using in the service place and a job like that could take anywhere between ten hours and fifteen hours of labor to fix it so instead you pay seventy hundred dollar for parts plus ten hours and fifteen hoursof labor. NO ABSOLUTELY NOT Thats why we recommend to you to wrap the true blanket cover warranty around the vehicle which is ten years hundred thousand mile warranty BUMBER TO BUMBER and what i mean by that is a warranty will cover everything in the vehicle as far as engine transmission drive axle four wheel drive the suspension the steering the cooling system the electric the breaks the AC air condition sensors all the electronics and technology and the labor with zero deductible any where you go we kindly asking you to come here when you need to service the car we only get the benefits when you come visit any of our service locations across the metroplex"
+
+[2.34s] Customer (Buyer Asking About Warranty):
+  "I see, so manufacturer defects only, not real road damage. That makes sense."
+
+[2.37s] Max (AI) (+34ms):
+  "Gotcha. There is actually more information about the warranty i need to go over with you to make sure you do understand everything.... Is that okay?"
+
+[2.37s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[3.07s] Max (AI) (+695ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[3.07s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[3.74s] Max (AI) (+673ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[3.74s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[4.67s] Max (AI) (+931ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[4.67s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[5.34s] Max (AI) (+666ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[5.34s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[6.06s] Max (AI) (+721ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[6.06s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[7.12s] Max (AI) (+1061ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[7.12s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[7.94s] Max (AI) (+816ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[7.94s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[8.68s] Max (AI) (+739ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[8.68s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[9.32s] Max (AI) (+639ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[9.32s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[9.99s] Max (AI) (+669ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[9.99s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[10.72s] Max (AI) (+729ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[10.72s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[11.54s] Max (AI) (+822ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[11.54s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[12.3s] Max (AI) (+753ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[12.3s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[13.15s] Max (AI) (+859ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[13.15s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[13.86s] Max (AI) (+704ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[13.86s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[14.5s] Max (AI) (+643ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[14.5s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[15.25s] Max (AI) (+750ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[15.25s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[15.98s] Max (AI) (+724ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[15.98s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[16.75s] Max (AI) (+776ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[16.75s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[17.45s] Max (AI) (+697ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[17.45s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[18.12s] Max (AI) (+669ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[18.12s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[18.75s] Max (AI) (+630ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[18.75s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[19.39s] Max (AI) (+635ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[19.39s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[20.04s] Max (AI) (+647ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+
+[20.04s] Customer (Buyer Asking About Warranty):
+  "Japanese cars never break down, why would I need extra warranty?"
+
+[20.69s] Max (AI) (+652ms):
+  "As a quick recap, your Mazda comes with the 5-year/60,000-mile base warranty and 10-year/100,000-mile powertrain coverage. Is that okay?"
+

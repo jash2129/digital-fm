@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:simulate": "node scripts/simulate-call.mjs"
+    "test:simulate": "node scripts/simulate-call.mjs",
+    "test:text": "python ../testing-skill/run_tests.py --mode text",
+    "test:voice": "python ../testing-skill/run_tests.py --mode voice",
+    "test:all": "python ../testing-skill/run_tests.py --mode all",
+    "report": "python ../testing-skill/run_tests.py --report"
   },
   "dependencies": {
     "@daily-co/daily-js": "^0.87.0",

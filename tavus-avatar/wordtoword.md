@@ -29,9 +29,9 @@ There is actually more information about the warranty i need to go over with you
 
 Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one.
 
-The first warranty is 3 years thirty six thousand mile Base limited warranty
+The first warranty is five years sixty thousand mile Base limited warranty
 
-The second of is five years sixty thousand mile power train which is referring to the engine and the transmission , im sure you and i agree thats a very good complementary warranty from the manufacturer but what you do not know that this warranty is a defect only stated in the manual book of the vehicle in the glovebox page number 4 saying that this warranty from the manufacturer is against any thing that is mis design or mis built or mis installed.
+The second of is ten years hundred thousand mile power train which is referring to the engine and the transmission , im sure you and i agree thats a very good complementary warranty from the manufacturer but what you do not know that this warranty is a defect only stated in the manual book of the vehicle in the glovebox page number 4 saying that this warranty from the manufacturer is against any thing that is mis design or mis built or mis installed.
 
 ### Square 3: The Story
 

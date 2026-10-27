@@ -58,6 +58,9 @@ export const BEAT_TRANSITION_BRIDGES: Record<number, string> = {
 // Spoken when customer asks to pause, hold on, or take a moment
 export const PAUSE_LINE = "Take all the time you need, I'm right here whenever you're ready.";
 
+// Spoken when customer makes an interjection to speak or explain ('let me tell you', 'listen to me')
+export const LISTENING_LINE = "I'm listening, please go ahead.";
+
 // Spoken when customer feels rushed or asks Max to slow down
 export const SLOW_DOWN_LINE = "I completely understand, it is a lot of information. Let's take it one step at a time.";
 
@@ -66,5 +69,52 @@ export const COMPLIMENT_LINE = "It really is a fantastic car, you're going to lo
 
 // Spoken when customer asks who Max is or for his identity/name
 export const IDENTITY_LINE = "I'm Max, your digital finance manager today.";
+
+// =============================================================================
+// HIGH-EQ EMOTIONAL ADAPTATION & CHARISMATIC HUMOR LINES
+// Tailored for Hyundai and partner dealerships to build trust, make people laugh,
+// and disarm anger, anxiety, or skepticism.
+// =============================================================================
+
+// Spoken when customer is angry, rushed, impatient, or complaining about dealership wait time
+export const EQ_DEESCALATION_LINE = "I hear you 100 percent. You've had a long day at the dealership, so I promise to keep this crisp, direct, and completely transparent so we can get you into your new car as fast as possible.";
+
+// Spoken when customer expresses anxiety, doubt, fear of hidden fees, or buyer's remorse
+export const EQ_REASSURANCE_LINE = "Take a deep breath—buying a car is a huge milestone, and it's totally normal to feel a bit hesitant. I'm here as your advocate with zero pressure, so we'll walk through every dollar together until you feel one hundred percent confident.";
+
+// Spoken when customer is excited, smiling, laughing, or thrilled about their new car
+export const EQ_EXCITEMENT_LINE = "I love that energy! That new car is an absolute head-turner, and you're going to have a blast driving it off the lot today!";
+
+// Observational humor bridges that create warmth, laughter, and likability
+export const EQ_HUMOR_BRIDGES = {
+  paperwork: "I know nobody wakes up on a Saturday dreaming about doing finance paperwork, so I promise to make this as painless and fun as possible!",
+  texas_heat: "And you know how our Texas summers get—if you leave a soda can in the car, it turns into a science experiment! That brutal heat is just as tough on modern vehicle computers and sensors.",
+  potholes: "Around here, dodging potholes feels like an arcade game! One bad bump on the access road, and your wheel is begging for mercy.",
+  gas_warranty: "Believe me, if I could find a warranty that covered gas prices, I'd be the first in line to sign up for it myself!",
+  coffee_comparison: "Nowadays you can't even get a medium latte at Starbucks without them asking for nine dollars and a tip! For less than half a cup of coffee, your whole vehicle is completely covered.",
+};
+
+// Spoken when customer asks if regular car insurance covers mechanical repairs
+export const INSURANCE_LINE = "Auto insurance only covers accident collisions and physical damage, not mechanical breakdowns, electronics, or wear and tear.";
+
+// Spoken when customer mentions spouse or wife decision-maker
+export const SPOUSE_LINE = "I completely respect that! In fact, most couples choose this package specifically because it protects the family budget from surprise multi-thousand dollar repair bills. What questions can I answer for her?";
+
+// Spoken when customer asks about cancellation or selling the car early
+export const CANCELLATION_LINE = "Yes absolutely, the policy is fully transferable if you sell the car, and pro-rated refundable if you pay off or trade in the vehicle early.";
+
+// Spoken when customer notes they are buying a different car or reports vehicle mismatch
+export const VEHICLE_DISCREPANCY_LINE = "Oh, thank you for catching that! My system pulled up the Mazda CX-5 file, but let me immediately note that you're buying the {{vehicle_model}} so sales and titling update your paperwork right away. While they make that quick update, the protection coverage works the exact same way — did you get a chance to test drive the vehicle?";
+
+// Spoken when customer asks whether warranty is provided by manufacturer or dealer
+export const MANUFACTURER_VS_DEALER_LINE = "Great question. The factory warranty comes directly from the manufacturer, but it only covers manufacturer defects. The vehicle protection packages we're reviewing are our dealership's comprehensive coverage, which covers wear and tear, mechanical breakdowns, sensors, and electronic parts that the factory warranty excludes. Does that make sense?";
+
+// Spoken when customer asks if this is a sales call or trying to sell them something
+export const SALES_CALL_LINE = "Not at all! This isn't a sales call—my job is simply to review your paperwork and factory warranty before you sign anything. Did our sales team treat you well today?";
+
+// Spoken when customer asks what this call is for or why they are meeting with finance
+export const CALL_PURPOSE_LINE = "Every buyer meets with finance before delivery to verify paperwork, registration details, and review factory warranty coverage. Did you get a good feel for the car on your test drive?";
+
+
 
 

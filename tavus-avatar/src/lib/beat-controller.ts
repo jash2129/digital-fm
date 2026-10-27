@@ -1,4 +1,4 @@
-import beatsData from "./beats.json";
+import beatsData from "./beats.json" with { type: "json" };
 import { DEFAULT_DEAL_CONFIG, type DealConfig } from "./deal-config";
 import {
   LEAD_IN_NO,
@@ -12,9 +12,21 @@ import {
   STEP_0_TRANSITION_LINE,
   BEAT_TRANSITION_BRIDGES,
   PAUSE_LINE,
+  LISTENING_LINE,
   SLOW_DOWN_LINE,
   COMPLIMENT_LINE,
   IDENTITY_LINE,
+  EQ_DEESCALATION_LINE,
+  EQ_REASSURANCE_LINE,
+  EQ_EXCITEMENT_LINE,
+  EQ_HUMOR_BRIDGES,
+  INSURANCE_LINE,
+  SPOUSE_LINE,
+  CANCELLATION_LINE,
+  VEHICLE_DISCREPANCY_LINE,
+  MANUFACTURER_VS_DEALER_LINE,
+  SALES_CALL_LINE,
+  CALL_PURPOSE_LINE,
 } from "./max-lines";
 
 export interface Beat {
@@ -32,11 +44,32 @@ export interface CallState {
   last_spoken_text: string;
   no_count_in_a_row: number;
   negotiated_price_so_far: number | null;
+  concession_stage?: number;
   step0_turns: number;
   step0_completed: boolean;
   dealConfig: DealConfig;
   is_stopped: boolean;
 }
+
+export const BEAT_RECAPS: Record<number, string> = {
+  6: "As a quick recap, your Mazda comes with the five-year sixty thousand mile base warranty and ten-year one hundred thousand mile powertrain coverage.",
+  7: "Just to recap, the factory warranty covers factory defects only.",
+  8: "As a quick recap, wear and tear from climate, roads, and driving causes ninety-five percent of breakdowns.",
+  9: "As a recap, potholes and road hazards cause severe wear on tires, rims, and sensors.",
+  10: "As a recap, wear and tear causes ninety-five percent of all mechanical breakdowns.",
+  11: "To recap, diagnosis is always the mandatory first step before manufacturer warranty steps in.",
+  12: "To recap, the manufacturer only covers factory defects, while wear and tear is out-of-pocket.",
+  13: "To recap, major parts like an engine or transmission can cost seven to eight thousand dollars.",
+  14: "To recap, dashboard sensors and electronics can cost thousands of dollars to replace.",
+  15: "To recap, service labor can add ten to fifteen hours of expense to any major repair.",
+  16: "As a quick recap, the wrap gives you ten years and one hundred thousand miles of bumper-to-bumper protection with zero deductible.",
+  17: "As a quick recap, the tire and wheel package covers your tires and wheels for five full years with zero out-of-pocket costs.",
+  18: "To recap, the five-year maintenance package covers your synthetic oil changes, filters, and tire rotations.",
+  19: "To recap, with full protection, fuel is your only ongoing out-of-pocket expense.",
+  20: "To recap, you get ten-year one hundred thousand mile bumper-to-bumper coverage with zero deductible.",
+  21: "To recap, you get the five-year tire and wheel protection and five-year maintenance package.",
+  22: "That full vehicle protection package is just four dollars a day.",
+};
 
 export type ClassifierIntent =
   | "agree"
@@ -44,6 +77,7 @@ export type ClassifierIntent =
   | "question_in_script"
   | "question_out_of_script"
   | "price_ask"
+  | "negotiate_price"
   | "garbled"
   | "avatar_echo"
   | "repeat_request"
@@ -56,6 +90,15 @@ export type ClassifierIntent =
   | "compliment"
   | "identity_question"
   | "greeting_check"
+  | "customer_frustrated"
+  | "customer_anxious"
+  | "spouse_objection"
+  | "insurance_question"
+  | "cancellation_question"
+  | "vehicle_discrepancy"
+  | "manufacturer_vs_dealer"
+  | "sales_question"
+  | "call_purpose"
   | "other";
 
 export interface ClassificationResult {
@@ -91,6 +134,7 @@ export function getOrCreateCallState(sessionId: string, dealConfig = DEFAULT_DEA
       last_spoken_text: STEP_0_GREETING,
       no_count_in_a_row: 0,
       negotiated_price_so_far: null,
+      concession_stage: 1,
       step0_turns: 0,
       step0_completed: false,
       dealConfig,
@@ -141,8 +185,41 @@ export function formatSpeechText(text: string): string {
   clean = clean.replace(/\busuilaly\b/gi, "usually");
   clean = clean.replace(/\bware an tear\b/gi, "wear and tear");
   clean = clean.replace(/\bmis design or mis built or mis installed\b/gi, "misdesigned, misbuilt, or misinstalled");
-  clean = clean.replace(/\b110 degree\b/gi, "110 degrees");
   clean = clean.replace(/\bsecond of is\b/gi, "second warranty is");
+
+  // Spoken Numbers & Pronunciation Formatting (STRICT TTS RULE from wordtoword.md)
+  clean = clean.replace(/\b95\s*%/g, "ninety-five percent");
+  clean = clean.replace(/\b110\s*degrees?\b/gi, "one hundred ten degrees");
+  clean = clean.replace(/\b110\b/g, "one hundred ten");
+  clean = clean.replace(/\b3\s*years\b/gi, "three years");
+  clean = clean.replace(/\b4\s*years\b/gi, "four years");
+  clean = clean.replace(/\b5-years?\b|\b5\s*years?\b/gi, "five years");
+  clean = clean.replace(/\b7\s*years\b/gi, "seven years");
+  clean = clean.replace(/\b10-years?\b|\b10\s*years?\b/gi, "ten years");
+  clean = clean.replace(/\b36,000\b/g, "thirty-six thousand");
+  clean = clean.replace(/\b60,000\b/g, "sixty thousand");
+  clean = clean.replace(/\b100\s*percent\b/gi, "one hundred percent");
+  clean = clean.replace(/\b100,000\b/g, "one hundred thousand");
+  clean = clean.replace(/\b100\b/g, "one hundred");
+  clean = clean.replace(/\b2\s*different\s*warrant(?:y|ies)\b/gi, "two different warranties");
+  clean = clean.replace(/\b3\s*reasons?\b/gi, "three reasons");
+  clean = clean.replace(/\b2\s*sets\b/gi, "two sets");
+  clean = clean.replace(/\b8\s*tiers\b/gi, "eight tires");
+  clean = clean.replace(/\b8\s*of\s*those\b/gi, "eight of those");
+  clean = clean.replace(/\b10\s*hours\s*(and\s*15\s*hours)?\b/gi, "ten hours and fifteen hours");
+  clean = clean.replace(/\b15\s*hours\b/gi, "fifteen hours");
+  clean = clean.replace(/\b4\s*thousand\b/gi, "four thousand");
+  clean = clean.replace(/\b7\s*thousand\b/gi, "seven thousand");
+  clean = clean.replace(/\b6\s*thousand\b/gi, "six thousand");
+  clean = clean.replace(/\b29\s*dollar\b/gi, "twenty-nine dollars");
+  clean = clean.replace(/\b8\s*dollars\b/gi, "eight dollars");
+  clean = clean.replace(/\b4\s*dollars\b/gi, "four dollars");
+  clean = clean.replace(/\$4\.00|\$4\b/gi, "four dollars");
+  clean = clean.replace(/\$3\.50\b/gi, "three dollars and fifty cents");
+  clean = clean.replace(/\$3\.25\b/gi, "three dollars and twenty-five cents");
+  clean = clean.replace(/\$3\.00|\$3\b/gi, "three dollars");
+  clean = clean.replace(/\bhundred thirty dollar per hour up to hundred sixty dollar per hour\b/gi, "one hundred thirty to one hundred sixty dollars per hour");
+  clean = clean.replace(/\bpage number 4\b/gi, "page number four");
 
   return clean.trim();
 }
@@ -178,13 +255,16 @@ export function getBeatToolCalls(beatId: number): Array<{ name: string; args: Re
     case 20:
       return [{ name: "show_pricing", args: { product: "gap" } }];
     case 22:
+    case 23:
       return [{ name: "show_payment_breakdown", args: { daily_rate: 4 } }];
+    case 24:
+      return [{ name: "show_content", args: { item: "deal_summary" } }];
     default:
       return [];
   }
 }
 
-// Hook called when script reaches end of Beat 22
+// Hook called when script reaches end of all beats
 export function onScriptComplete(state: CallState): void {
   console.log(`[beat-controller] onScriptComplete() reached for session. Handoff line spoken.`);
   state.is_stopped = true;
@@ -245,7 +325,26 @@ export function isAvatarScriptEcho(transcript: string): boolean {
     "i'm an ai finance assistant",
     "take all the time you need",
     "let's slow down a bit",
-    "i'm max your digital finance manager"
+    "i'm max your digital finance manager",
+    "i'm listening please go ahead",
+    "im listening please go ahead",
+    "listening please go ahead",
+    "please go ahead",
+    "i'm listening please",
+    "im listening please",
+    "only the defect",
+    "only defect",
+    "as a quick reminder",
+    "as a quick",
+    "glovebox page number four",
+    "glovebox page number 4",
+    "misdesigned misbuilt or misinstalled",
+    "misdesigned",
+    "three reasons usually cause",
+    "uneven service roads",
+    "potholes everywhere",
+    "true blanket cover warranty",
+    "bumper to bumper"
   ];
 
   return echoPhrases.some((phrase) => norm.includes(phrase));
@@ -268,16 +367,101 @@ export function classifyCustomerInputRuleBased(
     return { intent: "avatar_echo", topic_beat_ids: [] };
   }
 
-  // 1. Human request
+  // 1. AI Question (check before human request so questions like "are you an AI avatar or a real person?" are handled as AI disclosure)
+  if (
+    norm.includes("are you an ai") ||
+    norm.includes("are you a robot") ||
+    norm.includes("are you real") ||
+    norm.includes("are you a real person") ||
+    norm.includes("real person or") ||
+    norm.includes("or a real person") ||
+    norm.includes("are you an avatar") ||
+    norm.includes("is this ai") ||
+    norm.includes("is this a real person") ||
+    norm.includes("am i talking to an ai") ||
+    norm.includes("am i talking to a real person") ||
+    norm.includes("ai avatar")
+  ) {
+    return { intent: "ai_question", topic_beat_ids: [] };
+  }
+
+  // 1.2. Human request (explicit request to speak with / transfer to a human)
   if (
     norm.includes("speak to a human") ||
+    norm.includes("talk to a human") ||
+    norm.includes("speak with a human") ||
+    norm.includes("talk with a human") ||
     norm.includes("talk to a person") ||
-    norm.includes("real person") ||
+    norm.includes("speak to a person") ||
+    norm.includes("talk to a real person") ||
+    norm.includes("speak to a real person") ||
+    norm.includes("get me a real person") ||
+    norm.includes("give me a real person") ||
+    norm.includes("connect me to a human") ||
+    norm.includes("connect me with a human") ||
     norm.includes("human manager") ||
     norm.includes("speak to someone else") ||
-    norm.includes("transfer me")
+    norm.includes("talk to someone else") ||
+    norm.includes("transfer me") ||
+    norm.includes("get me a manager") ||
+    norm.includes("speak to your manager")
   ) {
     return { intent: "human_request", topic_beat_ids: [] };
+  }
+
+  // 1.3. Vehicle Mismatch / Car Discrepancy (e.g. "buying a Maybach", "I was buying Maybach", "that's not my car", "confirm which car", "how can you ask me that")
+  // MUST be checked before generic negation 'no' or generic greetings!
+  const isVehicleDiscrepancy =
+    norm.includes("maybach") ||
+    norm.includes("mercedes") ||
+    norm.includes("bmw") ||
+    norm.includes("audi") ||
+    norm.includes("porsche") ||
+    norm.includes("lexus") ||
+    norm.includes("buying a ") ||
+    norm.includes("was buying") ||
+    norm.includes("am buying") ||
+    norm.includes("bought a ") ||
+    norm.includes("not buying a mazda") ||
+    norm.includes("not a mazda") ||
+    norm.includes("not my car") ||
+    norm.includes("wrong car") ||
+    norm.includes("wrong vehicle") ||
+    norm.includes("different car") ||
+    norm.includes("different vehicle") ||
+    norm.includes("which car") ||
+    norm.includes("confirm which car") ||
+    norm.includes("what car") ||
+    norm.includes("which vehicle") ||
+    norm.includes("how can you ask me that");
+
+  if (isVehicleDiscrepancy) {
+    return { intent: "vehicle_discrepancy", topic_beat_ids: [] };
+  }
+
+  // 1.4. Manufacturer Warranty vs Dealership Vehicle Protection (e.g. "is this provided by the manufacturer", "should I buy the new one")
+  const isManufacturerVsDealer =
+    norm.includes("provided by the manufacturer") ||
+    norm.includes("provided by manufacturer") ||
+    norm.includes("by the manufacturer") ||
+    norm.includes("from the manufacturer") ||
+    norm.includes("does this provided") ||
+    norm.includes("is this provided") ||
+    norm.includes("comes from the manufacturer") ||
+    norm.includes("should i buy the new one") ||
+    norm.includes("should i buy a new one") ||
+    norm.includes("buy the new one") ||
+    norm.includes("buy a new one") ||
+    norm.includes("buy the new warranty") ||
+    norm.includes("buy a new warranty") ||
+    norm.includes("new warranty or") ||
+    norm.includes("is this from mazda") ||
+    norm.includes("is this third party") ||
+    norm.includes("who provides this") ||
+    norm.includes("who provides the warranty");
+
+  if (isManufacturerVsDealer) {
+    return { intent: "manufacturer_vs_dealer", topic_beat_ids: [] };
   }
 
   // 1.5. Identity questions (e.g. "who's this", "who are you", "what's your name", "who am i talking to", "yeah who's this")
@@ -301,8 +485,31 @@ export function classifyCustomerInputRuleBased(
     return { intent: "identity_question", topic_beat_ids: [] };
   }
 
+  // 1.6. Sales call inquiry (e.g. "is this a sales call", "are you selling me something", "trying to sell")
+  if (
+    norm.includes("sales call") ||
+    norm.includes("sell me") ||
+    norm.includes("trying to sell") ||
+    norm.includes("selling something") ||
+    norm.includes("selling me")
+  ) {
+    return { intent: "sales_question", topic_beat_ids: [] };
+  }
+
+  // 1.7. Call purpose inquiry (e.g. "what is this about", "why are we doing this", "what is this call for")
+  if (
+    norm.includes("what is this about") ||
+    norm.includes("whats this about") ||
+    norm.includes("why are we doing this") ||
+    norm.includes("what is this for") ||
+    norm.includes("whats this for") ||
+    norm.includes("what are we doing") ||
+    norm.includes("why am i here")
+  ) {
+    return { intent: "call_purpose", topic_beat_ids: [] };
+  }
+
   // 1.8. Mid-call presence checks / greetings (e.g. "hey", "hello", "hi", "hey max", "are you there")
-  // Do NOT treat as off-script question (which generated "How can I assist you today?" and jumped beats)
   if (
     norm === "hey" ||
     norm === "hi" ||
@@ -314,17 +521,6 @@ export function classifyCustomerInputRuleBased(
     norm.includes("you there")
   ) {
     return { intent: "greeting_check", topic_beat_ids: [] };
-  }
-
-  // 2. AI Question
-  if (
-    norm.includes("are you an ai") ||
-    norm.includes("are you a robot") ||
-    norm.includes("are you real") ||
-    norm.includes("are you an avatar") ||
-    norm.includes("is this ai")
-  ) {
-    return { intent: "ai_question", topic_beat_ids: [] };
   }
 
   // 3. Restart request
@@ -357,6 +553,162 @@ export function classifyCustomerInputRuleBased(
     norm.includes("what is the monthly")
   ) {
     return { intent: "price_ask", topic_beat_ids: [] };
+  }
+
+  // 5.5. Contextual Progression & Negotiation at Beats 22-25 (Evaluate BEFORE generic topic keywords!)
+  if (currentBeatId >= 22) {
+    const isCloseConfirmation =
+      norm.includes("confirm") ||
+      norm.includes("forward") ||
+      norm.includes("finish the paperwork") ||
+      norm.includes("finalize") ||
+      norm.includes("let's do it") ||
+      norm.includes("lets do it") ||
+      norm.includes("we have a deal") ||
+      (norm.includes("deal") && !norm.includes("no deal"));
+
+    if (isCloseConfirmation) {
+      return { intent: "agree", topic_beat_ids: [] };
+    }
+
+    const isCounterOfferOrFloorPush =
+      norm.includes("three dollar") ||
+      norm.includes("three dollars") ||
+      norm.includes("3 dollar") ||
+      norm.includes("3.00") ||
+      norm.includes("two dollar") ||
+      norm.includes("two fifty") ||
+      norm.includes("cheaper") ||
+      norm.includes("can you do") ||
+      norm.includes("better on the price") ||
+      norm.includes("too expensive") ||
+      norm.includes("too much") ||
+      norm.includes("lower the price") ||
+      norm.includes("lower") ||
+      norm.includes("discount") ||
+      norm.includes("dollar fifty") ||
+      norm.includes("1.50") ||
+      norm.includes("no deal") ||
+      norm.includes("come down");
+
+    if (isCounterOfferOrFloorPush) {
+      return { intent: "negotiate_price", topic_beat_ids: [] };
+    }
+
+    if (currentBeatId === 22) {
+      if (
+        norm.includes("sounds good") ||
+        norm.includes("sounds great") ||
+        norm.includes("great protection") ||
+        norm.includes("reasonable") ||
+        norm.includes("four dollars") ||
+        norm.includes("agree") ||
+        norm.includes("yes") ||
+        norm.includes("focus on") ||
+        norm.includes("options")
+      ) {
+        return { intent: "agree", topic_beat_ids: [] };
+      }
+    }
+
+    if (currentBeatId === 23) {
+      if (
+        norm.includes("value") ||
+        norm.includes("warranty") ||
+        norm.includes("tire") ||
+        norm.includes("maintenance") ||
+        norm.includes("four dollars") ||
+        norm.includes("three dollars and fifty") ||
+        norm.includes("three twenty-five") ||
+        norm.includes("fair") ||
+        norm.includes("agree") ||
+        norm.includes("yes") ||
+        norm.includes("sounds good") ||
+        norm.includes("works for me") ||
+        norm.includes("both")
+      ) {
+        return { intent: "agree", topic_beat_ids: [] };
+      }
+    }
+
+    if (currentBeatId === 24) {
+      if (
+        norm.includes("confirm") ||
+        norm.includes("forward") ||
+        norm.includes("yes") ||
+        norm.includes("ready") ||
+        norm.includes("sounds good") ||
+        norm.includes("finalize") ||
+        norm.includes("absolutely")
+      ) {
+        return { intent: "agree", topic_beat_ids: [] };
+      }
+    }
+
+    if (currentBeatId === 25) {
+      return { intent: "agree", topic_beat_ids: [] };
+    }
+  }
+
+  // 5.75. Customer answers Beat 1 (Legal Disclosure & Agreement to proceed)
+  if (currentBeatId === 1) {
+    const isExplicitNegation =
+      norm === "no" || norm === "nope" || norm.startsWith("no ") || norm.includes("don't agree") || norm.includes("dont agree");
+    const isCompliment =
+      norm.includes("love") ||
+      norm.includes("beautiful") ||
+      norm.includes("dream") ||
+      norm.includes("gorgeous") ||
+      norm.includes("amazing");
+    if (!isExplicitNegation && !isVehicleDiscrepancy && !isManufacturerVsDealer && !isCompliment) {
+      if (
+        isAffirmativeOrProgression(norm) ||
+        norm.includes("okay") ||
+        norm.includes("ok") ||
+        norm.includes("yes") ||
+        norm.includes("sure") ||
+        norm.includes("fine") ||
+        norm.includes("understand") ||
+        norm.includes("understanding") ||
+        norm.includes("sound") ||
+        norm.includes("good") ||
+        norm.includes("drove") ||
+        norm.includes("drive") ||
+        norm.includes("ready") ||
+        norm.includes("sales") ||
+        norm.includes("warranty")
+      ) {
+        return { intent: "agree", topic_beat_ids: [] };
+      }
+    }
+  }
+
+  // 5.8. Customer answers Beat 4 (Warranty Understanding inquiry)
+  if (currentBeatId === 4) {
+    const isWarrantyExplanation =
+      norm.includes("salesperson") ||
+      norm.includes("sales person") ||
+      norm.includes("salesman") ||
+      norm.includes("he told") ||
+      norm.includes("he said") ||
+      norm.includes("they said") ||
+      norm.includes("defect") ||
+      norm.includes("benefited") ||
+      norm.includes("benefit") ||
+      norm.includes("factory warranty") ||
+      norm.includes("warranty") ||
+      norm.includes("only when") ||
+      norm.includes("only applicable") ||
+      norm.includes("only applied") ||
+      norm.includes("only apply") ||
+      norm.includes("did go over") ||
+      norm.includes("went over") ||
+      norm.includes("yes he did") ||
+      norm.includes("yeah he did");
+
+    if (isWarrantyExplanation) {
+      return { intent: "agree", topic_beat_ids: [] };
+    }
   }
 
   // 6. In-script question matching
@@ -404,6 +756,37 @@ export function classifyCustomerInputRuleBased(
     return { intent: "question_out_of_script", topic_beat_ids: [] };
   }
 
+  // 7.1. Spouse / Wife decision-maker objection
+  if (
+    norm.includes("my wife") ||
+    norm.includes("ask my wife") ||
+    norm.includes("wife handles") ||
+    norm.includes("wife makes") ||
+    norm.includes("check with my wife") ||
+    norm.includes("my husband")
+  ) {
+    return { intent: "spouse_objection", topic_beat_ids: [] };
+  }
+
+  // 7.2. Auto Insurance vs Mechanical Protection question
+  if (
+    norm.includes("car insurance") ||
+    norm.includes("auto insurance") ||
+    (norm.includes("insurance") && norm.includes("cover"))
+  ) {
+    return { intent: "insurance_question", topic_beat_ids: [] };
+  }
+
+  // 7.3. Cancellation / Transferability question
+  if (
+    norm.includes("cancel") ||
+    norm.includes("refund") ||
+    norm.includes("money back") ||
+    (norm.includes("sell the car") && norm.includes("what happen"))
+  ) {
+    return { intent: "cancellation_question", topic_beat_ids: [] };
+  }
+
   // 8. Explicit No
   if (
     norm === "no" ||
@@ -436,7 +819,7 @@ export function classifyCustomerInputRuleBased(
     return { intent: "tech_check_ack", topic_beat_ids: [] };
   }
 
-  // 8.6. Pause / Hold request (e.g. "wait a second", "hold on", "give me a moment", "let me think")
+  // 8.6. Pause / Hold / Interjection request (e.g. "wait a second", "hold on", "give me a moment", "let me tell you", "let me finish")
   // Do NOT advance beat or treat as cold negation/abandonment
   if (
     norm.includes("hold on") ||
@@ -451,9 +834,108 @@ export function classifyCustomerInputRuleBased(
     norm.includes("give me a moment") ||
     norm.includes("let me think") ||
     norm.includes("hang on") ||
-    norm.includes("hold up")
+    norm.includes("hold up") ||
+    norm.includes("let me tell you") ||
+    norm.includes("let me speak") ||
+    norm.includes("let me finish") ||
+    norm.includes("let me complete") ||
+    norm.includes("listen to me") ||
+    norm.includes("listen first") ||
+    norm.includes("hear me out")
   ) {
     return { intent: "pause_request", topic_beat_ids: [] };
+  }
+
+  // 8.65. Beat 4 Qualifying Question ("What's your understanding of the warranty...")
+  // When customer explains what the salesperson told them, advance to Beat 5
+  if (currentBeatId === 4) {
+    if (
+      norm.includes("explained") ||
+      norm.includes("told me") ||
+      norm.includes("said that") ||
+      norm.includes("went over") ||
+      norm.includes("mentioned") ||
+      norm.includes("basic") ||
+      norm.includes("factory warranty") ||
+      norm.includes("manufacturer") ||
+      norm.includes("some of") ||
+      norm.includes("not much") ||
+      norm.includes("a little") ||
+      norm.includes("showed me")
+    ) {
+      return { intent: "agree", topic_beat_ids: [] };
+    }
+  }
+
+  // 8.66. Beat 22 Offer Pitch -> Advance to Beat 23 (Negotiation/Value)
+  if (currentBeatId === 22) {
+    if (
+      norm.includes("sounds good") ||
+      norm.includes("sounds great") ||
+      norm.includes("great protection") ||
+      norm.includes("let's do it") ||
+      norm.includes("lets do it") ||
+      norm.includes("four dollars") ||
+      norm.includes("agree") ||
+      norm.includes("yes") ||
+      norm.includes("deal") ||
+      norm.includes("focus on") ||
+      norm.includes("options")
+    ) {
+      return { intent: "agree", topic_beat_ids: [] };
+    }
+  }
+
+  // 8.67. Beat 23 Negotiation Value -> Advance to Beat 24 (Verbal Close)
+  if (currentBeatId === 23) {
+    if (
+      norm.includes("value") ||
+      norm.includes("warranty") ||
+      norm.includes("tire") ||
+      norm.includes("maintenance") ||
+      norm.includes("four dollars") ||
+      norm.includes("fair") ||
+      norm.includes("agree") ||
+      norm.includes("yes") ||
+      norm.includes("sounds good") ||
+      norm.includes("both")
+    ) {
+      return { intent: "agree", topic_beat_ids: [] };
+    }
+  }
+
+  // 8.68. Beat 24 Verbal Close Confirmation -> Advance to Beat 25 (Verification)
+  if (currentBeatId === 24) {
+    if (
+      norm.includes("confirm") ||
+      norm.includes("forward") ||
+      norm.includes("yes") ||
+      norm.includes("ready") ||
+      norm.includes("let's do it") ||
+      norm.includes("lets do it") ||
+      norm.includes("sounds good") ||
+      norm.includes("finalize") ||
+      norm.includes("absolutely")
+    ) {
+      return { intent: "agree", topic_beat_ids: [] };
+    }
+  }
+
+  // 8.69. Beat 25 Post-Close Verification -> Terminal completion
+  if (currentBeatId === 25) {
+    if (
+      norm.includes("name is") ||
+      norm.includes("address") ||
+      norm.includes("alex") ||
+      norm.includes("terrace") ||
+      norm.includes("street") ||
+      norm.includes("confirm") ||
+      norm.includes("correct") ||
+      norm.includes("spelling") ||
+      norm.includes("yes")
+    ) {
+      return { intent: "agree", topic_beat_ids: [] };
+    }
   }
 
   // 8.7. Overwhelmed / Pace adjustment request (e.g. "slow down", "too fast", "moving too fast", "lot of information")
@@ -468,7 +950,7 @@ export function classifyCustomerInputRuleBased(
     return { intent: "overwhelmed", topic_beat_ids: [] };
   }
 
-  // 8.8. Vehicle compliment / excitement (e.g. "I love this car", "beautiful vehicle", "drove like a dream")
+  // 8.8. Vehicle compliment, excitement, or humor appreciation (e.g. "I love this car", "beautiful vehicle", "haha that's funny")
   if (
     norm.includes("love this car") ||
     norm.includes("love the car") ||
@@ -478,9 +960,71 @@ export function classifyCustomerInputRuleBased(
     norm.includes("love the color") ||
     norm.includes("gorgeous car") ||
     norm.includes("amazing car") ||
-    norm.includes("amazing vehicle")
+    norm.includes("amazing vehicle") ||
+    norm.includes("so excited") ||
+    norm.includes("can't wait to drive") ||
+    norm.includes("cant wait to drive") ||
+    norm.includes("pumped") ||
+    norm.includes("stoked") ||
+    norm.includes("dream car") ||
+    norm.includes("so happy") ||
+    norm.includes("thrilled") ||
+    norm.includes("haha") ||
+    norm.includes("lol") ||
+    norm.includes("funny") ||
+    norm.includes("hilarious")
   ) {
     return { intent: "compliment", topic_beat_ids: [] };
+  }
+
+  // 8.82. Customer Frustration / Impatience / Rush
+  if (
+    norm.includes("hurry up") ||
+    norm.includes("been waiting") ||
+    norm.includes("waiting so long") ||
+    norm.includes("taking forever") ||
+    norm.includes("waste my time") ||
+    norm.includes("wasting my time") ||
+    norm.includes("don't waste my time") ||
+    norm.includes("dont waste my time") ||
+    norm.includes("hate paperwork") ||
+    norm.includes("let's get this over") ||
+    norm.includes("lets get this over") ||
+    norm.includes("tired of waiting") ||
+    norm.includes("been here 3 hours") ||
+    norm.includes("been here for hours") ||
+    norm.includes("annoyed") ||
+    norm.includes("frustrated") ||
+    norm.includes("too slow") ||
+    norm.includes("wrap it up") ||
+    norm.includes("get on with it") ||
+    norm.includes("get to the point")
+  ) {
+    return { intent: "customer_frustrated", topic_beat_ids: [] };
+  }
+
+  // 8.83. Customer Anxiety / Fear / Doubt / Buyer's Remorse
+  if (
+    norm.includes("scared") ||
+    norm.includes("nervous") ||
+    norm.includes("anxious") ||
+    norm.includes("doubt") ||
+    norm.includes("worried") ||
+    norm.includes("first time buying") ||
+    norm.includes("first car") ||
+    norm.includes("hesitant") ||
+    norm.includes("afraid") ||
+    norm.includes("buyer's remorse") ||
+    norm.includes("buyers remorse") ||
+    norm.includes("afraid of getting ripped") ||
+    norm.includes("scared of hidden fees") ||
+    norm.includes("hidden cost") ||
+    norm.includes("feel pressured") ||
+    norm.includes("feeling pressured") ||
+    norm.includes("is this a scam") ||
+    norm.includes("what if i make a mistake")
+  ) {
+    return { intent: "customer_anxious", topic_beat_ids: [] };
   }
 
   // 9. Comprehensive Natural Affirmation / Progression
@@ -587,7 +1131,11 @@ Intents:
 - "pause_request": Customer asks to hold on, pause, or take a moment.
 - "overwhelmed": Customer asks Max to slow down or expresses information overload.
 - "compliment": Customer compliments the vehicle, features, or experience.
+- "customer_frustrated": Customer expresses impatience, anger, or complaints about wait times or paperwork.
+- "customer_anxious": Customer expresses fear, anxiety, hesitation, or doubt about making a mistake or hidden costs.
 - "identity_question": Customer asks who Max is, what his name is, or who they are speaking with.
+- "vehicle_discrepancy": Customer states they are buying a different car (e.g. Maybach, BMW) or that the Mazda CX-5 is the wrong vehicle.
+- "manufacturer_vs_dealer": Customer asks whether this protection is from the manufacturer or dealer, or whether they should buy a new warranty from the manufacturer.
 - "other": Off-topic greeting or comment.
 
 Topic Beat IDs:
@@ -654,7 +1202,15 @@ export async function generateStep0Turn(
     norm.includes("hear you") ||
     norm.includes("loud and clear") ||
     norm.includes("can see") ||
-    norm.includes("can hear");
+    norm.includes("can hear") ||
+    norm === "yes" ||
+    norm === "yeah" ||
+    norm === "yep" ||
+    norm === "sure" ||
+    norm === "i can" ||
+    norm === "alright" ||
+    norm === "all right" ||
+    norm === "fine";
 
   // Prevent avatar echo from advancing Step 0 into Beat 1
   if (isAvatarScriptEcho(customerTranscript)) {
@@ -669,9 +1225,9 @@ export async function generateStep0Turn(
     };
   }
 
-  // Turn 1 (or repeated tech acknowledgment): customer confirmed audio/video ("i can see you", "yes", etc.)
+  // Turn 1: customer confirmed audio/video ("i can see you", "yes", etc.)
   // Build rapport & deliver formal greeting asking how their experience was
-  if (step0Turns <= 1 || isTechAck) {
+  if (step0Turns <= 1) {
     let rapportText = STEP_0_RAPPORT_LINE;
     rapportText = rapportText.replace(/\{\{vehicle_year\}\}/g, dealConfig.vehicle_year);
     rapportText = rapportText.replace(/\{\{vehicle_make\}\}/g, dealConfig.vehicle_make);
@@ -682,9 +1238,146 @@ export async function generateStep0Turn(
     };
   }
 
-  // Turn 2: customer answered rapport question ("it was great", "good", "fine", etc.) -> smooth transition into Beat 1 Legal Disclosure
+  // Turn 2+: Check if customer is asking a question or interrupting BEFORE giving a rapport answer
+  const isIdentityAsk =
+    norm.includes("who are you") ||
+    norm.includes("who is this") ||
+    norm.includes("whos this") ||
+    norm.includes("who am i") ||
+    norm.includes("whats your name") ||
+    norm.includes("what is your name") ||
+    norm.includes("who you") ||
+    norm === "who";
+
+  if (isIdentityAsk) {
+    return {
+      text: "I'm Max, your digital finance manager today! I handle all your paperwork, title details, and warranty options before you drive off in your new car. How was your test drive out there today?",
+      moveToBeat1: false,
+    };
+  }
+
+  const isSalesAsk =
+    norm.includes("sales call") ||
+    norm.includes("sell me") ||
+    norm.includes("trying to sell") ||
+    norm.includes("selling something") ||
+    norm.includes("selling");
+
+  if (isSalesAsk) {
+    return {
+      text: "Not at all! This isn't a sales call—my job is simply to review your paperwork and factory warranty before you sign anything. Did our sales team treat you well today?",
+      moveToBeat1: false,
+    };
+  }
+
+  const isCallPurposeAsk =
+    norm.includes("what is this about") ||
+    norm.includes("whats this about") ||
+    norm.includes("why are we doing this") ||
+    norm.includes("what is this for") ||
+    norm.includes("whats this for") ||
+    norm.includes("why am i here") ||
+    norm.includes("what are we doing");
+
+  if (isCallPurposeAsk) {
+    return {
+      text: "Every buyer meets with finance before delivery to verify paperwork, registration details, and review factory warranty coverage. Did you get a good feel for the car on your test drive?",
+      moveToBeat1: false,
+    };
+  }
+
+  const isAiAsk =
+    norm.includes("are you real") ||
+    norm.includes("are you ai") ||
+    norm.includes("are you a robot") ||
+    norm.includes("is this ai") ||
+    norm.includes("real person");
+
+  if (isAiAsk) {
+    return {
+      text: "I'm an AI digital finance manager, built to make your paperwork fast, clear, and transparent! How was your test drive out there today?",
+      moveToBeat1: false,
+    };
+  }
+
+  const isPauseAsk =
+    norm.includes("let me tell you") ||
+    norm.includes("listen to me") ||
+    norm.includes("wait a second") ||
+    norm.includes("wait a minute") ||
+    norm.includes("hold on") ||
+    norm === "wait" ||
+    norm === "stop";
+
+  if (isPauseAsk) {
+    return {
+      text: "I'm listening, please go ahead.",
+      moveToBeat1: false,
+    };
+  }
+
+  // Turn 2+: Customer answered the rapport question ("it was great", "good", "fine", or complained about wait) -> smooth transition into Beat 1 Legal Disclosure
+  const isNegative =
+    norm.includes("wait") ||
+    norm.includes("hour") ||
+    norm.includes("forever") ||
+    norm.includes("terrible") ||
+    norm.includes("bad") ||
+    norm.includes("horrible") ||
+    norm.includes("frustrat") ||
+    norm.includes("annoy") ||
+    norm.includes("waste") ||
+    norm.includes("hurry") ||
+    norm.includes("rush") ||
+    norm.includes("get this over") ||
+    norm.includes("been here") ||
+    norm.includes("sitting here") ||
+    norm.includes("long time");
+
+  const isAnxious =
+    norm.includes("scared") ||
+    norm.includes("nervous") ||
+    norm.includes("anxious") ||
+    norm.includes("doubt") ||
+    norm.includes("worried") ||
+    norm.includes("first time") ||
+    norm.includes("hesitant");
+
+  const isExcited =
+    norm.includes("amazing") ||
+    norm.includes("awesome") ||
+    norm.includes("so excited") ||
+    norm.includes("love it") ||
+    norm.includes("love the car") ||
+    norm.includes("best experience") ||
+    norm.includes("thrilled") ||
+    norm.includes("pumped");
+
+  let transitionLine = STEP_0_TRANSITION_LINE;
+  if (isNegative) {
+    transitionLine = STEP_0_TRANSITION_LINE.replace(
+      "Glad to hear that!",
+      "I hear you completely—you've had a long day at the dealership, so I promise to keep this crisp, transparent, and direct."
+    );
+  } else if (isAnxious) {
+    transitionLine = STEP_0_TRANSITION_LINE.replace(
+      "Glad to hear that!",
+      "I completely understand—buying a car is a big decision, so we'll take it one step at a time with zero pressure."
+    );
+  } else if (isExcited) {
+    transitionLine = STEP_0_TRANSITION_LINE.replace(
+      "Glad to hear that!",
+      "I love that excitement! That new car is an absolute blast to drive!"
+    );
+  } else {
+    transitionLine = STEP_0_TRANSITION_LINE.replace(
+      "Glad to hear that!",
+      "Awesome, so glad to hear that! Our team works really hard to take care of our customers."
+    );
+  }
+
   return {
-    text: STEP_0_TRANSITION_LINE,
+    text: formatSpeechText(transitionLine),
     moveToBeat1: true,
   };
 }
@@ -732,7 +1425,7 @@ export async function generateConstrainedOffScriptResponse(
 
   const apiKey = process.env.XAI_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
-    return OUT_OF_SCRIPT_LINE;
+    return "";
   }
 
   const isXai = Boolean(process.env.XAI_API_KEY);
@@ -744,6 +1437,7 @@ The customer asked an off-script question during their finance paperwork review.
 Respond with EXACTLY ONE short, professional sentence (max 20 words) answering or acknowledging their question.
 
 STRICT NEGATIVE CONSTRAINTS:
+- NEVER tell the customer to "finish your question", "finish your sentence", or "could you please finish". If their statement is a fragment or incomplete, simply acknowledge politely ("Understood, please go ahead") or answer directly.
 - NEVER quote, promise, or discuss specific interest rates (APR), monthly payments, loan terms, down payments, discounts, or trade-in values.
 - NEVER make mechanical warranty guarantees beyond the manufacturer paperwork.
 - NO filler words (do NOT start with "Sure", "Awesome", "Great question", "Got it", "Certainly", "Of course").
@@ -769,15 +1463,24 @@ STRICT NEGATIVE CONSTRAINTS:
     });
 
     if (!res.ok) {
-      return OUT_OF_SCRIPT_LINE;
+      return "";
     }
 
     const data = await res.json();
     let reply = (data.choices?.[0]?.message?.content || "").trim();
     reply = formatSpeechText(reply);
 
-    // Safety checks against rate/price promises in output
+    // Safety checks against rate/price promises or scolding in output
     const replyNorm = reply.toLowerCase();
+    if (
+      replyNorm.includes("finish your question") ||
+      replyNorm.includes("complete your question") ||
+      replyNorm.includes("finish your sentence") ||
+      replyNorm.includes("could you please finish")
+    ) {
+      return "I understand, please go ahead.";
+    }
+
     if (
       !reply ||
       replyNorm.includes("$") ||
@@ -793,8 +1496,8 @@ STRICT NEGATIVE CONSTRAINTS:
 
     return reply;
   } catch (err) {
-    console.warn("[beat-controller] Dynamic off-script generation error, falling back to OUT_OF_SCRIPT_LINE:", err);
-    return OUT_OF_SCRIPT_LINE;
+    console.warn("[beat-controller] Dynamic off-script generation error, falling back to empty:", err);
+    return "";
   }
 }
 
@@ -876,8 +1579,8 @@ export async function processControllerTurn(
       state.no_count_in_a_row = 0;
       const nextBeatId = state.current_beat + 1;
 
-      // Check if finished Beat 22
-      if (nextBeatId > 22) {
+      // Check if finished all script beats
+      if (nextBeatId > BEATS.length) {
         state.is_stopped = true;
         textToSpeak = HANDOFF_LINE;
         beatType = "stop";
@@ -898,6 +1601,36 @@ export async function processControllerTurn(
     }
 
     case "no": {
+      // Beat 4: Did salesperson go over the warranty?
+      // TXM Branching logic on Q3:
+      // If customer says No: "Allow me to go over it really quick to make sure that you understand everything. Also, if you have any questions, please do not hesitate to stop me and ask me."
+      // Followed immediately by transitioning to the warranty presentation (Beat 6) and displaying warranty terms.
+      if (state.current_beat === 4) {
+        state.no_count_in_a_row = 0;
+        state.current_beat = 6;
+        if (!state.delivered_beats.includes(5)) state.delivered_beats.push(5);
+        state.delivered_beats.push(6);
+        const beat6 = BEATS.find((b) => b.id === 6)!;
+        const beat6Utterance = getFullBeatUtterance(beat6, state.dealConfig);
+        textToSpeak = `Allow me to go over it really quick to make sure that you understand everything. Also, if you have any questions, please do not hesitate to stop me and ask me. ${beat6Utterance}`;
+        beatType = beat6.type;
+        toolCalls = getBeatToolCalls(6);
+        break;
+      }
+
+      // Beat 5: "There is actually more information... Is that okay?"
+      if (state.current_beat === 5) {
+        state.no_count_in_a_row = 0;
+        state.current_beat = 6;
+        state.delivered_beats.push(6);
+        const beat6 = BEATS.find((b) => b.id === 6)!;
+        const beat6Utterance = getFullBeatUtterance(beat6, state.dealConfig);
+        textToSpeak = `I completely understand and I respect your time! By law, before you sign, I'm just required to go over what the manufacturer warranty does and doesn't cover so there are no surprises. Allow me to go over it really quick with you. ${beat6Utterance}`;
+        beatType = beat6.type;
+        toolCalls = getBeatToolCalls(6);
+        break;
+      }
+
       state.no_count_in_a_row++;
       if (state.no_count_in_a_row >= 2) {
         // After 2 in a row, hand off using HANDOFF_LINE
@@ -917,25 +1650,33 @@ export async function processControllerTurn(
     }
 
     case "question_in_script": {
-      // Speak only the sentence(s) from the beat(s) in topic_beat_ids, verbatim,
-      // then the check-in of the current beat, then resume. Never summarize or rephrase.
-      const matchedSentences: string[] = [];
+      // Speak only the focused sentence(s) from the primary beat in topic_beat_ids.
+      // If a beat was already delivered, speak only its concise recap, never repeat the full paragraph or multiple recaps.
       const ids = topic_beat_ids.length > 0 ? topic_beat_ids : [state.current_beat];
+      // Pick the first undelivered beat if any, otherwise the primary matched beat
+      const undeliveredId = ids.find((id) => !state.delivered_beats.includes(id));
+      const targetId = undeliveredId || ids[0];
 
-      for (const id of ids) {
-        const beatObj = BEATS.find((b) => b.id === id);
+      let responseText = "";
+      if (state.delivered_beats.includes(targetId)) {
+        responseText = BEAT_RECAPS[targetId] || "As a quick reminder, that coverage is fully included in your protection package.";
+      } else {
+        const beatObj = BEATS.find((b) => b.id === targetId);
         if (beatObj) {
-          matchedSentences.push(formatSpeechText(renderBeatText(beatObj, state.dealConfig)));
+          responseText = formatSpeechText(renderBeatText(beatObj, state.dealConfig));
+          state.delivered_beats.push(targetId);
+        } else {
+          responseText = BEAT_RECAPS[state.current_beat] || "As a quick reminder, that coverage is fully included in your package.";
         }
       }
 
       const currentBeat = BEATS.find((b) => b.id === state.current_beat);
-      let combined = matchedSentences.join(" ");
-      if (currentBeat?.check_in) {
-        combined += ` ${formatSpeechText(currentBeat.check_in)}`;
+      const checkIn = currentBeat?.check_in ? formatSpeechText(currentBeat.check_in) : "Does that help clarify things?";
+      if (!responseText.includes(checkIn)) {
+        responseText += ` ${checkIn}`;
       }
 
-      textToSpeak = combined;
+      textToSpeak = responseText;
       beatType = "wait";
       break;
     }
@@ -944,16 +1685,16 @@ export async function processControllerTurn(
       // Generate constrained dynamic response with strict negative constraints (no pricing/rate promises), then resume
       const dynamicLeadIn = await generateConstrainedOffScriptResponse(customerTranscript, state);
       const nextBeatId = state.current_beat + 1;
-      if (nextBeatId <= 22) {
+      if (nextBeatId <= BEATS.length) {
         state.current_beat = nextBeatId;
         state.delivered_beats.push(nextBeatId);
         const nextBeat = BEATS.find((b) => b.id === nextBeatId)!;
         const nextUtterance = getFullBeatUtterance(nextBeat, state.dealConfig);
-        textToSpeak = `${dynamicLeadIn} ${nextUtterance}`;
+        textToSpeak = dynamicLeadIn ? `${dynamicLeadIn} ${nextUtterance}` : nextUtterance;
         beatType = nextBeat.type;
         toolCalls = getBeatToolCalls(nextBeatId);
       } else {
-        textToSpeak = `${dynamicLeadIn} ${HANDOFF_LINE}`;
+        textToSpeak = dynamicLeadIn ? `${dynamicLeadIn} ${HANDOFF_LINE}` : HANDOFF_LINE;
         state.is_stopped = true;
         beatType = "stop";
         toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
@@ -978,6 +1719,63 @@ export async function processControllerTurn(
         textToSpeak = getFullBeatUtterance(beat22, state.dealConfig);
         beatType = "wait";
         toolCalls = getBeatToolCalls(22);
+      }
+      break;
+    }
+
+    case "negotiate_price": {
+      // Approved ladder: Stage 1 ($4.00) -> Stage 2 ($3.50) -> Stage 3 ($3.25) -> Stage 4 ($3.00 hard floor)
+      // Any offer below $3.00 must trigger manager handoff!
+      const norm = customerTranscript.toLowerCase();
+      const numbersInText = norm.match(/\b\d+(\.\d+)?\b/g)?.map(Number) || [];
+      const hasOfferBelowThree =
+        numbersInText.some((n) => n > 0 && n < 3.0) ||
+        norm.includes("two dollars") ||
+        norm.includes("one dollar") ||
+        norm.includes("two fifty") ||
+        norm.includes("dollar fifty") ||
+        norm.includes("1.50") ||
+        norm.includes("2.50") ||
+        norm.includes("2.00");
+
+      if (hasOfferBelowThree) {
+        state.is_stopped = true;
+        textToSpeak = "I can't adjust the price myself past this point — let me get you connected with my colleague who can look at that with you.";
+        beatType = "stop";
+        toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
+        onScriptComplete(state);
+        break;
+      }
+
+      const currentStage = state.concession_stage || 1;
+      if (currentStage === 1) {
+        state.concession_stage = 2;
+        state.dealConfig.per_day_price = "three dollars and fifty cents";
+        textToSpeak = "I understand. While four dollars is our standard rate, the best I can offer directly is three dollars and fifty cents a day. Which two coverages are most important to you?";
+        beatType = "wait";
+        toolCalls = [{ name: "show_payment_breakdown", args: { daily_rate: 3.5 } }];
+        state.current_beat = 23;
+      } else if (currentStage === 2) {
+        state.concession_stage = 3;
+        state.dealConfig.per_day_price = "three dollars and twenty-five cents";
+        textToSpeak = "I want to make sure you get the right coverage. I can bring that down to three dollars and twenty-five cents a day. Does that sound fair?";
+        beatType = "wait";
+        toolCalls = [{ name: "show_payment_breakdown", args: { daily_rate: 3.25 } }];
+        state.current_beat = 23;
+      } else if (currentStage === 3) {
+        state.concession_stage = 4;
+        state.dealConfig.per_day_price = "three dollars";
+        textToSpeak = "To make this work for you, three dollars a day is our absolute hard floor for full vehicle protection. Are you ready to finalize at three dollars a day?";
+        beatType = "wait";
+        toolCalls = [{ name: "show_payment_breakdown", args: { daily_rate: 3.0 } }];
+        state.current_beat = 23;
+      } else {
+        // Floor breach / below $3 or pushing past stage 4
+        state.is_stopped = true;
+        textToSpeak = "I can't adjust the price myself past this point — let me get you connected with my colleague who can look at that with you.";
+        beatType = "stop";
+        toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
+        onScriptComplete(state);
       }
       break;
     }
@@ -1032,8 +1830,16 @@ export async function processControllerTurn(
     }
 
     case "pause_request": {
-      // Customer asked to pause or hold on. Respectfully acknowledge and retain current beat
-      textToSpeak = PAUSE_LINE;
+      // Customer asked to pause, hold on, or interjected to speak ("let me tell you", "listen")
+      const norm = customerTranscript.toLowerCase();
+      const isInterjection =
+        norm.includes("let me tell you") ||
+        norm.includes("let me speak") ||
+        norm.includes("let me finish") ||
+        norm.includes("let me complete") ||
+        norm.includes("listen") ||
+        norm.includes("hear me");
+      textToSpeak = isInterjection ? LISTENING_LINE : PAUSE_LINE;
       beatType = "wait";
       toolCalls = [];
       break;
@@ -1050,22 +1856,52 @@ export async function processControllerTurn(
     }
 
     case "compliment": {
-      // Acknowledge excitement and advance to next beat
+      // Acknowledge vehicle compliments or laughter/humor and advance to next beat
+      const norm = customerTranscript.toLowerCase();
+      const isLaughterOrHumor =
+        norm.includes("haha") ||
+        norm.includes("lol") ||
+        norm.includes("funny") ||
+        norm.includes("hilarious") ||
+        norm.includes("crack me up");
+
+      const leadIn = isLaughterOrHumor ? EQ_EXCITEMENT_LINE : COMPLIMENT_LINE;
+
       const nextBeatId = state.current_beat + 1;
       if (nextBeatId <= 22) {
         state.current_beat = nextBeatId;
         state.delivered_beats.push(nextBeatId);
         const nextBeat = BEATS.find((b) => b.id === nextBeatId)!;
         const nextUtterance = getFullBeatUtterance(nextBeat, state.dealConfig);
-        textToSpeak = `${COMPLIMENT_LINE} ${nextUtterance}`;
+        textToSpeak = `${leadIn} ${nextUtterance}`;
         beatType = nextBeat.type;
         toolCalls = getBeatToolCalls(nextBeatId);
       } else {
-        textToSpeak = `${COMPLIMENT_LINE} ${HANDOFF_LINE}`;
+        textToSpeak = `${leadIn} ${HANDOFF_LINE}`;
         state.is_stopped = true;
         beatType = "stop";
         toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
       }
+      break;
+    }
+
+    case "customer_frustrated": {
+      // De-escalate frustration, validate time respect, re-prompt current beat check-in
+      const currentBeat = BEATS.find((b) => b.id === state.current_beat);
+      const checkIn = currentBeat?.check_in ? formatSpeechText(currentBeat.check_in) : "";
+      textToSpeak = checkIn ? `${EQ_DEESCALATION_LINE} ${checkIn}` : EQ_DEESCALATION_LINE;
+      beatType = "wait";
+      toolCalls = [];
+      break;
+    }
+
+    case "customer_anxious": {
+      // Reassure anxiety and doubt, zero-pressure psychological safety, re-prompt current beat check-in
+      const currentBeat = BEATS.find((b) => b.id === state.current_beat);
+      const checkIn = currentBeat?.check_in ? formatSpeechText(currentBeat.check_in) : "";
+      textToSpeak = checkIn ? `${EQ_REASSURANCE_LINE} ${checkIn}` : EQ_REASSURANCE_LINE;
+      beatType = "wait";
+      toolCalls = [];
       break;
     }
 
@@ -1081,6 +1917,40 @@ export async function processControllerTurn(
         toolCalls = getBeatToolCalls(state.current_beat);
       } else {
         textToSpeak = IDENTITY_LINE;
+        beatType = "wait";
+      }
+      break;
+    }
+
+    case "sales_question": {
+      // Customer asked if this is a sales call. Reassure directly and re-prompt current beat without advancing!
+      const currentBeat = BEATS.find((b) => b.id === state.current_beat);
+      if (currentBeat) {
+        const checkInOrUtterance = currentBeat.check_in
+          ? `${SALES_CALL_LINE} ${formatSpeechText(currentBeat.check_in)}`
+          : `${SALES_CALL_LINE} ${getFullBeatUtterance(currentBeat, state.dealConfig)}`;
+        textToSpeak = checkInOrUtterance;
+        beatType = currentBeat.type;
+        toolCalls = getBeatToolCalls(state.current_beat);
+      } else {
+        textToSpeak = SALES_CALL_LINE;
+        beatType = "wait";
+      }
+      break;
+    }
+
+    case "call_purpose": {
+      // Customer asked why they are having this call. Answer clearly and re-prompt current beat without advancing!
+      const currentBeat = BEATS.find((b) => b.id === state.current_beat);
+      if (currentBeat) {
+        const checkInOrUtterance = currentBeat.check_in
+          ? `${CALL_PURPOSE_LINE} ${formatSpeechText(currentBeat.check_in)}`
+          : `${CALL_PURPOSE_LINE} ${getFullBeatUtterance(currentBeat, state.dealConfig)}`;
+        textToSpeak = checkInOrUtterance;
+        beatType = currentBeat.type;
+        toolCalls = getBeatToolCalls(state.current_beat);
+      } else {
+        textToSpeak = CALL_PURPOSE_LINE;
         beatType = "wait";
       }
       break;
@@ -1107,7 +1977,7 @@ export async function processControllerTurn(
     case "ai_question": {
       // Speak AI_DISCLOSURE_LINE, then resume
       const nextBeatId = state.current_beat + 1;
-      if (nextBeatId <= 22) {
+      if (nextBeatId <= BEATS.length) {
         state.current_beat = nextBeatId;
         state.delivered_beats.push(nextBeatId);
         const nextBeat = BEATS.find((b) => b.id === nextBeatId)!;
@@ -1139,18 +2009,92 @@ export async function processControllerTurn(
       break;
     }
 
+    case "spouse_objection": {
+      const currentBeat = BEATS.find((b) => b.id === state.current_beat);
+      const checkIn = currentBeat?.check_in ? formatSpeechText(currentBeat.check_in) : "";
+      textToSpeak = checkIn ? `${SPOUSE_LINE} ${checkIn}` : SPOUSE_LINE;
+      beatType = "wait";
+      break;
+    }
+
+    case "insurance_question": {
+      const currentBeat = BEATS.find((b) => b.id === state.current_beat);
+      const checkIn = currentBeat?.check_in ? formatSpeechText(currentBeat.check_in) : "";
+      textToSpeak = checkIn ? `${INSURANCE_LINE} ${checkIn}` : INSURANCE_LINE;
+      beatType = "wait";
+      break;
+    }
+
+    case "cancellation_question": {
+      const currentBeat = BEATS.find((b) => b.id === state.current_beat);
+      const checkIn = currentBeat?.check_in ? formatSpeechText(currentBeat.check_in) : "";
+      textToSpeak = checkIn ? `${CANCELLATION_LINE} ${checkIn}` : CANCELLATION_LINE;
+      beatType = "wait";
+      break;
+    }
+
+    case "vehicle_discrepancy": {
+      // Customer stated they are buying a different vehicle or that the car model is incorrect
+      const norm = customerTranscript.toLowerCase();
+      let extractedModel = "";
+      if (norm.includes("maybach")) extractedModel = "Maybach";
+      else if (norm.includes("mercedes")) extractedModel = "Mercedes";
+      else if (norm.includes("bmw")) extractedModel = "BMW";
+      else if (norm.includes("audi")) extractedModel = "Audi";
+      else if (norm.includes("porsche")) extractedModel = "Porsche";
+      else if (norm.includes("lexus")) extractedModel = "Lexus";
+      else if (norm.includes("ford")) extractedModel = "Ford";
+      else if (norm.includes("toyota")) extractedModel = "Toyota";
+      else if (norm.includes("honda")) extractedModel = "Honda";
+      else if (norm.includes("kia")) extractedModel = "Kia";
+      else if (norm.includes("hyundai")) extractedModel = "Hyundai";
+
+      if (extractedModel) {
+        state.dealConfig.vehicle_model = extractedModel;
+        state.dealConfig.vehicle_make = extractedModel === "Maybach" ? "Mercedes-Maybach" : state.dealConfig.vehicle_make;
+      }
+
+      const vehicleName = extractedModel || "correct vehicle";
+      textToSpeak = VEHICLE_DISCREPANCY_LINE.replace(/\{\{vehicle_model\}\}/g, vehicleName);
+      beatType = "wait";
+      // Hold Beat 2 (Qualifying test-drive question) so customer can answer
+      state.current_beat = 2;
+      toolCalls = [];
+      break;
+    }
+
+    case "manufacturer_vs_dealer": {
+      // Customer asked whether warranty/coverage is from manufacturer or dealership, or if they should buy a new warranty
+      textToSpeak = MANUFACTURER_VS_DEALER_LINE;
+      beatType = "wait";
+      toolCalls = [];
+      break;
+    }
+
     case "other":
     default: {
       // Prepared for everything: Answer customer's question or off-script comment directly,
       // then seamlessly bridge into the next undelivered beat
       let dynamicAnswer = "";
       const trimmed = customerTranscript.trim();
+      const norm = customerTranscript.toLowerCase();
+      const financialKeywords = [
+        "rate", "apr", "interest", "monthly payment", "payment",
+        "down payment", "trade in", "trade-in", "credit score", "loan term",
+      ];
+      const isFinancialQuestion = financialKeywords.some((kw) => norm.includes(kw));
+
       if (trimmed.length > 2) {
         dynamicAnswer = await generateConstrainedOffScriptResponse(customerTranscript, state);
       }
 
+      // Requirement 1: Only use OUT_OF_SCRIPT_LINE in a valid manager-handoff context!
+      if (dynamicAnswer === OUT_OF_SCRIPT_LINE && !isFinancialQuestion) {
+        dynamicAnswer = "Understood.";
+      }
+
       const nextBeatId = state.current_beat + 1;
-      if (nextBeatId <= 22) {
+      if (nextBeatId <= BEATS.length) {
         state.current_beat = nextBeatId;
         state.delivered_beats.push(nextBeatId);
         const nextBeat = BEATS.find((b) => b.id === nextBeatId)!;
