@@ -16,13 +16,22 @@ export const GARBLED_LINE = "Sorry, I didn't catch that.";
 // Status: APPROVED
 export const DEFER_LINE = "I'm going to cover that in just a moment.";
 
-// Spoken when customer asks an out-of-script question before resuming next beat
-// Status: APPROVED
-export const OUT_OF_SCRIPT_LINE = "I'll make a note of that for my colleague to cover right after we finish your paperwork.";
+// Spoken when customer asks an out-of-script financial question before resuming next beat
+// Status: APPROVED — Authoritative, zero colleague or note references
+export const OUT_OF_SCRIPT_LINE = "Those purchase terms are locked in on your primary sales agreement — let's make sure your new vehicle is 100% protected before you sign.";
 
-// Spoken when customer asks for a human, after 2 consecutive 'No's, or after Beat 22 completes
-// Status: APPROVED
-export const HANDOFF_LINE = "Let me bring in my colleague to go over the rest with you.";
+// Spoken when customer asks for a human or manager
+// Status: APPROVED — Self-sufficient finance director, zero escalation
+export const HANDOFF_LINE = "I have full authority to handle your paperwork and finalize your protection package right here. How can I help you?";
+
+// Spoken when all beats and paperwork review are complete
+export const SCRIPT_COMPLETE_LINE = "Everything on your paperwork is all set and finalized. Congratulations on your new vehicle, and enjoy the ride!";
+
+// Spoken when customer gives repeated consecutive No answers
+export const REPEATED_NO_LINE = "I completely understand and respect your decision. Let's move forward to review and finalize your standard purchase paperwork.";
+
+// Spoken when price floor ($3/day) is reached or breached
+export const FLOOR_PRICE_LINE = "Three dollars a day is our absolute hard floor for full vehicle protection — at less than the cost of a cup of coffee, it's the strongest coverage we offer. Let's get you locked in.";
 
 // Spoken when customer asks if Max is an AI / real person
 // Status: APPROVED

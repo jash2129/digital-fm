@@ -341,7 +341,7 @@ export function evaluateControllerStep(sessionId: string, userMessage: string): 
 
   let behavioralInstruction = "";
   if (session.currentBeatId === 16 && isAgreement) {
-    behavioralInstruction = `You have delivered the full verbatim script from wordtoword.md up to the $4 a day presentation. Say warmly: "Awesome! Let me bring in my colleague to go over the rest of the paperwork with you." and do not improvise new sales lines.`;
+    behavioralInstruction = `You have delivered the full verbatim script from wordtoword.md up to the $4 a day presentation. Say warmly: "Awesome! Let's get everything signed and finalized for you right now." and do not improvise new sales lines.`;
   } else if (isEcho) {
     behavioralInstruction = `The customer acknowledged what you said. Smoothly advance and deliver the assigned beat text below. Do NOT repeat prior sentences.`;
   } else if (customerIntent === ("can_speak_inquiry" as any)) {
@@ -391,7 +391,7 @@ CRITICAL RULES FOR MAXIMUM NATURAL CONVERSATION:
 
   let fallbackPrefix = "";
   if (session.currentBeatId === 16 && isAgreement) {
-    fallbackPrefix = "Awesome! Let me bring in my colleague to go over the rest of the paperwork with you.";
+    fallbackPrefix = "Awesome! Let's get everything signed and finalized for you right now.";
   } else if (customerIntent === ("can_speak_inquiry" as any)) {
     fallbackPrefix = "Yes, absolutely! I can hear and speak with you loud and clear. I'm right here with you.";
   } else if (customerIntent === ("tell_something_inquiry" as any)) {
@@ -461,7 +461,7 @@ CRITICAL RULES FOR MAXIMUM NATURAL CONVERSATION:
   } else if (targetBeatId === 16) {
     verbatimScriptText = `Awesome! ${nextBeat.text}`;
   } else if (session.currentBeatId === 16 && isAgreement) {
-    verbatimScriptText = `Awesome! Let me bring in my colleague to go over the rest of the paperwork with you.`;
+    verbatimScriptText = `Awesome! Let's get everything signed and finalized for you right now.`;
   }
 
   return {

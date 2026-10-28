@@ -27,6 +27,9 @@ import {
   MANUFACTURER_VS_DEALER_LINE,
   SALES_CALL_LINE,
   CALL_PURPOSE_LINE,
+  FLOOR_PRICE_LINE,
+  SCRIPT_COMPLETE_LINE,
+  REPEATED_NO_LINE,
 } from "./max-lines";
 
 export interface Beat {
@@ -322,6 +325,10 @@ export function isAvatarScriptEcho(transcript: string): boolean {
     "colleague to cover right after",
     "bring in my colleague",
     "make a note of that for my colleague",
+    "those purchase terms are locked in",
+    "i have full authority to handle",
+    "everything on your paperwork is all set",
+    "three dollars a day is our absolute hard floor",
     "i'm an ai finance assistant",
     "take all the time you need",
     "let's slow down a bit",
@@ -1432,16 +1439,17 @@ export async function generateConstrainedOffScriptResponse(
   const endpoint = isXai ? "https://api.x.ai/v1/chat/completions" : "https://api.openai.com/v1/chat/completions";
   const model = process.env.GROK_MODEL?.trim() || (isXai ? "grok-4.20-0309-non-reasoning" : "gpt-4o-mini");
 
-  const systemPrompt = `You are Max, a polite, focused Digital Finance Manager at a car dealership.
+  const systemPrompt = `You are Max, an authoritative, polite Digital Finance Manager at a car dealership.
 The customer asked an off-script question during their finance paperwork review.
-Respond with EXACTLY ONE short, professional sentence (max 20 words) answering or acknowledging their question.
+Respond with EXACTLY ONE short, authoritative sentence (max 20 words) answering or acknowledging their question directly.
 
-STRICT NEGATIVE CONSTRAINTS:
+STRICT CONSTRAINTS:
+- You have full authority to handle the deal. NEVER refer to a "colleague", "coworker", or "taking a note".
 - NEVER tell the customer to "finish your question", "finish your sentence", or "could you please finish". If their statement is a fragment or incomplete, simply acknowledge politely ("Understood, please go ahead") or answer directly.
 - NEVER quote, promise, or discuss specific interest rates (APR), monthly payments, loan terms, down payments, discounts, or trade-in values.
 - NEVER make mechanical warranty guarantees beyond the manufacturer paperwork.
 - NO filler words (do NOT start with "Sure", "Awesome", "Great question", "Got it", "Certainly", "Of course").
-- Keep it natural, direct, and under 20 words.
+- Keep it natural, confident, direct, and under 20 words.
 - Output ONLY the exact sentence to speak, no quotes, no markdown.`;
 
   try {
@@ -1739,11 +1747,12 @@ export async function processControllerTurn(
         norm.includes("2.00");
 
       if (hasOfferBelowThree) {
-        state.is_stopped = true;
-        textToSpeak = "I can't adjust the price myself past this point — let me get you connected with my colleague who can look at that with you.";
-        beatType = "stop";
-        toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
-        onScriptComplete(state);
+        state.concession_stage = 4;
+        state.dealConfig.per_day_price = "three dollars";
+        textToSpeak = FLOOR_PRICE_LINE;
+        beatType = "wait";
+        toolCalls = [{ name: "show_payment_breakdown", args: { daily_rate: 3.0 } }];
+        state.current_beat = 23;
         break;
       }
 
@@ -1771,11 +1780,12 @@ export async function processControllerTurn(
         state.current_beat = 23;
       } else {
         // Floor breach / below $3 or pushing past stage 4
-        state.is_stopped = true;
-        textToSpeak = "I can't adjust the price myself past this point — let me get you connected with my colleague who can look at that with you.";
-        beatType = "stop";
-        toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
-        onScriptComplete(state);
+        state.concession_stage = 4;
+        state.dealConfig.per_day_price = "three dollars";
+        textToSpeak = FLOOR_PRICE_LINE;
+        beatType = "wait";
+        toolCalls = [{ name: "show_payment_breakdown", args: { daily_rate: 3.0 } }];
+        state.current_beat = 23;
       }
       break;
     }
