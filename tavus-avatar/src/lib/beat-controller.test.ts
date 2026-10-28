@@ -509,6 +509,27 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       expect(noWarrantyTurn.state.is_stopped).toBe(false);
     });
 
+    it("Beat 3 Qualifying Answer 'No' / 'he didn't show me anything' advances cleanly to Beat 4 without repeating", async () => {
+      const state = getOrCreateCallState(sessionId);
+      state.step0_completed = true;
+      state.current_beat = 3;
+
+      const noWalkaroundTurn = await processControllerTurn(sessionId, "No, he didn't show me anything");
+      expect(noWalkaroundTurn.intent).toBe("no");
+      expect(noWalkaroundTurn.beatId).toBe(4);
+      expect(noWalkaroundTurn.textToSpeak).toContain("No problem at all, I'll make sure we go over all the features");
+      expect(noWalkaroundTurn.textToSpeak).toContain("What's your understanding of the warranty that comes with the vehicle?");
+      expect(noWalkaroundTurn.state.is_stopped).toBe(false);
+    });
+
+    it("Stage 0 handles 'sales score' STT typo without reciting positive transition prematurely", async () => {
+      const freshSession = "test-sales-score-" + Date.now();
+      await processControllerTurn(freshSession, "Yes, I can hear you");
+      const salesAskTurn = await processControllerTurn(freshSession, "Let me make you clear, is this a sales score or not? Just let me know.");
+      expect(salesAskTurn.textToSpeak).toContain("This isn't a sales call");
+      expect(salesAskTurn.textToSpeak).not.toContain("Awesome, so glad to hear that!");
+    });
+
     it("Barge-in detector shouldCutMaxOff honors conversational phrases like 'let me tell you' and multi-word replies", () => {
       expect(shouldCutMaxOff("let me tell you something")).toBe(true);
       expect(shouldCutMaxOff("let me finish")).toBe(true);

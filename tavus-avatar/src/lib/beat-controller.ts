@@ -1264,7 +1264,13 @@ export async function generateStep0Turn(
   }
 
   const isSalesAsk =
-    norm.includes("sales call") ||
+    (norm.includes("sales") &&
+      (norm.includes("call") ||
+        norm.includes("score") ||
+        norm.includes("pitch") ||
+        norm.includes("or not") ||
+        norm.includes("is this") ||
+        norm.includes("are you"))) ||
     norm.includes("sell me") ||
     norm.includes("trying to sell") ||
     norm.includes("selling something") ||
@@ -1609,6 +1615,20 @@ export async function processControllerTurn(
     }
 
     case "no": {
+
+      // Beat 3: Did salesperson do the walkaround?
+      if (state.current_beat === 3) {
+        state.no_count_in_a_row = 0;
+        state.current_beat = 4;
+        state.delivered_beats.push(4);
+        const beat4 = BEATS.find((b) => b.id === 4)!;
+        const beat4Utterance = getFullBeatUtterance(beat4, state.dealConfig);
+        textToSpeak = `No problem at all, I'll make sure we go over all the features and paperwork so you have full clarity before you take delivery. ${beat4Utterance}`;
+        beatType = beat4.type;
+        toolCalls = getBeatToolCalls(4);
+        break;
+      }
+
       // Beat 4: Did salesperson go over the warranty?
       // TXM Branching logic on Q3:
       // If customer says No: "Allow me to go over it really quick to make sure that you understand everything. Also, if you have any questions, please do not hesitate to stop me and ask me."
@@ -1973,7 +1993,7 @@ export async function processControllerTurn(
       if (currentBeat) {
         const checkInOrUtterance = currentBeat.check_in
           ? `I'm right here with you! ${formatSpeechText(currentBeat.check_in)}`
-          : `I'm right here with you! ${getFullBeatUtterance(currentBeat, state.dealConfig)}`;
+          : `I'm right here with you! Listening loud and clear, please go ahead.`;
         textToSpeak = checkInOrUtterance;
         beatType = currentBeat.type;
         toolCalls = getBeatToolCalls(state.current_beat);
