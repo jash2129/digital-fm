@@ -564,6 +564,48 @@ export function classifyCustomerInputRuleBased(
 
   // 5.5. Contextual Progression & Negotiation at Beats 22-25 (Evaluate BEFORE generic topic keywords!)
   if (currentBeatId >= 22) {
+    const isCounterOfferOrFloorPush =
+      norm.includes("three dollar") ||
+      norm.includes("three dollars") ||
+      norm.includes("3 dollar") ||
+      norm.includes("3.00") ||
+      norm.includes("three fifty") ||
+      norm.includes("3.50") ||
+      norm.includes("three twenty five") ||
+      norm.includes("3.25") ||
+      norm.includes("two dollar") ||
+      norm.includes("two dollars") ||
+      norm.includes("two fifty") ||
+      norm.includes("2.50") ||
+      norm.includes("2.00") ||
+      norm.includes("cheaper") ||
+      norm.includes("can you do") ||
+      norm.includes("better on the price") ||
+      norm.includes("too expensive") ||
+      norm.includes("too much") ||
+      norm.includes("too high") ||
+      norm.includes("still high") ||
+      norm.includes("is high") ||
+      norm.includes("higher than") ||
+      norm.includes("more than") ||
+      norm.includes("budget") ||
+      norm.includes("afford") ||
+      norm.includes("lower the price") ||
+      norm.includes("lower") ||
+      norm.includes("discount") ||
+      norm.includes("best deal") ||
+      norm.includes("best price") ||
+      norm.includes("best you can") ||
+      norm.includes("do better") ||
+      norm.includes("dollar fifty") ||
+      norm.includes("1.50") ||
+      norm.includes("no deal") ||
+      norm.includes("come down");
+
+    if (isCounterOfferOrFloorPush) {
+      return { intent: "negotiate_price", topic_beat_ids: [] };
+    }
+
     const isCloseConfirmation =
       norm.includes("confirm") ||
       norm.includes("forward") ||
@@ -572,34 +614,13 @@ export function classifyCustomerInputRuleBased(
       norm.includes("let's do it") ||
       norm.includes("lets do it") ||
       norm.includes("we have a deal") ||
-      (norm.includes("deal") && !norm.includes("no deal"));
+      norm.includes("it's a deal") ||
+      norm.includes("its a deal") ||
+      norm === "deal" ||
+      (norm.includes("deal") && !norm.includes("no deal") && !norm.includes("best deal") && !norm.includes("better deal"));
 
     if (isCloseConfirmation) {
       return { intent: "agree", topic_beat_ids: [] };
-    }
-
-    const isCounterOfferOrFloorPush =
-      norm.includes("three dollar") ||
-      norm.includes("three dollars") ||
-      norm.includes("3 dollar") ||
-      norm.includes("3.00") ||
-      norm.includes("two dollar") ||
-      norm.includes("two fifty") ||
-      norm.includes("cheaper") ||
-      norm.includes("can you do") ||
-      norm.includes("better on the price") ||
-      norm.includes("too expensive") ||
-      norm.includes("too much") ||
-      norm.includes("lower the price") ||
-      norm.includes("lower") ||
-      norm.includes("discount") ||
-      norm.includes("dollar fifty") ||
-      norm.includes("1.50") ||
-      norm.includes("no deal") ||
-      norm.includes("come down");
-
-    if (isCounterOfferOrFloorPush) {
-      return { intent: "negotiate_price", topic_beat_ids: [] };
     }
 
     if (currentBeatId === 22) {
@@ -692,6 +713,21 @@ export function classifyCustomerInputRuleBased(
 
   // 5.8. Customer answers Beat 4 (Warranty Understanding inquiry)
   if (currentBeatId === 4) {
+    const isExplicitNoWarranty =
+      norm.startsWith("no") ||
+      norm.includes("didn t") ||
+      norm.includes("didn't") ||
+      norm.includes("did not") ||
+      norm.includes("never") ||
+      norm.includes("nothing") ||
+      norm.includes("not really") ||
+      norm.includes("no one told") ||
+      norm.includes("didnt");
+
+    if (isExplicitNoWarranty) {
+      return { intent: "no", topic_beat_ids: [] };
+    }
+
     const isWarrantyExplanation =
       norm.includes("salesperson") ||
       norm.includes("sales person") ||
@@ -1290,7 +1326,9 @@ export async function generateStep0Turn(
     norm.includes("what is this for") ||
     norm.includes("whats this for") ||
     norm.includes("why am i here") ||
-    norm.includes("what are we doing");
+    norm.includes("what are we doing") ||
+    norm.includes("what is this call") ||
+    (norm.includes("call") && norm.includes("for"));
 
   if (isCallPurposeAsk) {
     return {
