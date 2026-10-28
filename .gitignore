@@ -56,6 +56,10 @@ tavus-avatar/public/window.svg
 
 # media recordings & logs
 *.webm
+*.mp3
+*.zip
+testing-skill/reports/
+tavus-avatar/logs/
 tavus-avatar/logs-heygen/
 tavus-avatar/public/logs-heygen/
 tavus-avatar/src/app/logs-heygen/
