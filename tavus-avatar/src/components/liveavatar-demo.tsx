@@ -15,9 +15,14 @@ import { CallSummaryScreen } from "@/components/CallSummaryScreen";
 // All thresholds in one central object for easy tuning without hunting
 // =============================================================================
 export const SPEED_AND_BARGE_IN_CONFIG = {
-  // End of speech silence threshold in milliseconds (natural human pauses 1200-1400ms)
-  // Prevents cutting off human callers mid-sentence while they breathe or formulate words
-  END_OF_SPEECH_MS: 1400,
+  // End of speech silence threshold in milliseconds (natural human conversational pause ~750ms)
+  END_OF_SPEECH_MS: 750,
+
+  // Fast-path silence threshold when browser Web Speech API has already emitted final transcript
+  FINAL_TRANSCRIPT_SILENCE_MS: 400,
+
+  // Ultra-fast threshold for short definitive answers ("yes", "no", "ok", "i did", etc.)
+  QUICK_ANSWER_SILENCE_MS: 300,
 
   // Single words / short phrases that immediately cut Max off:
   BARGE_IN_CUTOFF_WORDS: [
@@ -821,15 +826,24 @@ export function LiveAvatarDemo() {
       const isRecentBargeIn = timeSinceInterrupted < 4000;
       const isIncomplete = isIncompleteUtterance(currentSpoken);
 
+      const normSpoken = currentSpoken.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+      const isQuickAnswer = [
+        "yes", "yeah", "yep", "yup", "no", "nope", "ok", "okay", "sure", "fine",
+        "i did", "we did", "he did", "makes sense", "sounds good",
+        "are you there", "you there", "why aren t you responding", "why arent you responding"
+      ].includes(normSpoken);
+
       let delayMs = SPEED_AND_BARGE_IN_CONFIG.END_OF_SPEECH_MS;
       if (isIncomplete) {
-        // User is mid-sentence pausing before finishing clause: hold 2500ms
-        delayMs = Math.max(delayMs, 2500);
+        // User is mid-sentence pausing before finishing clause: hold 1500ms
+        delayMs = Math.max(delayMs, 1500);
       } else if (isRecentBargeIn) {
         // Just interrupted Max: give full floor to speak without rushing to cut them off
-        delayMs = Math.max(delayMs, 1800);
+        delayMs = Math.max(delayMs, 1200);
+      } else if (isQuickAnswer) {
+        delayMs = SPEED_AND_BARGE_IN_CONFIG.QUICK_ANSWER_SILENCE_MS;
       } else if (finalTranscript.trim()) {
-        delayMs = 1200;
+        delayMs = SPEED_AND_BARGE_IN_CONFIG.FINAL_TRANSCRIPT_SILENCE_MS;
       }
 
       silenceEndTimerRef.current = setTimeout(() => {

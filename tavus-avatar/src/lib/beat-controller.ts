@@ -516,7 +516,7 @@ export function classifyCustomerInputRuleBased(
     return { intent: "call_purpose", topic_beat_ids: [] };
   }
 
-  // 1.8. Mid-call presence checks / greetings (e.g. "hey", "hello", "hi", "hey max", "are you there")
+  // 1.8. Mid-call presence checks / greetings (e.g. "hey", "hello", "hi", "hey max", "are you there", "why aren't you responding")
   if (
     norm === "hey" ||
     norm === "hi" ||
@@ -525,7 +525,18 @@ export function classifyCustomerInputRuleBased(
     norm === "hello max" ||
     norm === "hi max" ||
     norm.includes("are you there") ||
-    norm.includes("you there")
+    norm.includes("you there") ||
+    norm.includes("why aren t you responding") ||
+    norm.includes("why arent you responding") ||
+    norm.includes("why aren t you answering") ||
+    norm.includes("why arent you answering") ||
+    norm.includes("not responding") ||
+    norm.includes("not answering") ||
+    norm.includes("are you listening") ||
+    norm.includes("can you hear me") ||
+    norm.includes("anybody there") ||
+    norm.includes("anyone there") ||
+    norm.includes("are you still there")
   ) {
     return { intent: "greeting_check", topic_beat_ids: [] };
   }
