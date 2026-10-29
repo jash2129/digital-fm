@@ -522,6 +522,41 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       expect(noWalkaroundTurn.state.is_stopped).toBe(false);
     });
 
+    it("Beat 2 Qualifying Answer 'No' / 'I didn't get a chance to drive the vehicle' advances cleanly to Beat 4 without reciting walkaround", async () => {
+      const state = getOrCreateCallState(sessionId);
+      state.step0_completed = true;
+      state.current_beat = 2;
+
+      const noDriveTurn = await processControllerTurn(sessionId, "I didn't get a chance to drive the vehicle");
+      expect(noDriveTurn.intent).toBe("no");
+      expect(noDriveTurn.beatId).toBe(4);
+      expect(noDriveTurn.textToSpeak).toContain("No problem at all, we'll make sure our team gives you a full test drive and walkaround before you take delivery");
+      expect(noDriveTurn.textToSpeak).toContain("What's your understanding of the warranty that comes with the vehicle?");
+      expect(noDriveTurn.textToSpeak).not.toContain("When you came back from the test drive");
+      expect(noDriveTurn.state.is_stopped).toBe(false);
+    });
+
+    it("Beat 2 customer merely saying 'OK' asks for test-drive confirmation instead of jumping to Beat 3 walkaround", async () => {
+      const state = getOrCreateCallState(sessionId);
+      state.step0_completed = true;
+      state.current_beat = 2;
+
+      const okTurn = await processControllerTurn(sessionId, "OK");
+      expect(okTurn.beatId).toBe(2);
+      expect(okTurn.textToSpeak).toContain("Just to confirm, did you get a chance to take it for a test drive");
+      expect(okTurn.textToSpeak).not.toContain("When you came back from the test drive");
+    });
+
+    it("Beat 1 trailing Step 0 rapport 'Yeah, it was good. Uh.' does not jump to Beat 2", async () => {
+      const state = getOrCreateCallState(sessionId);
+      state.step0_completed = true;
+      state.current_beat = 1;
+
+      const rapportTurn = await processControllerTurn(sessionId, "Yeah, it was good. Uh.");
+      expect(rapportTurn.beatId).toBe(1);
+      expect(rapportTurn.textToSpeak).not.toContain("chance to drive the vehicle");
+    });
+
     it("Stage 0 handles 'sales score' STT typo without reciting positive transition prematurely", async () => {
       const freshSession = "test-sales-score-" + Date.now();
       await processControllerTurn(freshSession, "Yes, I can hear you");

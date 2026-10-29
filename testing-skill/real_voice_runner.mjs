@@ -201,8 +201,16 @@ function getCustomerReply(personaId, lastAssistantText, turnIdx, state) {
       };
     }
 
+    // 8b. Post-interruption recap response
+    if (norm.includes("quick recap") || norm.includes("comes with the five") || norm.includes("powertrain coverage")) {
+      return {
+        text: "Fine, defect only. What about wear and tear and Texas roads? What does a repair actually cost?",
+        isInterruption: false,
+      };
+    }
+
     // 9. Wear and tear breakdown explanation (Beats 8-10)
-    if (norm.includes("wear and tear") || norm.includes("climate") || norm.includes("road conditions") || norm.includes("driving habits")) {
+    if (norm.includes("wear and tear") || norm.includes("climate") || norm.includes("road conditions") || norm.includes("driving habits") || norm.includes("straight to it")) {
       return {
         text: "Texas roads are rough, I'll give you that. But what does a repair actually cost?",
         isInterruption: false,
@@ -218,7 +226,14 @@ function getCustomerReply(personaId, lastAssistantText, turnIdx, state) {
     }
 
     // 11. Labor rates ($130-$160/hr) (Beats 14-15)
-    if (norm.includes("labor will charge") || norm.includes("hundred thirty") || norm.includes("fifteen hours")) {
+    if (
+      norm.includes("labor will charge") ||
+      norm.includes("hundred thirty") ||
+      norm.includes("fifteen hours") ||
+      norm.includes("retail markup") ||
+      norm.includes("dealership labor") ||
+      norm.includes("outrageous")
+    ) {
       return {
         text: "Labor rates are insane nowadays. So what is this wrap protection going to cost me?",
         isInterruption: false,
@@ -865,7 +880,7 @@ export async function runRealHeygenVoiceTest(options = {}) {
     const maxTurns = 32;
     const simulationState = { firedMilestones: new Set() };
     for (let turnIdx = 1; turnIdx <= maxTurns; turnIdx++) {
-      if (agentDecision.isScriptComplete || lastMaxText.includes("colleague to go over the rest")) {
+      if (agentDecision.isScriptComplete || agentDecision.beatType === "stop") {
         console.log("🏁 Max reached consultation terminal conclusion.");
         break;
       }

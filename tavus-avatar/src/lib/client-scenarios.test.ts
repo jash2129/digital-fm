@@ -149,4 +149,55 @@ describe("Client Scenarios Human Experience Validation", () => {
     const t14 = await processControllerTurn(sessionId, "Okay, you convinced me. Let's do the three dollars a day.", DEFAULT_DEAL_CONFIG);
     expect(t14.textToSpeak).not.toContain("colleague");
   });
+
+  it("Call 3: 'The Rude Adversarial Buyer' (Wait time complaint, get to point, markup objection, bottom line jump)", async () => {
+    const sessionId = "client-call-3-" + Date.now();
+    getOrCreateCallState(sessionId);
+
+    // Turn 1: Tech Check
+    const t1 = await processControllerTurn(sessionId, "Yeah, I'm here.", DEFAULT_DEAL_CONFIG);
+    expect(t1.textToSpeak).toContain("Max");
+
+    // Turn 2: Anger / 3-hour wait complaint + identity question
+    const t2 = await processControllerTurn(sessionId, "Honestly, I've been waiting at this dealership for three hours. Who are you, and can we hurry this up?", DEFAULT_DEAL_CONFIG);
+    expect(t2.textToSpeak).toContain("apologize");
+    expect(t2.textToSpeak).toContain("wait");
+    expect(t2.textToSpeak).not.toContain("Awesome, so glad to hear that!");
+
+    // Turn 3: Sales Pitch Warning
+    const t3 = await processControllerTurn(sessionId, "Fine, whatever. Just don't waste my time with extra sales pitches.", DEFAULT_DEAL_CONFIG);
+    expect(t3.textToSpeak).toContain("zero sales pressure");
+
+    // Turn 4: Impatience / Get to point command into Legal Disclosure
+    const t4 = await processControllerTurn(sessionId, "I'm listening, get to the point.", DEFAULT_DEAL_CONFIG);
+    expect(t4.textToSpeak).toContain("Understood, I value your time and will keep this crisp, direct, and straight to the point");
+    expect(t4.textToSpeak).not.toContain("Awesome, so glad to hear that!");
+    expect(t4.textToSpeak).toContain("recorded audio and video");
+
+    // Turn 5: Move to Beat 2
+    const t5 = await processControllerTurn(sessionId, "Fine, whatever.", DEFAULT_DEAL_CONFIG);
+    expect(t5.beatId).toBe(2);
+
+    // Turn 6: Fast progression through qualifying to Beat 6
+    const t6 = await processControllerTurn(sessionId, "Yes, drove it and salesman explained everything.", DEFAULT_DEAL_CONFIG);
+    expect(t6.beatId).toBeGreaterThanOrEqual(3);
+
+    // Set state to Beat 13 (Parts cost)
+    const state3 = getOrCreateCallState(sessionId);
+    state3.current_beat = 13;
+
+    // Turn 7: Markup Objection Test ("ridiculous dealership markup")
+    const t7 = await processControllerTurn(sessionId, "Seven thousand dollars for an engine sounds like ridiculous dealership markup to me.", DEFAULT_DEAL_CONFIG);
+    expect(t7.textToSpeak).toContain("retail parts prices and dealership labor can feel outrageous");
+    expect(t7.textToSpeak).toContain("zero deductible");
+
+    // Turn 8: Bottom-Line Price Demand
+    const t8 = await processControllerTurn(sessionId, "Covering tires and wheels makes sense with all the potholes, but what's the bottom line price?", DEFAULT_DEAL_CONFIG);
+    // MUST jump straight to Beat 22 offer without 7-loop deferral!
+    expect(t8.textToSpeak).toContain("skip straight to your exact bottom line numbers");
+    expect(t8.textToSpeak).toContain("four dollars a day");
+    expect(t8.textToSpeak).not.toContain("I'm going to cover that in just a moment");
+    expect(t8.beatId).toBe(22);
+  });
 });
+

@@ -52,6 +52,9 @@ export interface CallState {
   step0_completed: boolean;
   dealConfig: DealConfig;
   is_stopped: boolean;
+  price_defer_count?: number;
+  last_check_in_tag?: string;
+  is_impatient_flow?: boolean;
 }
 
 export const BEAT_RECAPS: Record<number, string> = {
@@ -140,8 +143,11 @@ export function getOrCreateCallState(sessionId: string, dealConfig = DEFAULT_DEA
       concession_stage: 1,
       step0_turns: 0,
       step0_completed: false,
-      dealConfig,
+      dealConfig: { ...dealConfig },
       is_stopped: false,
+      price_defer_count: 0,
+      last_check_in_tag: "",
+      is_impatient_flow: false,
     });
   }
   return activeStates.get(sessionId)!;
@@ -228,11 +234,22 @@ export function formatSpeechText(text: string): string {
 }
 
 // Formats full utterance for a beat: beat text + check-in line with natural conversational pause
-export function getFullBeatUtterance(beat: Beat, dealConfig: DealConfig): string {
+export function getFullBeatUtterance(beat: Beat, dealConfig: DealConfig, state?: CallState): string {
   const rendered = renderBeatText(beat, dealConfig);
   const cleanBody = formatSpeechText(rendered);
   if (beat.check_in) {
+    // If customer is in an impatient flow, suppress interrogation tags
+    if (state?.is_impatient_flow) {
+      return cleanBody;
+    }
     const cleanCheckIn = formatSpeechText(beat.check_in);
+    // Suppress repeating the exact same tag consecutively
+    if (state?.last_check_in_tag && state.last_check_in_tag.toLowerCase() === cleanCheckIn.toLowerCase()) {
+      return cleanBody;
+    }
+    if (state) {
+      state.last_check_in_tag = cleanCheckIn;
+    }
     // Ellipsis introduces a human 250ms conversational pause before the check-in question
     return `${cleanBody}... ${cleanCheckIn}`;
   }
@@ -281,77 +298,56 @@ export function isAvatarScriptEcho(transcript: string): boolean {
   const norm = transcript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
   if (!norm) return false;
 
+  // Never treat customer questions or natural conversation as acoustic echo
+  const conversationalLeadIns = [
+    "what", "why", "how", "who", "when", "where", "is", "can", "could",
+    "would", "does", "do", "did", "tell", "explain", "fine", "honestly",
+    "stop", "wait", "hold", "look", "listen", "repair", "actually", "cost", "price"
+  ];
+  if (conversationalLeadIns.some((cp) => norm.startsWith(cp) || norm.includes(` ${cp} `))) {
+    return false;
+  }
+
   const echoPhrases = [
     "great to connect with you",
     "congratulations on your",
-    "thank you for buying with us",
-    "handling your paperwork",
-    "how has your experience been",
-    "recorded audio and video",
-    "required by the law",
+    "thank you for buying with us today",
+    "handling your paperwork today",
+    "how has your experience been with our team",
+    "transaction is recorded audio and video",
+    "required by the law to go over everything",
     "before you sign any paperwork",
-    "make sure you understand first",
+    "make sure you understand first okay",
     "agreed to buy a new",
-    "chance to drive the vehicle",
-    "walkaround and showed you",
-    "bells and whistles",
-    "builts and whistles",
-    "understanding of the warranty",
-    "what s your understanding",
-    "whats your understanding",
+    "chance to drive the vehicle that you are buying",
+    "walkaround and showed you all the features",
+    "bells and whistles in the car",
+    "what s your understanding of the warranty",
+    "whats your understanding of the warranty",
     "warranty that comes with the vehicle",
-    "did the sales person go over",
-    "more information about the warranty",
+    "more information about the warranty i need to go over",
     "base limited warranty",
-    "power train which is referring",
-    "defect only stated in the manual",
-    "page number 4",
-    "mis design or mis built",
-    "ware and tear",
-    "wear and tear",
-    "climate road condition",
+    "power train which is referring to the engine",
+    "defect only stated in the manual book",
+    "misdesign misbuilt or misinstalled",
+    "climate road condition and driving habit",
     "climate can go over 110",
-    "potholes everywhere",
-    "driving habits the way i drive",
-    "service place and the first thing",
-    "diagnose the vehicle",
-    "reserve the right to determine",
-    "engine by itself can cost",
-    "luck of the draw",
+    "driving habits the way i drive the way you drive",
+    "diagnose the vehicle to find out what is the problem",
+    "reserve the right to determine if the break down",
+    "engine by itself can cost up to seven thousand",
+    "luck of the draw could cost anywhere",
     "sorry i didn t catch",
     "sorry i didn't catch",
-    "allow me to go over it really quick",
-    "cover that in just a moment",
-    "colleague to cover right after",
-    "bring in my colleague",
-    "make a note of that for my colleague",
-    "those purchase terms are locked in",
-    "i have full authority to handle",
-    "everything on your paperwork is all set",
+    "allow me to go over it really quick to make sure",
+    "those purchase terms are locked in on your primary",
+    "i have full authority to handle your paperwork",
+    "everything on your paperwork is all set and finalized",
     "three dollars a day is our absolute hard floor",
     "i'm an ai finance assistant",
-    "take all the time you need",
-    "let's slow down a bit",
-    "i'm max your digital finance manager",
-    "i'm listening please go ahead",
-    "im listening please go ahead",
-    "listening please go ahead",
-    "please go ahead",
-    "i'm listening please",
-    "im listening please",
-    "only the defect",
-    "only defect",
-    "as a quick reminder",
-    "as a quick",
-    "glovebox page number four",
-    "glovebox page number 4",
-    "misdesigned misbuilt or misinstalled",
-    "misdesigned",
-    "three reasons usually cause",
-    "uneven service roads",
-    "potholes everywhere",
-    "true blanket cover warranty",
-    "bumper to bumper"
+    "take all the time you need i'm right here",
+    "i'm max your digital finance manager today",
+    "true blanket cover warranty around the vehicle"
   ];
 
   return echoPhrases.some((phrase) => norm.includes(phrase));
@@ -562,13 +558,24 @@ export function classifyCustomerInputRuleBased(
     return { intent: "repeat_request", topic_beat_ids: [] };
   }
 
-  // 5. Price ask (before beat 22)
+  // 5. Price ask / Bottom line price inquiry
   if (
     norm.includes("how much") ||
     norm.includes("what is the price") ||
+    norm.includes("whats the price") ||
+    norm.includes("what s the price") ||
     norm.includes("what does it cost") ||
+    norm.includes("what does this cost") ||
+    norm.includes("what does that cost") ||
     norm.includes("how much is this") ||
-    norm.includes("what is the monthly")
+    norm.includes("what is the monthly") ||
+    norm.includes("bottom line price") ||
+    norm.includes("bottom line") ||
+    norm.includes("exact cost") ||
+    norm.includes("what is this wrap protection going to cost") ||
+    norm.includes("going to cost me") ||
+    norm.includes("what will it cost") ||
+    norm.includes("tell me the price")
   ) {
     return { intent: "price_ask", topic_beat_ids: [] };
   }
@@ -699,26 +706,137 @@ export function classifyCustomerInputRuleBased(
       norm.includes("dream") ||
       norm.includes("gorgeous") ||
       norm.includes("amazing");
+    const isStep0RapportTail =
+      norm.includes("was good") ||
+      norm.includes("it was good") ||
+      norm.includes("been good") ||
+      norm.includes("good so far") ||
+      norm.includes("great experience") ||
+      norm.includes("treated us well") ||
+      norm.includes("treated me well") ||
+      norm === "good" ||
+      norm === "great" ||
+      norm === "fine thanks";
+
+    if (isStep0RapportTail) {
+      return { intent: "repeat_request", topic_beat_ids: [] };
+    }
+
     if (!isExplicitNegation && !isVehicleDiscrepancy && !isManufacturerVsDealer && !isCompliment) {
       if (
-        isAffirmativeOrProgression(norm) ||
-        norm.includes("okay") ||
-        norm.includes("ok") ||
-        norm.includes("yes") ||
-        norm.includes("sure") ||
-        norm.includes("fine") ||
+        norm === "ok" ||
+        norm === "okay" ||
+        norm === "yes" ||
+        norm === "yeah" ||
+        norm === "yep" ||
+        norm === "sure" ||
+        norm === "fine" ||
+        norm === "alright" ||
+        norm === "understood" ||
+        norm === "i understand" ||
+        norm === "sounds good" ||
+        norm === "go ahead" ||
+        norm === "proceed" ||
+        norm === "makes sense" ||
+        norm.startsWith("yes ") ||
+        norm.startsWith("yeah ") ||
+        norm.startsWith("okay ") ||
+        norm.startsWith("ok ") ||
+        norm.startsWith("sounds good") ||
         norm.includes("understand") ||
         norm.includes("understanding") ||
-        norm.includes("sound") ||
-        norm.includes("good") ||
-        norm.includes("drove") ||
-        norm.includes("drive") ||
-        norm.includes("ready") ||
-        norm.includes("sales") ||
-        norm.includes("warranty")
+        norm.includes("i agree") ||
+        norm.includes("fine with me") ||
+        norm.includes("ready to proceed")
       ) {
         return { intent: "agree", topic_beat_ids: [] };
       }
+    }
+  }
+
+  // 5.76. Customer answers Beat 2 (Test Drive Qualifying Question)
+  if (currentBeatId === 2) {
+    const isExplicitNoDrive =
+      norm === "no" ||
+      norm === "nope" ||
+      norm.startsWith("no ") ||
+      norm.includes("didn t drive") ||
+      norm.includes("didnt drive") ||
+      norm.includes("did not drive") ||
+      norm.includes("haven t driven") ||
+      norm.includes("havent driven") ||
+      norm.includes("haven t") ||
+      norm.includes("havent") ||
+      norm.includes("didn t get a chance") ||
+      norm.includes("didnt get a chance") ||
+      norm.includes("did not get a chance") ||
+      norm.includes("not yet") ||
+      norm.includes("never drove") ||
+      norm.includes("didn t get to") ||
+      norm.includes("didnt get to") ||
+      norm.includes("did not get to") ||
+      norm.includes("didn t") ||
+      norm.includes("didnt") ||
+      norm.includes("never got to drive");
+
+    if (isExplicitNoDrive) {
+      return { intent: "no", topic_beat_ids: [] };
+    }
+
+    const hasProgressionWord =
+      norm.includes("go ahead") ||
+      norm.includes("go on") ||
+      norm.includes("continue") ||
+      norm.includes("carry on") ||
+      norm.includes("sounds good") ||
+      norm.includes("did that") ||
+      norm.includes("drove") ||
+      norm.includes("drive");
+
+    const isExplicitYesDrive =
+      norm === "yes" ||
+      norm === "yeah" ||
+      norm === "yep" ||
+      norm === "i did" ||
+      norm === "we did" ||
+      norm === "yes i did" ||
+      norm === "yeah i did" ||
+      norm === "sure did" ||
+      norm === "absolutely" ||
+      norm === "definitely" ||
+      norm.startsWith("yes ") ||
+      norm.startsWith("yeah ") ||
+      norm.includes("drove it") ||
+      norm.includes("test drive") ||
+      norm.includes("test drove") ||
+      norm.includes("took it out") ||
+      norm.includes("for a spin") ||
+      norm.includes("drove the car") ||
+      norm.includes("drove the vehicle") ||
+      hasProgressionWord;
+
+    if (isExplicitYesDrive) {
+      return { intent: "agree", topic_beat_ids: [] };
+    }
+
+    // Customer only said vague acknowledgment (e.g. "ok", "okay", "alright", "gotcha", "cool", "uh huh", "mhm")
+    // Especially after file correction: they have NOT answered whether they drove the car yet!
+    const isNeutralAck =
+      !hasProgressionWord &&
+      (norm === "ok" ||
+        norm === "okay" ||
+        norm === "alright" ||
+        norm === "all right" ||
+        norm === "gotcha" ||
+        norm === "cool" ||
+        norm === "uh huh" ||
+        norm === "mhm" ||
+        norm === "ok got it" ||
+        norm === "okay got it" ||
+        norm === "got it");
+
+    if (isNeutralAck && !isVehicleDiscrepancy) {
+      return { intent: "repeat_request", topic_beat_ids: [] };
     }
   }
 
@@ -782,7 +900,12 @@ export function classifyCustomerInputRuleBased(
   if (
     norm.includes("how much are parts") ||
     norm.includes("repair costs") ||
-    norm.includes("cost of repair")
+    norm.includes("cost of repair") ||
+    norm.includes("repair actually cost") ||
+    norm.includes("what does a repair cost") ||
+    norm.includes("what does repair cost") ||
+    (norm.includes("repair") && norm.includes("cost")) ||
+    (norm.includes("parts") && norm.includes("cost"))
   ) {
     return { intent: "question_in_script", topic_beat_ids: [13, 14, 15] };
   }
@@ -1031,7 +1154,7 @@ export function classifyCustomerInputRuleBased(
     return { intent: "compliment", topic_beat_ids: [] };
   }
 
-  // 8.82. Customer Frustration / Impatience / Rush
+  // 8.82. Customer Frustration / Impatience / Rush / Markup complaints
   if (
     norm.includes("hurry up") ||
     norm.includes("been waiting") ||
@@ -1052,7 +1175,12 @@ export function classifyCustomerInputRuleBased(
     norm.includes("too slow") ||
     norm.includes("wrap it up") ||
     norm.includes("get on with it") ||
-    norm.includes("get to the point")
+    norm.includes("get to the point") ||
+    norm.includes("markup") ||
+    norm.includes("ridiculous") ||
+    norm.includes("rip off") ||
+    norm.includes("ripoff") ||
+    norm.includes("overpriced")
   ) {
     return { intent: "customer_frustrated", topic_beat_ids: [] };
   }
@@ -1303,7 +1431,21 @@ export async function generateStep0Turn(
     norm.includes("who you") ||
     norm === "who";
 
+  const isWaitingOrRushed =
+    norm.includes("wait") ||
+    norm.includes("hour") ||
+    norm.includes("hurry") ||
+    norm.includes("waste") ||
+    norm.includes("rush") ||
+    norm.includes("appointment");
+
   if (isIdentityAsk) {
+    if (isWaitingOrRushed) {
+      return {
+        text: "I'm Max, your digital finance manager today. I completely apologize for the long wait—that is way too long, so I'm going to make this fast, crisp, and direct so you can get on the road. Did you get a chance to test drive your new vehicle today?",
+        moveToBeat1: false,
+      };
+    }
     return {
       text: "I'm Max, your digital finance manager today! I handle all your paperwork, title details, and warranty options before you drive off in your new car. How was your test drive out there today?",
       moveToBeat1: false,
@@ -1324,6 +1466,12 @@ export async function generateStep0Turn(
     norm.includes("selling");
 
   if (isSalesAsk) {
+    if (isWaitingOrRushed) {
+      return {
+        text: "I completely respect your time! This is strictly your required paperwork and warranty review before you sign—zero sales pressure. Did our sales team treat you well today?",
+        moveToBeat1: false,
+      };
+    }
     return {
       text: "Not at all! This isn't a sales call—my job is simply to review your paperwork and factory warranty before you sign anything. Did our sales team treat you well today?",
       moveToBeat1: false,
@@ -1394,7 +1542,13 @@ export async function generateStep0Turn(
     norm.includes("get this over") ||
     norm.includes("been here") ||
     norm.includes("sitting here") ||
-    norm.includes("long time");
+    norm.includes("long time") ||
+    norm.includes("point") ||
+    norm.includes("get to the point") ||
+    norm.includes("cut to the chase") ||
+    norm.includes("make it brief") ||
+    norm.includes("appointment") ||
+    norm.includes("move on");
 
   const isAnxious =
     norm.includes("scared") ||
@@ -1419,7 +1573,7 @@ export async function generateStep0Turn(
   if (isNegative) {
     transitionLine = STEP_0_TRANSITION_LINE.replace(
       "Glad to hear that!",
-      "I hear you completely—you've had a long day at the dealership, so I promise to keep this crisp, transparent, and direct."
+      "Understood, I value your time and will keep this crisp, direct, and straight to the point."
     );
   } else if (isAnxious) {
     transitionLine = STEP_0_TRANSITION_LINE.replace(
@@ -1640,7 +1794,7 @@ export async function processControllerTurn(
   switch (intent) {
     case "agree": {
       state.no_count_in_a_row = 0;
-      const nextBeatId = state.current_beat + 1;
+      let nextBeatId = state.current_beat + 1;
 
       // Check if finished all script beats
       if (nextBeatId > BEATS.length) {
@@ -1652,10 +1806,14 @@ export async function processControllerTurn(
         break;
       }
 
+      // If customer is in an impatient flow, skip redundant recaps (Beats 20 & 21) and go directly to Beat 22
+      if (state.is_impatient_flow && state.current_beat >= 18 && nextBeatId < 22) {
+        nextBeatId = 22;
+      }
       state.current_beat = nextBeatId;
       state.delivered_beats.push(nextBeatId);
       const nextBeat = BEATS.find((b) => b.id === nextBeatId)!;
-      const baseUtterance = getFullBeatUtterance(nextBeat, state.dealConfig);
+      const baseUtterance = getFullBeatUtterance(nextBeat, state.dealConfig, state);
       const bridge = BEAT_TRANSITION_BRIDGES[nextBeatId];
       textToSpeak = bridge ? `${bridge} ${baseUtterance}` : baseUtterance;
       beatType = nextBeat.type;
@@ -1664,6 +1822,41 @@ export async function processControllerTurn(
     }
 
     case "no": {
+
+      // Beat 2: Did you get a chance to drive the vehicle?
+      if (state.current_beat === 2) {
+        const norm = customerTranscript.toLowerCase();
+        const isNotDriven =
+          norm.includes("didn't drive") ||
+          norm.includes("did not drive") ||
+          norm.includes("didnt drive") ||
+          norm.includes("haven't driven") ||
+          norm.includes("havent driven") ||
+          norm.includes("didn't get a chance") ||
+          norm.includes("didnt get a chance") ||
+          norm.includes("did not get a chance") ||
+          norm.includes("not yet") ||
+          norm.includes("never drove") ||
+          norm.includes("didn't") ||
+          norm.includes("didnt") ||
+          norm.includes("haven't") ||
+          norm.includes("havent") ||
+          (!mockClassification && (norm === "no" || norm === "nope" || norm.startsWith("no ")));
+
+        if (isNotDriven) {
+          state.no_count_in_a_row = 0;
+          state.current_beat = 4;
+          if (!state.delivered_beats.includes(2)) state.delivered_beats.push(2);
+          if (!state.delivered_beats.includes(3)) state.delivered_beats.push(3); // Walkaround skipped since not driven
+          state.delivered_beats.push(4);
+          const beat4 = BEATS.find((b) => b.id === 4)!;
+          const beat4Utterance = getFullBeatUtterance(beat4, state.dealConfig, state);
+          textToSpeak = `No problem at all, we'll make sure our team gives you a full test drive and walkaround before you take delivery. ${beat4Utterance}`;
+          beatType = beat4.type;
+          toolCalls = getBeatToolCalls(4);
+          break;
+        }
+      }
 
       // Beat 3: Did salesperson do the walkaround?
       if (state.current_beat === 3) {
@@ -1747,10 +1940,9 @@ export async function processControllerTurn(
         }
       }
 
-      const currentBeat = BEATS.find((b) => b.id === state.current_beat);
-      const checkIn = currentBeat?.check_in ? formatSpeechText(currentBeat.check_in) : "Does that help clarify things?";
-      if (!responseText.includes(checkIn)) {
-        responseText += ` ${checkIn}`;
+      // Only append check-in if response doesn't already have one and customer is not in impatient flow
+      if (!responseText.includes("?") && !state.is_impatient_flow) {
+        responseText += ` Does that help clarify things?`;
       }
 
       textToSpeak = responseText;
@@ -1780,22 +1972,36 @@ export async function processControllerTurn(
     }
 
     case "price_ask": {
-      // Before Beat 22: speak DEFER_LINE, then resume
-      if (state.current_beat < 22) {
+      state.price_defer_count = (state.price_defer_count || 0) + 1;
+      const norm = customerTranscript.toLowerCase();
+      const isDemandingBottomLine =
+        norm.includes("bottom line") ||
+        norm.includes("exact cost") ||
+        norm.includes("what is this wrap protection going to cost") ||
+        norm.includes("tell me the price") ||
+        norm.includes("what is the price") ||
+        state.price_defer_count > 1;
+
+      // If customer asks for price a second time OR explicitly demands bottom-line price,
+      // DO NOT repeat DEFER_LINE! Skip educational beats and jump straight to the offer (Beat 22)!
+      if (isDemandingBottomLine || state.current_beat >= 21) {
+        state.current_beat = 22;
+        state.delivered_beats.push(22);
+        const beat22 = BEATS.find((b) => b.id === 22)!;
+        const offerUtterance = getFullBeatUtterance(beat22, state.dealConfig, state);
+        textToSpeak = `I hear you loud and clear—let's skip straight to your exact bottom line numbers. ${offerUtterance}`;
+        beatType = "wait";
+        toolCalls = getBeatToolCalls(22);
+      } else {
+        // First price ask before Beat 22: speak DEFER_LINE once, then advance
         const nextBeatId = state.current_beat + 1;
         state.current_beat = nextBeatId;
         state.delivered_beats.push(nextBeatId);
         const nextBeat = BEATS.find((b) => b.id === nextBeatId)!;
-        const nextUtterance = getFullBeatUtterance(nextBeat, state.dealConfig);
+        const nextUtterance = getFullBeatUtterance(nextBeat, state.dealConfig, state);
         textToSpeak = `${DEFER_LINE} ${nextUtterance}`;
         beatType = nextBeat.type;
         toolCalls = getBeatToolCalls(nextBeatId);
-      } else {
-        // At Beat 22: speak Beat 22 directly
-        const beat22 = BEATS.find((b) => b.id === 22)!;
-        textToSpeak = getFullBeatUtterance(beat22, state.dealConfig);
-        beatType = "wait";
-        toolCalls = getBeatToolCalls(22);
       }
       break;
     }
@@ -1871,9 +2077,12 @@ export async function processControllerTurn(
       // Simply re-prompt the current beat or check-in without advancing state.current_beat.
       const currentBeat = BEATS.find((b) => b.id === state.current_beat);
       if (currentBeat) {
-        textToSpeak = currentBeat.check_in
-          ? formatSpeechText(currentBeat.check_in)
-          : getFullBeatUtterance(currentBeat, state.dealConfig);
+        const checkIn = currentBeat.check_in ? formatSpeechText(currentBeat.check_in) : "";
+        if (checkIn && checkIn.split(/\s+/).length >= 3) {
+          textToSpeak = checkIn;
+        } else {
+          textToSpeak = getFullBeatUtterance(currentBeat, state.dealConfig, state);
+        }
         beatType = "wait";
       } else {
         textToSpeak = STEP_0_GREETING;
@@ -1883,7 +2092,22 @@ export async function processControllerTurn(
     }
 
     case "repeat_request": {
-      // Resend the last beat once, verbatim
+      const norm = customerTranscript.toLowerCase();
+      const isExplicitRepeat =
+        norm.includes("repeat") ||
+        norm.includes("again") ||
+        norm.includes("what did you say") ||
+        norm.includes("say that") ||
+        norm.includes("say again") ||
+        norm.includes("one more time") ||
+        norm.includes("pardon") ||
+        norm.includes("come again");
+
+      if (state.current_beat === 2 && !isExplicitRepeat) {
+        textToSpeak = "Just to confirm, did you get a chance to take it for a test drive, or have you not driven it yet?";
+        beatType = "wait";
+        break;
+      }
       const currentBeat = BEATS.find((b) => b.id === state.current_beat)!;
       textToSpeak = getFullBeatUtterance(currentBeat, state.dealConfig);
       beatType = currentBeat.type;
@@ -1965,12 +2189,47 @@ export async function processControllerTurn(
     }
 
     case "customer_frustrated": {
-      // De-escalate frustration, validate time respect, re-prompt current beat check-in
-      const currentBeat = BEATS.find((b) => b.id === state.current_beat);
-      const checkIn = currentBeat?.check_in ? formatSpeechText(currentBeat.check_in) : "";
-      textToSpeak = checkIn ? `${EQ_DEESCALATION_LINE} ${checkIn}` : EQ_DEESCALATION_LINE;
-      beatType = "wait";
-      toolCalls = [];
+      // De-escalate frustration, validate time respect, and advance when user requests speed
+      state.no_count_in_a_row = (state.no_count_in_a_row || 0) + 1;
+      const norm = customerTranscript.toLowerCase();
+
+      // 1. Retail / Dealership markup objection
+      if (norm.includes("markup") || norm.includes("ridiculous") || norm.includes("ripoff") || norm.includes("overpriced")) {
+        textToSpeak = "I completely hear you—retail parts prices and dealership labor can feel outrageous. That's exactly why we don't want you paying out-of-pocket retail markup; our protection covers parts and certified labor with zero deductible. Does that make sense?";
+        beatType = "wait";
+        toolCalls = [];
+        break;
+      }
+
+      const wantsProgression =
+        norm.includes("get to the point") ||
+        norm.includes("point") ||
+        norm.includes("move on") ||
+        norm.includes("go ahead") ||
+        norm.includes("cut to the chase") ||
+        norm.includes("make it brief");
+
+      if (wantsProgression && state.current_beat < BEATS.length) {
+        state.is_impatient_flow = true;
+        // If customer demands getting to the point during educational wear & tear (Beats 8-15),
+        // skip the weather lecture and jump directly to protection options (Beat 16)!
+        if (state.current_beat >= 6 && state.current_beat < 16) {
+          state.current_beat = 16;
+        } else {
+          state.current_beat++;
+        }
+        state.delivered_beats.push(state.current_beat);
+        const nextBeat = BEATS.find((b) => b.id === state.current_beat)!;
+        const nextUtterance = getFullBeatUtterance(nextBeat, state.dealConfig, state);
+        textToSpeak = `Understood, getting straight to it. ${nextUtterance}`;
+        beatType = nextBeat.type;
+        toolCalls = getBeatToolCalls(state.current_beat);
+      } else {
+        state.is_impatient_flow = true;
+        textToSpeak = EQ_DEESCALATION_LINE;
+        beatType = "wait";
+        toolCalls = [];
+      }
       break;
     }
 
