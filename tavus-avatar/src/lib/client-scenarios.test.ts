@@ -103,7 +103,12 @@ describe("Client Scenarios Human Experience Validation", () => {
     expect(t5.textToSpeak).not.toContain("colleague");
     expect(t5.textToSpeak).toContain("purchase terms are locked in");
 
-    // Turn 6: Customer confirms walkaround (answers Beat 3) -> moves to Beat 4
+    // Off-script questions now HOLD the beat (no silent skip): still on Beat 2
+    expect(t5.beatId).toBe(2);
+
+    // Turn 6: Customer answers Beat 2, then Beat 3, so the pointer lands on Beat 4 one turn later
+    const t6a = await processControllerTurn(sessionId, "Yes, I drove it.", DEFAULT_DEAL_CONFIG);
+    expect(t6a.beatId).toBe(3);
     const t6 = await processControllerTurn(sessionId, "Yes, he showed me around the vehicle.", DEFAULT_DEAL_CONFIG);
     expect(t6.beatId).toBe(4);
 

@@ -124,6 +124,14 @@ export const SALES_CALL_LINE = "Not at all! This isn't a sales call—my job is 
 // Spoken when customer asks what this call is for or why they are meeting with finance
 export const CALL_PURPOSE_LINE = "Every buyer meets with finance before delivery to verify paperwork, registration details, and review factory warranty coverage. Did you get a good feel for the car on your test drive?";
 
+// Spoken when a customer asks something the approved knowledge base cannot answer.
+// Status: PENDING TXM APPROVAL. Replaces any invented answer; the question is logged and escalated.
+export const UNKNOWN_QUESTION_LINE = "That's a good question, and I want you to get the exact answer. Let me bring in a member of our team to confirm that for you.";
 
+// Spoken when the customer's reply is a filler sound or unclear at a check-in.
+// Status: PENDING TXM APPROVAL.
+export const CLARIFY_LINE = "Would you like me to continue, or go over that again?";
 
-
+// Spoken after an answer from the knowledge base, before returning to the script.
+// Status: PENDING TXM APPROVAL.
+export const ANSWER_CHECK_LINE = "Does that answer your question?";

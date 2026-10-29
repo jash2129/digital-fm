@@ -1,0 +1,482 @@
+{
+  "_readme": "Approved knowledge base for Max's out-of-script answers. The AI may answer ONLY from entries with status 'script' (taken from TXM's own script) or 'approved' (TXM filled in). Anything else must trigger the handoff line. Entries with TERM_CONFLICT placeholders must not be used until TXM resolves the numbers.",
+  "facts": [
+    {
+      "id": "disclosure",
+      "topic": "Recording and legal review",
+      "answer": "This transaction is recorded audio and video, and the dealership is required by law to go over everything before the customer signs, so the customer understands.",
+      "source_beats": [
+        1
+      ],
+      "source_quotes": [
+        "Before I start I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay."
+      ],
+      "status": "script"
+    },
+    {
+      "id": "manufacturer_warranty",
+      "topic": "What the factory warranty is",
+      "answer": "The manufacturer gives two separate warranties: a base limited warranty and a longer powertrain warranty. The powertrain warranty refers to the engine and the transmission. Both are described as a good complementary warranty from the manufacturer.",
+      "source_beats": [
+        6
+      ],
+      "source_quotes": [
+        "Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one.\" \"The first warranty is five years sixty thousand mile Base limited warranty\" \"The second is ten years hundred thousand mile powertrain which is referring to the engine and the transmission, im sure you and i agree thats a very good complementary warranty from the manufacturer"
+      ],
+      "status": "script"
+    },
+    {
+      "id": "warranty_fine_print",
+      "topic": "What the factory warranty covers",
+      "answer": "The factory warranty covers defects only, as stated in the owner's manual in the glovebox, page 4: against anything mis-designed, mis-built or mis-installed.",
+      "source_beats": [
+        7
+      ],
+      "source_quotes": [
+        "but what you do not know that this warranty is a defect only stated in the manual book of the vehicle in the glovebox page number 4 saying that this warranty from the manufacturer is against any thing that is mis design or mis built or mis installed."
+      ],
+      "status": "script"
+    },
+    {
+      "id": "wear_and_tear",
+      "topic": "Wear and tear causes",
+      "answer": "Three things usually cause wear and tear: climate, road condition and driving habits. About 95% of breakdowns are due to wear and tear.",
+      "source_beats": [
+        8,
+        9,
+        10
+      ],
+      "source_quotes": [
+        "Now there is another reason can cause any break down to the vehicle goes under WARE AND TEAR im sure you heard that phrase before.\" \"Three reasons usuilaly cause the ware and tear.\" \"CLIMATE, ROAD CONDITION AND DRIVING HABIT specially here in texas\" \"CLIMATE: can go over 110 degree in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car",
+        "Also ROAD CONDITION specially now days construction are everywhere and uneven service roads and potholes everywhere that can have big impact on the tires RIMS sensor electronic technology, engine transmission cooling system and tons of other parts on the vehicle",
+        "And finally the DRIVING HABITS the way i drive the way you drive in fact the way everyone drives have a huge impact on the vehicle they are driving and those are the main 3 reason can cause any break down to the vehicle 95% of the time when the vehicle break down it due to ware an tear"
+      ],
+      "status": "script"
+    },
+    {
+      "id": "climate",
+      "topic": "Climate",
+      "answer": "Texas can pass 110 degrees in summer and get very cold in winter. This can cause premature damage to sensors, electronics, engine, transmission, cooling system and AC.",
+      "source_beats": [
+        8
+      ],
+      "source_quotes": [
+        "Now there is another reason can cause any break down to the vehicle goes under WARE AND TEAR im sure you heard that phrase before.\" \"Three reasons usuilaly cause the ware and tear.\" \"CLIMATE, ROAD CONDITION AND DRIVING HABIT specially here in texas\" \"CLIMATE: can go over 110 degree in summer and get very cold in the winter and this can cause a premature to the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car"
+      ],
+      "status": "script"
+    },
+    {
+      "id": "road",
+      "topic": "Road condition",
+      "answer": "Construction, uneven service roads and potholes affect tires, rims, sensors, electronics, engine, transmission, cooling system and other parts.",
+      "source_beats": [
+        9
+      ],
+      "source_quotes": [
+        "Also ROAD CONDITION specially now days construction are everywhere and uneven service roads and potholes everywhere that can have big impact on the tires RIMS sensor electronic technology, engine transmission cooling system and tons of other parts on the vehicle"
+      ],
+      "status": "script"
+    },
+    {
+      "id": "driving_habits",
+      "topic": "Driving habits",
+      "answer": "How anyone drives has a big impact on the vehicle.",
+      "source_beats": [
+        10
+      ],
+      "source_quotes": [
+        "And finally the DRIVING HABITS the way i drive the way you drive in fact the way everyone drives have a huge impact on the vehicle they are driving and those are the main 3 reason can cause any break down to the vehicle 95% of the time when the vehicle break down it due to ware an tear"
+      ],
+      "status": "script"
+    },
+    {
+      "id": "breakdown_process",
+      "topic": "What happens when the car breaks down",
+      "answer": "If the breakdown is a design, build or install fault, the manufacturer pays; if it is wear and tear or the owner's cause, the owner pays. The manufacturer decides which. The service place must first diagnose the vehicle, by law.",
+      "source_beats": [
+        11,
+        12
+      ],
+      "source_quotes": [
+        "And the first thing you do as in owner when the vehicle break down you go to any service place and the first thing the first place will do before they say anything to you by the law they must first diagnose the vehicle to find out what is the problem, once they diagnose the vehicle the manufacturer will step in and they are very cautious.",
+        "WHY ? because the manufacturer reserve the right to determine if the break down happen due to any Mis design or mis built or miss installed if they find out the break down happen because of them thats great because they will pay for it igf they find out the break down happen cause of you or the wear and tear unfortunately you will pay for it and like i said before 95% of the time when the vehicle break down it due to the wear and tear."
+      ],
+      "status": "script"
+    },
+    {
+      "id": "repair_costs",
+      "topic": "Typical repair costs",
+      "answer": "Engine can cost up to $7,000, transmission $6,000, AC almost $4,000. Electronics and technology can cost anywhere from $100 to $12,000.",
+      "source_beats": [
+        13
+      ],
+      "source_quotes": [
+        "Thats why we don't feel comfortable that we will leave you in a good position without a good warranty around the vehicle. Why because we do have a part department we know how much the parts cost engine by itself can cost up to seven thousand transmission six thousand AC almost four thousand electronic and technology is the luck of the draw could cost anywhere from hundred dollar all the way up to twelve thousand dollar"
+      ],
+      "status": "script"
+    },
+    {
+      "id": "screen_sensor",
+      "topic": "Dashboard screen and sensors",
+      "answer": "A failed sensor can mean replacing the whole component, roughly $6,500 to $8,500 depending on the vehicle, not including labor.",
+      "source_beats": [
+        14
+      ],
+      "source_quotes": [
+        "if God forbid a sensor break down in the screens in the dashboard they cant just change that sensor that sensor is a part of a huge component they will have to take the whole thing out and replace it with a brand new one thats roughly sixty five hundred dollar part up to eighty five hundred dollar part depends on the vehicle thats not even include the labor charge"
+      ],
+      "status": "script"
+    },
+    {
+      "id": "labor",
+      "topic": "Labor cost",
+      "answer": "Labor is $130 to $160 per hour depending on the technician. Such a job can take 10 to 15 hours.",
+      "source_beats": [
+        15
+      ],
+      "source_quotes": [
+        "labor will charge you anywhere between hundred thirty dollar per hour up to hundred sixty dollar per hour depend on the quality of the technician they are using in the service place and a job like that could take anywhere between 10 hours and 15 hours of labor to fix it so instead you pay seventy hundred dollar for parts plus 10 hours of labor. NO ABSOLUTELY NOT"
+      ],
+      "status": "script"
+    },
+    {
+      "id": "bumper_to_bumper",
+      "topic": "The bumper-to-bumper warranty",
+      "answer": "A blanket warranty covering engine, transmission, drive axle, four-wheel drive, suspension, steering, cooling system, electrical, brakes, AC, sensors, all electronics and technology, and labor, with zero deductible. {{TERM_CONFLICT_BUMPER}}",
+      "source_beats": [
+        16
+      ],
+      "source_quotes": [
+        "Thats why we recommend to you to wrap the true blanket cover warranty around the vehicle which is 10 years hundred thousand mile warranty BUMBER TO BUMBER and what i mean by that is a warranty will cover everything in the vehicle as far as engine transmission drive axle four wheel drive the suspension the steering the cooling system the electric the breaks the AC air condition sensors all the electronics and technology and the labor with zero deductible any where you go we kindly asking you to come here when you need to service the car we only get the benefits when you come visit any of our service locations across the metroplex"
+      ],
+      "status": "script"
+    },
+    {
+      "id": "service_location",
+      "topic": "Where to get service",
+      "answer": "Customer is kindly asked to come to the dealership for service. The dealership only benefits when customers visit its service locations across the metroplex. They can go anywhere with zero deductible.",
+      "source_beats": [
+        16
+      ],
+      "source_quotes": [
+        "Thats why we recommend to you to wrap the true blanket cover warranty around the vehicle which is 10 years hundred thousand mile warranty BUMBER TO BUMBER and what i mean by that is a warranty will cover everything in the vehicle as far as engine transmission drive axle four wheel drive the suspension the steering the cooling system the electric the breaks the AC air condition sensors all the electronics and technology and the labor with zero deductible any where you go we kindly asking you to come here when you need to service the car we only get the benefits when you come visit any of our service locations across the metroplex"
+      ],
+      "status": "script"
+    },
+    {
+      "id": "tire_wheel",
+      "topic": "Tire and wheel cover",
+      "answer": "5-year tire and wheel cover, assuming 2 sets of tires over 5 years depending on driving habits. Eight tires at about $350 each plus $125 installation is almost $500 a tire, almost $4,000 in total, which the policy takes care of.",
+      "source_beats": [
+        17
+      ],
+      "source_quotes": [
+        "Also we know that the cost of ownership for you over the next 5 years will cost you thousands of dollars to maintain the vehicle thats why we include for you 5 years tire and wheel cover im assuming you will need 2 sets of tires over the next 5 years depends on your driving habits so instead you pay for 8 tiers three hundred and fifty dollar for each tire plus hundred and twenty five dollar installation thats almost five hundred dollar a pice 8 of those will cost almost 4 thousand dollar instead you pay that no the policy will take care of that for you so you don't have to worry about paying that much"
+      ],
+      "status": "script"
+    },
+    {
+      "id": "maintenance",
+      "topic": "Maintenance package",
+      "answer": "Covers full synthetic oil changes, filters and tire rotations. Without it: $125 per oil change, $29 filter, $140 tire rotation each visit. {{TERM_CONFLICT_MAINT}}",
+      "source_beats": [
+        18
+      ],
+      "source_quotes": [
+        "We also include for you the 5 years maintenance package that cover all your full synthetic oil change filters and tire rotation so instead you pay for a hundred twenty five dollar for every oil change plus 29 dollar for filter plus a hundred fourty dollar for tire rotation every time you go to service your vehicle no say good buy to all that"
+      ],
+      "status": "script"
+    },
+    {
+      "id": "gas_only",
+      "topic": "What the customer still pays",
+      "answer": "Under the policy the only thing the customer has to pay is gas. Gas is not covered.",
+      "source_beats": [
+        19
+      ],
+      "source_quotes": [
+        "Under this policy the only thing you have to worry about is just paying for your GAS and guess what we don't have cover for that"
+      ],
+      "status": "script"
+    },
+    {
+      "id": "price_framing",
+      "topic": "Price framing",
+      "answer": "Everything is available for a set price per day, compared to a Starbucks coffee at $8.60 a day. Prices come from the controller only: $4, then $3.50, then $3.25, floor $3 per day.",
+      "source_beats": [
+        22
+      ],
+      "source_quotes": [
+        "You can get everything i just mentioned for only {{per_day_price}} a day a coffee a day and everything is covered in your vehicle not even that a coffee a day from starbucks is 8 dollars and sixty cent for less then half a cup of a coffee a day you will get everything covered so you don't have to worry about paying anyone anything in the future"
+      ],
+      "status": "script"
+    },
+    {
+      "id": "two_most_valuable",
+      "topic": "Choosing the most valuable coverage",
+      "answer": "The customer is asked which two coverages they see the most value in, to match coverage to their driving habits.",
+      "source_beats": [
+        23
+      ],
+      "source_quotes": [
+        "Which two of those do you see the most value in? We want to make sure you get the exact coverage that makes the most sense for your driving habits."
+      ],
+      "status": "script"
+    },
+    {
+      "id": "confirm",
+      "topic": "Confirming the deal",
+      "answer": "The assistant confirms the coverage and the daily price the customer agreed, then asks if they are ready to finalize.",
+      "source_beats": [
+        24
+      ],
+      "source_quotes": [
+        "Great, so to confirm, we're moving forward with full vehicle protection for four dollars a day on your 2026 Mazda CX-5."
+      ],
+      "status": "script"
+    },
+    {
+      "id": "verify",
+      "topic": "Verifying details",
+      "answer": "Before final signature the assistant verifies the customer's full legal name, spelling and mailing address.",
+      "source_beats": [
+        25
+      ],
+      "source_quotes": [
+        "Now that we've confirmed your paperwork, let me quickly verify your full legal name, spelling, and current mailing address before final signature."
+      ],
+      "status": "script"
+    }
+  ],
+  "conflicts": [
+    {
+      "id": "TERM_CONFLICT_BUMPER",
+      "issue": "Length of the dealership bumper-to-bumper warranty",
+      "versions": {
+        "wordtoword.md (original verbatim) and system-instruction.md and pricing.json": "7 years / 100,000 miles",
+        "beats.json (v9, Beat 16 and 20)": "10 years / 100,000 miles"
+      },
+      "ask": "Which is right? Is it the same for every vehicle?"
+    },
+    {
+      "id": "TERM_CONFLICT_MAINT",
+      "issue": "Length of the maintenance package",
+      "versions": {
+        "wordtoword.md, system-instruction.md, pricing.json": "4 years",
+        "beats.json (v9, Beats 18 and 21)": "5 years"
+      },
+      "ask": "4 or 5 years? Any mileage or visit limit?"
+    },
+    {
+      "id": "FACTORY_NUMBERS",
+      "issue": "Factory warranty numbers in the Mazda script",
+      "versions": {
+        "wordtoword.md and beats.json (Beat 6)": "5 years / 60,000 mile base limited, and 10 years / 100,000 mile powertrain",
+        "system-instruction.md": "3 years / 36,000 mile base, and 5 years / 60,000 mile powertrain"
+      },
+      "ask": "The first set matches Hyundai's published warranty and the second set is, as far as I know, Mazda's. Which brand was the script recorded for, and what should Mazda deals say?"
+    },
+    {
+      "id": "GAP_MISSING",
+      "issue": "GAP is in pricing.json and the content panels (4 products) but is not in the spoken script at all (beats 1 to 25)",
+      "versions": {},
+      "ask": "Is GAP part of the package Max presents? If yes, TXM must give the spoken wording."
+    },
+    {
+      "id": "BEAT24_LITERAL",
+      "issue": "Beat 24 is hard-coded to 'four dollars a day' and '2026 Mazda CX-5'",
+      "versions": {},
+      "ask": "Engineering fix, not a TXM decision: use the agreed price and the vehicle on file."
+    }
+  ],
+  "needs_txm": [
+    {
+      "question": "Can I cancel and get a refund?",
+      "txm_must_provide": "Real refund and proration terms, any fee, who to contact.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Can I transfer it if I sell the car?",
+      "txm_must_provide": "Yes or no, any fee, how.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "What if I pay off or trade in the car early?",
+      "txm_must_provide": "What happens to the coverage and to any refund.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "What exactly is NOT covered?",
+      "txm_must_provide": "The list of exclusions (wear items, cosmetic, accident damage, neglect, etc.).",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Does it cover the battery / brakes pads / wipers?",
+      "txm_must_provide": "Which wear items are included or excluded.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Does it cover accidents, hail, flood, theft?",
+      "txm_must_provide": "Confirm that this is insurance territory and what the dealership says.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Do I need to service at your dealership?",
+      "txm_must_provide": "Beat 16 says 'we kindly ask you to come here'. Is it required or only requested? Can they use another shop?",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Can I use my own mechanic or do my own oil changes?",
+      "txm_must_provide": "Whether work done elsewhere keeps coverage valid.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "What are the mileage limits / does it expire?",
+      "txm_must_provide": "Exact mileage and time limits for each product.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Is it per day or per month? What is the total?",
+      "txm_must_provide": "Total price and how it is billed (added to the loan? monthly?).",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Is the price negotiable? Can I get it lower?",
+      "txm_must_provide": "Confirm the $4 / $3.50 / $3.25 / $3 ladder is the whole policy.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Can I buy only some of the products?",
+      "txm_must_provide": "Which products can be dropped, and how the price changes.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Will it raise my monthly car payment? By how much?",
+      "txm_must_provide": "How the cost is added to the deal.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Does it affect my loan or my interest rate?",
+      "txm_must_provide": "Policy answer, or handoff.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Is this required to get the car or the financing?",
+      "txm_must_provide": "Must be an honest, approved answer.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Who is the warranty company? Is it the manufacturer?",
+      "txm_must_provide": "Name of the provider or administrator.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "What does zero deductible mean?",
+      "txm_must_provide": "One-sentence approved answer.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "How do I make a claim? Who do I call?",
+      "txm_must_provide": "Claim process and phone number.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Does it cover rental car or towing?",
+      "txm_must_provide": "Yes or no.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Is it valid at any shop or only yours?",
+      "txm_must_provide": "Beat 16 says 'anywhere you go'. Confirm.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Does it cover used or aftermarket parts, or modifications?",
+      "txm_must_provide": "Policy answer.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Does it cover commercial or rideshare use (Uber, delivery)?",
+      "txm_must_provide": "Policy answer.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Is this a sales call? Are you trying to sell me something?",
+      "txm_must_provide": "An honest approved line. The current line says it is not a sales call.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Are you a real person? Is this AI?",
+      "txm_must_provide": "Current line: 'I'm an AI finance assistant.' Confirm.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Can I talk to a person / the manager?",
+      "txm_must_provide": "Real handoff procedure and what Max says.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Do I have to decide today? Can I think about it?",
+      "txm_must_provide": "Policy answer.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Can my spouse look at this first?",
+      "txm_must_provide": "Policy answer (current line contains an invented statistic).",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Can I get this in writing / see the contract first?",
+      "txm_must_provide": "What Max says and where the contract is.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Can we speak in Spanish (or another language)?",
+      "txm_must_provide": "Language policy.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Is my information safe? Who sees this recording?",
+      "txm_must_provide": "Approved privacy answer and legal review.",
+      "answer": null,
+      "status": "needs_txm"
+    }
+  ],
+  "hard_rules": [
+    "AI answers only from facts with status script or approved. If nothing matches, say the approved handoff line and log the question.",
+    "AI never states a price, discount, refund, transfer, exclusion, legal or insurance fact from general knowledge.",
+    "Prices come only from the pricing controller.",
+    "Recording objection, request for a human, anger or legal threat: stop and hand off. No generated answer.",
+    "After any answer, return to the current beat and repeat its check-in.",
+    "Do not use any fact that contains an unresolved TERM_CONFLICT placeholder."
+  ]
+}

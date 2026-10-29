@@ -225,14 +225,15 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
           userInput: "Can we restart from the beginning?",
           intent: "restart_request",
           topic_beat_ids: [],
-          expectedKeyword: "Mazda is like any other manufacturer",
+          // Off-script turns now hold the beat instead of skipping, so the pointer is still on Beat 5
+          expectedKeyword: "more information about the warranty",
         },
         {
-          stepName: "11. other -> resumes with next beat",
+          stepName: "11. other -> answers from the approved knowledge base, holds the beat",
           userInput: "The weather in Texas is crazy today",
           intent: "other",
           topic_beat_ids: [],
-          expectedKeyword: "defect only",
+          expectedKeyword: "110 degrees",
         },
         {
           stepName: "12. human_request -> HANDOFF_LINE and stops",

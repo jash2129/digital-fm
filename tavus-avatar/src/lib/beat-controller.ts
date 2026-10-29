@@ -30,7 +30,11 @@ import {
   FLOOR_PRICE_LINE,
   SCRIPT_COMPLETE_LINE,
   REPEATED_NO_LINE,
+  UNKNOWN_QUESTION_LINE,
+  CLARIFY_LINE,
+  ANSWER_CHECK_LINE,
 } from "./max-lines";
+import { answerFromKnowledgeBase, looksLikeQuestion } from "./grounded-answer";
 
 export interface Beat {
   id: number;
@@ -53,6 +57,8 @@ export interface CallState {
   dealConfig: DealConfig;
   is_stopped: boolean;
   price_defer_count?: number;
+  /** consecutive questions the knowledge base could not answer */
+  ungrounded_count?: number;
   last_check_in_tag?: string;
   is_impatient_flow?: boolean;
 }
@@ -1255,7 +1261,8 @@ export function isAffirmativeOrProgression(norm: string): boolean {
     "makes", "sense", "understood", "understand", "with", "you",
     "he", "she", "they", "we", "i", "did", "have", "got", "it", "that", "done", "already",
     "drove", "test", "car", "vehicle",
-    "definitely", "absolutely", "please", "ready", "set", "perfect", "true", "to", "me"
+    "definitely", "absolutely", "please", "ready", "set", "perfect", "true", "to", "me",
+    "whatever", "mhm", "mmhmm"
   ]);
 
   if (words.every((w) => affirmativeVocabulary.has(w))) {
@@ -1718,6 +1725,41 @@ STRICT CONSTRAINTS:
   }
 }
 
+/**
+ * Out-of-script turn: answer only from the approved knowledge base, hold the current beat,
+ * and hand off after two unanswerable questions in a row. Never advances the script.
+ */
+async function handleGroundedTurn(
+  customerTranscript: string,
+  state: CallState,
+  currentBeat: Beat
+): Promise<{ text: string; beatType: "wait" | "continue" | "stop"; toolCalls: Array<{ name: string; args: Record<string, any> }> }> {
+  if (!looksLikeQuestion(customerTranscript)) {
+    return { text: CLARIFY_LINE, beatType: "wait", toolCalls: [] };
+  }
+  const normQ = customerTranscript.toLowerCase();
+  const financial = ["rate", "apr", "interest", "monthly payment", "payment", "down payment", "trade in", "trade-in", "credit score", "loan term", "discount", "rebate", "invoice", "msrp"];
+  if (financial.some((kw) => normQ.includes(kw))) {
+    return { text: `${OUT_OF_SCRIPT_LINE} ${CLARIFY_LINE}`, beatType: "wait", toolCalls: [] };
+  }
+  const result = await answerFromKnowledgeBase(customerTranscript);
+  if (result.kind === "answer") {
+    state.ungrounded_count = 0;
+    return { text: `${result.text} ${ANSWER_CHECK_LINE}`, beatType: "wait", toolCalls: [] };
+  }
+  state.ungrounded_count = (state.ungrounded_count || 0) + 1;
+  console.warn("[beat-controller] UNANSWERED_QUESTION", JSON.stringify({ beat: currentBeat.id, q: customerTranscript }));
+  if (state.ungrounded_count >= 2) {
+    state.is_stopped = true;
+    return {
+      text: `${UNKNOWN_QUESTION_LINE}`,
+      beatType: "stop",
+      toolCalls: [{ name: "show_content", args: { item: "escalate" } }],
+    };
+  }
+  return { text: `${UNKNOWN_QUESTION_LINE} ${CLARIFY_LINE}`, beatType: "wait", toolCalls: [] };
+}
+
 // -----------------------------------------------------------------------------
 // MAIN CONTROLLER DECISION FUNCTION
 // Evaluates customer input against current call state and outputs exact text to speak
@@ -1794,6 +1836,7 @@ export async function processControllerTurn(
   switch (intent) {
     case "agree": {
       state.no_count_in_a_row = 0;
+      state.ungrounded_count = 0;
       let nextBeatId = state.current_beat + 1;
 
       // Check if finished all script beats
@@ -1951,23 +1994,10 @@ export async function processControllerTurn(
     }
 
     case "question_out_of_script": {
-      // Generate constrained dynamic response with strict negative constraints (no pricing/rate promises), then resume
-      const dynamicLeadIn = await generateConstrainedOffScriptResponse(customerTranscript, state);
-      const nextBeatId = state.current_beat + 1;
-      if (nextBeatId <= BEATS.length) {
-        state.current_beat = nextBeatId;
-        state.delivered_beats.push(nextBeatId);
-        const nextBeat = BEATS.find((b) => b.id === nextBeatId)!;
-        const nextUtterance = getFullBeatUtterance(nextBeat, state.dealConfig);
-        textToSpeak = dynamicLeadIn ? `${dynamicLeadIn} ${nextUtterance}` : nextUtterance;
-        beatType = nextBeat.type;
-        toolCalls = getBeatToolCalls(nextBeatId);
-      } else {
-        textToSpeak = dynamicLeadIn ? `${dynamicLeadIn} ${HANDOFF_LINE}` : HANDOFF_LINE;
-        state.is_stopped = true;
-        beatType = "stop";
-        toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
-      }
+      const g = await handleGroundedTurn(customerTranscript, state, BEATS.find((b) => b.id === state.current_beat)!);
+      textToSpeak = g.text;
+      beatType = g.beatType;
+      toolCalls = g.toolCalls;
       break;
     }
 
@@ -2411,41 +2441,10 @@ export async function processControllerTurn(
 
     case "other":
     default: {
-      // Prepared for everything: Answer customer's question or off-script comment directly,
-      // then seamlessly bridge into the next undelivered beat
-      let dynamicAnswer = "";
-      const trimmed = customerTranscript.trim();
-      const norm = customerTranscript.toLowerCase();
-      const financialKeywords = [
-        "rate", "apr", "interest", "monthly payment", "payment",
-        "down payment", "trade in", "trade-in", "credit score", "loan term",
-      ];
-      const isFinancialQuestion = financialKeywords.some((kw) => norm.includes(kw));
-
-      if (trimmed.length > 2) {
-        dynamicAnswer = await generateConstrainedOffScriptResponse(customerTranscript, state);
-      }
-
-      // Requirement 1: Only use OUT_OF_SCRIPT_LINE in a valid manager-handoff context!
-      if (dynamicAnswer === OUT_OF_SCRIPT_LINE && !isFinancialQuestion) {
-        dynamicAnswer = "Understood.";
-      }
-
-      const nextBeatId = state.current_beat + 1;
-      if (nextBeatId <= BEATS.length) {
-        state.current_beat = nextBeatId;
-        state.delivered_beats.push(nextBeatId);
-        const nextBeat = BEATS.find((b) => b.id === nextBeatId)!;
-        const nextUtterance = getFullBeatUtterance(nextBeat, state.dealConfig);
-        textToSpeak = dynamicAnswer ? `${dynamicAnswer} ${nextUtterance}` : nextUtterance;
-        beatType = nextBeat.type;
-        toolCalls = getBeatToolCalls(nextBeatId);
-      } else {
-        textToSpeak = dynamicAnswer ? `${dynamicAnswer} ${HANDOFF_LINE}` : HANDOFF_LINE;
-        state.is_stopped = true;
-        beatType = "stop";
-        toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
-      }
+      const g = await handleGroundedTurn(customerTranscript, state, BEATS.find((b) => b.id === state.current_beat)!);
+      textToSpeak = g.text;
+      beatType = g.beatType;
+      toolCalls = g.toolCalls;
       break;
     }
   }
