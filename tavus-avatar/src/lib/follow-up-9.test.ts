@@ -240,3 +240,21 @@ describe("6: core objections wait for an approved TXM answer", () => {
     expect(t.beatId).toBe(7);
   });
 });
+
+describe("Questions and stories about someone else are never the answer to a beat's question", () => {
+  it.each([
+    [3, "my brother in law has a Toyota and he never bought any warranty"],
+    [4, "Why should I buy yours?"],
+    [4, "Is this mandatory?"],
+    [5, "Why should I buy yours?"],
+  ] as const)("Beat %i: '%s' holds the beat", async (beat, line) => {
+    const t = await say(atBeat(beat), line);
+    expect(t.beatId).toBe(beat);
+    expect(t.intent).not.toBe("agree");
+  });
+
+  it("'my wife and I drove it' is still an answer at Beat 2", async () => {
+    const t = await say(atBeat(2), "my wife and I drove it");
+    expect(t.beatId).toBe(3);
+  });
+});

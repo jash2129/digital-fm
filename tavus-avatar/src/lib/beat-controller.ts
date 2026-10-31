@@ -1366,6 +1366,20 @@ export function classifyCustomerInputRuleBased(
     }
   }
 
+  // 5.7. Never an answer to the beat's own question, whatever words it contains:
+  //  - a "why" question ("Why should I buy yours?" counted as agreement at Beats 4 and 5), or any
+  //    other question ("Is this mandatory?" counted as the answer to Beat 4's open question)
+  //  - a story about someone else's car ("my brother in law has a Toyota and he never bought any
+  //    warranty" counted as "no walkaround" at Beat 3). "My wife and I drove it" is still an answer.
+  if (
+    (/^(why|how come)\b/.test(norm) && !/^why not\b/.test(norm)) ||
+    (transcript.trim().endsWith("?") && /^(is|are|do|does|did|can|could|will|would|should|what|how|who|when|where)\b/.test(norm)) ||
+    /\b(mandatory|required|optional)\b/.test(norm) ||
+    /\b(my|his|her|their|our) (brother|sister|mother|father|mom|dad|wife|husband|son|daughter|uncle|aunt|cousin|friend|neighbou?r|coworker|boss)( in law)? (has|had|owns|owned|bought|drives|drove|got|never|always)\b/.test(norm)
+  ) {
+    return { intent: "other", topic_beat_ids: [] };
+  }
+
   // 5.75. Customer answers Beat 1 (Legal Disclosure & Agreement to proceed)
   if (currentBeatId === 1) {
     const isExplicitNegation =
