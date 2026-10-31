@@ -107,6 +107,10 @@ export interface CallState {
   interrupted?: { remaining: string; after: DeliveryPointer; toolCalls: ControllerDecision["toolCalls"] };
   /** full text of the last line re-spoken from its first sentence (a line restarts from the top once at most) */
   restarted_text?: string;
+  /** The customer asked to pause ("hold on", "I changed my mind") at this beat on the last turn */
+  paused_beat?: number;
+  /** Step 0: the last reply was the "I'm listening" pause line */
+  step0_paused?: boolean;
   /** How many times the customer said they were confused at `confusion_beat` */
   confusion_count?: number;
   confusion_beat?: number;
@@ -878,6 +882,23 @@ export function isPressureObjection(norm: string): boolean {
   );
 }
 
+// Pause / hold / interjection ("wait", "hold on", "I changed my mind", "I don't want to continue",
+// "let me finish"): never an answer, never advances the beat. Takes the normalized transcript.
+export function isPauseRequest(norm: string): boolean {
+  return (
+    /^(wait|wait wait|wait wait wait|actually wait|no wait)$/.test(norm) ||
+    /\b(hold on|hold up|hang on|wait a (sec|second|minute|moment)|one sec(ond)?|give me a (sec|second|minute|moment)|let me think|changed my mind|change my mind|don t want to continue|dont want to continue|do not want to continue|never mind|nevermind)\b/.test(norm) ||
+    /\b(let me (tell you|speak|finish|complete)|listen to me|listen first|hear me out)\b/.test(norm)
+  );
+}
+
+// "okay, continue", "go on", "fine, continue", "yes go ahead": the customer is ready to carry on
+const CONTINUE_WORDS = new Set("continue go on ahead keep going carry proceed please let s lets you can".split(" "));
+function isContinuePhrase(norm: string): boolean {
+  const words = norm.split(/\s+/).filter(Boolean);
+  return words.length > 0 && words.every((w) => BARE_ACK.has(w) || CONTINUE_WORDS.has(w));
+}
+
 // "too much", "can't afford that", "can you do better", "I'll give you $2 a day". Takes the normalized transcript.
 export function isEarlyPriceObjection(norm: string): boolean {
   return (
@@ -1158,6 +1179,11 @@ export function classifyCustomerInputRuleBased(
   // 4. Repeat request, including asking Max to re-explain what he just said
   if (isReExplainRequest(norm)) {
     return { intent: "repeat_request", topic_beat_ids: [] };
+  }
+
+  // 4.5. Pause / hold, before any beat-specific answer rule ("hold on" is not an answer to Beat 4)
+  if (isPauseRequest(norm)) {
+    return { intent: "pause_request", topic_beat_ids: [] };
   }
 
   // 5. Price ask / Bottom line price inquiry
@@ -1650,32 +1676,6 @@ export function classifyCustomerInputRuleBased(
     return { intent: "tech_check_ack", topic_beat_ids: [] };
   }
 
-  // 8.6. Pause / Hold / Interjection request (e.g. "wait a second", "hold on", "give me a moment", "let me tell you", "let me finish")
-  // Do NOT advance beat or treat as cold negation/abandonment
-  if (
-    norm.includes("hold on") ||
-    norm.includes("wait a sec") ||
-    norm.includes("wait a minute") ||
-    norm.includes("wait a moment") ||
-    norm.includes("one second") ||
-    norm.includes("one sec") ||
-    norm.includes("give me a second") ||
-    norm.includes("give me a sec") ||
-    norm.includes("give me a minute") ||
-    norm.includes("give me a moment") ||
-    norm.includes("let me think") ||
-    norm.includes("hang on") ||
-    norm.includes("hold up") ||
-    norm.includes("let me tell you") ||
-    norm.includes("let me speak") ||
-    norm.includes("let me finish") ||
-    norm.includes("let me complete") ||
-    norm.includes("listen to me") ||
-    norm.includes("listen first") ||
-    norm.includes("hear me out")
-  ) {
-    return { intent: "pause_request", topic_beat_ids: [] };
-  }
 
   // 8.65. Beat 4 Qualifying Question ("What's your understanding of the warranty...")
   // When customer explains what the salesperson told them, advance to Beat 5
@@ -2086,6 +2086,8 @@ Otherwise: []`;
 }
 
 // Step 0 Dynamic Rapport Generator (CONTEXT_RULES.md Stage 0 & Step 1)
+const STEP_0_LISTENING_REPLY = "I'm listening, please go ahead.";
+
 // The Step 0 opener: short opener, a pause, then the check-in question (lands within ~6 s)
 export const STEP_0_OPENING = formatSpeechText(`${STEP_0_OPENER_LINE.replace(/\.$/, "")}... ${STEP_0_CHECKIN_LINE}`);
 
@@ -2255,6 +2257,7 @@ export async function generateStep0Turn(
   }
 
   const isPauseAsk =
+    /\b(changed my mind|change my mind|don t want to continue|dont want to continue|do not want to continue|never mind|nevermind)\b/.test(norm) ||
     norm.includes("let me tell you") ||
     norm.includes("listen to me") ||
     norm.includes("wait a second") ||
@@ -2265,7 +2268,7 @@ export async function generateStep0Turn(
 
   if (isPauseAsk) {
     return {
-      text: "I'm listening, please go ahead.",
+      text: STEP_0_LISTENING_REPLY,
       moveToBeat1: false,
     };
   }
@@ -2568,6 +2571,13 @@ async function runControllerTurn(
   if (!state.step0_completed) {
     state.step0_turns++;
     const step0Norm = customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+    // "okay, continue" after a Step 0 pause is not an answer to the check-in: ask it again
+    const step0Resuming = state.step0_paused;
+    state.step0_paused = false;
+    if (step0Resuming && isContinuePhrase(step0Norm)) {
+      state.last_spoken_text = STEP_0_CHECKIN_LINE;
+      return { textToSpeak: STEP_0_CHECKIN_LINE, beatId: 0, beatType: "wait", toolCalls: [], state, intent: "step0" };
+    }
     // Once the vehicle is disputed, naming another make again ("Are you listening? Audi!") is the same correction
     if (isVehicleCorrection(step0Norm, state.dealConfig) || repeatsVehicleCorrection(step0Norm, state)) {
       const text = vehicleCorrectionReply(state);
@@ -2579,6 +2589,7 @@ async function runControllerTurn(
       fillerReasked: state.step0_filler_reasked,
     });
     if (step0Result.reasked) state.step0_filler_reasked = true;
+    if (step0Result.text === STEP_0_LISTENING_REPLY) state.step0_paused = true;
     if (/\bI'm Max\b/.test(step0Result.text)) state.max_introduced = true;
 
     if (step0Result.moveToBeat1) {
@@ -2620,6 +2631,9 @@ async function runControllerTurn(
   if (classification.timedOut) metrics.classifierTimedOut = true;
   const { topic_beat_ids } = classification;
   let { intent } = classification;
+  // Coming back from a pause at this beat ("hold on" ... "okay, continue")
+  const resumingFromPause = state.paused_beat === state.current_beat;
+  state.paused_beat = undefined;
   if (intent !== "vehicle_discrepancy" && repeatsVehicleCorrection(customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim(), state)) {
     intent = "vehicle_discrepancy";
   }
@@ -2640,7 +2654,10 @@ async function runControllerTurn(
         const norm = customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
         // A bare "yeah" right after the clarify line answers "continue, or go over that again?", not the
         // beat's own question (S3: "I guess" -> clarify -> "Yeah" skipped "did you drive it?"). Re-ask it.
-        if ((expects === "yes_no" || expects === "open") && state.last_spoken_text.endsWith(CLARIFY_LINE) && isBareAck(norm)) {
+        // Likewise "okay, continue" after a pause: resume the beat's question, never treat it as the answer
+        const answersClarify = state.last_spoken_text.endsWith(CLARIFY_LINE) && isBareAck(norm);
+        const resumesAfterPause = resumingFromPause && isContinuePhrase(norm);
+        if ((expects === "yes_no" || expects === "open") && (answersClarify || resumesAfterPause)) {
           textToSpeak = pendingQuestion(state);
           beatType = "wait";
           toolCalls = [];
@@ -3149,6 +3166,7 @@ async function runControllerTurn(
         norm.includes("listen") ||
         norm.includes("hear me");
       textToSpeak = isInterjection ? LISTENING_LINE : PAUSE_LINE;
+      state.paused_beat = state.current_beat;
       // At Beat 23 keep the coverage question in front of the customer when they come back
       if (state.current_beat === 23) textToSpeak = `${textToSpeak} ${pendingQuestion(state)}`;
       beatType = "wait";

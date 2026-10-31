@@ -5,7 +5,7 @@
 import { describe, it, expect } from "vitest";
 import { processControllerTurn, getOrCreateCallState, resetCallState, BEATS } from "./beat-controller";
 import { DEFAULT_DEAL_CONFIG } from "./deal-config";
-import { STEP_0_CHECKIN_LINE, VEHICLE_NOTED_LINE, ROLE_EXPLAIN_LINE, WHICH_PART_LINE, UNKNOWN_QUESTION_LINE, PRICE_LATER_LINE, FLOOR_PRICE_LINE } from "./max-lines";
+import { STEP_0_CHECKIN_LINE, VEHICLE_NOTED_LINE, ROLE_EXPLAIN_LINE, WHICH_PART_LINE, UNKNOWN_QUESTION_LINE, PRICE_LATER_LINE, FLOOR_PRICE_LINE, CLARIFY_LINE } from "./max-lines";
 
 const GLAD = "so glad to hear that";
 
@@ -176,5 +176,48 @@ describe("4: price objections before the price is quoted", () => {
     expect(lowball.textToSpeak).toBe(FLOOR_PRICE_LINE);
     expect(lowball.toolCalls).toEqual([{ name: "show_payment_breakdown", args: { daily_rate: 3.0 } }]);
     expect(lowball.textToSpeak).not.toMatch(/two dollars|\$2\b/i);
+  });
+});
+
+describe("5: 'okay, continue' after a pause resumes, never asks 'continue, or go over that again?'", () => {
+  const PAUSES = ["wait", "hold on", "Wait, I changed my mind, I don't want to continue", "never mind"];
+  const RESUMES = ["okay, continue", "go on", "fine, continue"];
+
+  it.each(PAUSES)("'%s' is a pause, not an unknown question or an answer", async (pause) => {
+    for (const beat of [4, 7, 23]) {
+      const sid = atBeat(beat);
+      const t = await say(sid, pause);
+      expect(t.intent, `B${beat}`).toBe("pause_request");
+      expect(t.beatId).toBe(beat);
+      expect(t.textToSpeak).not.toContain(CLARIFY_LINE);
+      expect(t.textToSpeak).not.toContain(UNKNOWN_QUESTION_LINE);
+    }
+  });
+
+  it.each(RESUMES)("statement beat: '%s' continues the script", async (resume) => {
+    const sid = atBeat(7);
+    await say(sid, "hold on");
+    const t = await say(sid, resume);
+    expect(t.textToSpeak).not.toContain(CLARIFY_LINE);
+    expect(t.beatId).toBe(8);
+  });
+
+  it.each(RESUMES)("question beats: '%s' re-asks the unanswered question", async (resume) => {
+    for (const beat of [2, 4, 23]) {
+      const sid = atBeat(beat);
+      await say(sid, "Wait, I changed my mind, I don't want to continue");
+      const t = await say(sid, resume);
+      expect(t.textToSpeak, `B${beat}`).not.toContain(CLARIFY_LINE);
+      expect(t.beatId, `B${beat}`).toBe(beat);
+      expect(t.textToSpeak).toMatch(/\?$/);
+    }
+  });
+
+  it("Step 0: 'okay, continue' after 'hold on' re-asks the check-in, never calls it good", async () => {
+    const sid = await atCheckIn();
+    await say(sid, "hold on");
+    const t = await say(sid, "okay, continue");
+    expect(t.textToSpeak).toBe(STEP_0_CHECKIN_LINE);
+    expect(t.textToSpeak).not.toContain(GLAD);
   });
 });
