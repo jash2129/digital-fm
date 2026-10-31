@@ -4,7 +4,7 @@
 import { describe, it, expect } from "vitest";
 import { processControllerTurn, getOrCreateCallState, resetCallState, repromptText, BEATS } from "./beat-controller";
 import { DEFAULT_DEAL_CONFIG } from "./deal-config";
-import { STEP_0_CHECKIN_LINE, STEP_0_SORRY_LINE, NO_PRESSURE_LINE, UNKNOWN_QUESTION_LINE } from "./max-lines";
+import { STEP_0_CHECKIN_LINE, STEP_0_SORRY_LINE, NO_PRESSURE_LINE, UNKNOWN_QUESTION_LINE, LEAD_IN_NO, TAKE_TIME_LINE } from "./max-lines";
 
 const GLAD = "so glad to hear that";
 
@@ -116,5 +116,29 @@ describe("3: small talk about the weather is not the warranty climate fact", () 
   it("a climate question about the car still gets the fact", async () => {
     const t = await say(atBeat(9), "Does the Texas heat really damage the car?");
     expect(t.textToSpeak).toContain("110 degrees");
+  });
+});
+
+describe("4: two 'no's at the recording disclosure never end the call", () => {
+  it("first no re-reads once, second no waits with the take-time line", async () => {
+    const sid = atBeat(1);
+    const first = await say(sid, "No.");
+    expect(first.textToSpeak).toContain(LEAD_IN_NO);
+    const second = await say(sid, "No.");
+    expect(second.textToSpeak).toBe(TAKE_TIME_LINE);
+    expect(second.beatType).toBe("wait");
+    expect(second.isScriptComplete).toBeFalsy();
+    expect(getOrCreateCallState(sid).is_stopped).toBeFalsy();
+    // Still on the disclosure: the call continues once the customer is ready
+    const third = await say(sid, "okay");
+    expect(third.beatId).toBe(2);
+  });
+
+  it("a goodbye still ends the call", async () => {
+    const sid = atBeat(1);
+    await say(sid, "No.");
+    await say(sid, "No.");
+    const bye = await say(sid, "Goodbye, end the call.");
+    expect(bye.beatType).toBe("stop");
   });
 });

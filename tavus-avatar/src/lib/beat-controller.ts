@@ -16,6 +16,7 @@ import {
   STEP_0_SORRY_LINE,
   STEP_0_NEUTRAL_ACK_LINE,
   NO_PRESSURE_LINE,
+  TAKE_TIME_LINE,
   BEAT_TRANSITION_BRIDGES,
   PAUSE_LINE,
   LISTENING_LINE,
@@ -888,7 +889,10 @@ export function classifyCustomerInputRuleBased(
     norm.includes("hang up") ||
     norm.includes("hanging up") ||
     norm.includes("gonna hang up") ||
-    norm.includes("going to hang up")
+    norm.includes("going to hang up") ||
+    // An explicit goodbye ends the call. A bare "stop" does not: mid-line it is a pause request.
+    /\b(good ?bye|bye bye|end (the|this) (call|session)|stop (the|this) (call|session))\b/.test(norm) ||
+    norm === "bye"
   ) {
     return { intent: "hang_up", topic_beat_ids: [] };
   }
@@ -2817,12 +2821,12 @@ async function runControllerTurn(
 
       state.no_count_in_a_row++;
       if (state.no_count_in_a_row >= 2) {
-        // Beat 1 is the recording disclosure: refusing it twice withholds consent, so the call ends
-        // exactly like a recording objection. Moving on would continue a recorded call without consent.
+        // Beat 1 is the recording disclosure: never move on without consent, and (until TXM confirms
+        // the two-no rule) never end the call either. Wait for what the customer wants explained.
+        // Only an explicit recording objection or a goodbye ends the call.
         if (state.current_beat === 1) {
-          textToSpeak = "I understand. I'll end this session now.";
-          beatType = "stop";
-          onScriptComplete(state);
+          textToSpeak = TAKE_TIME_LINE;
+          beatType = "wait";
           break;
         }
         // After 2 in a row, respect it and move on to the next beat (there is no human handoff)

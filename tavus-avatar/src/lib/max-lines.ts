@@ -106,6 +106,10 @@ export const STEP_0_NEUTRAL_ACK_LINE = "Thanks for sharing that.";
 // (Beats 1-21). Followed by the pending question. Status: PENDING TXM
 export const NO_PRESSURE_LINE = "No pressure at all. I'll just walk you through the options, and the choice is always yours.";
 
+// A second "no" at the Beat 1 recording disclosure. Until TXM confirms the two-no rule, Max waits
+// instead of ending the call. Status: PENDING TXM
+export const TAKE_TIME_LINE = "No problem, we can take as long as you like. Which part would you like me to explain?";
+
 // Stage 0 Transition into Legal Disclosure
 // Status: APPROVED
 export const STEP_0_TRANSITION_LINE = "Glad to hear that! Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.";

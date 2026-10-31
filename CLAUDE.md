@@ -81,8 +81,9 @@ project planning thread, not in this repo. Below is what's actually landed in co
   off to. Max (`src/lib/beat-controller.ts`) never stops the call, offers a handoff, or shows an
   escalate panel because of a question: asking for a human gets `HANDOFF_LINE` and the beat is held;
   unanswerable questions get `UNKNOWN_QUESTION_LINE` and the call continues; two "no"s in a row get
-  `REPEATED_NO_LINE` and move to the next beat. The call only ends on a recording objection (or two
-  "no"s to the Beat 1 recording disclosure), a hang-up, or script completion; after that every turn
+  `REPEATED_NO_LINE` and move to the next beat. The call only ends on an explicit recording objection,
+  a hang-up / goodbye, or script completion (two "no"s to the Beat 1 recording disclosure get
+  `TAKE_TIME_LINE` and Max waits, PENDING TXM confirmation of the two-no rule); after that every turn
   gets the fixed `CLOSING_LINE`. `src/lib/multi-turn.test.ts` guards this. Legacy escalation code not
   yet deleted (unused by Max, do not build on it): the Tavus-path `escalate_to_human` tool in
   `persona-tools.ts`, `POST /api/escalation`, `src/app/content/escalate/page.tsx`, and the

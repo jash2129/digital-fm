@@ -24,6 +24,7 @@ import {
   HANDOFF_LINE,
   CLARIFY_LINE,
   CLOSING_LINE,
+  TAKE_TIME_LINE,
   UNKNOWN_QUESTION_LINE,
   COMPLIMENT_LINE,
   LANGUAGE_LINE,
@@ -218,12 +219,14 @@ describe("multi-turn regressions", () => {
     expect([first, second].some(showsEscalation)).toBe(false);
   });
 
-  it("C: two Nos to the Beat 1 recording disclosure withhold consent and end the session", async () => {
+  it("C: two Nos to the Beat 1 recording disclosure wait for the customer, never end the call", async () => {
+    // Follow-up 8 item 4: until TXM confirms the two-no rule, a skeptical customer is not hung up on
     const [, second, after] = await play(1, "no", "no", "okay go on");
-    expect(second.stopped).toBe(true);
+    expect(second.stopped).toBeFalsy();
+    expect(second.textToSpeak).toBe(TAKE_TIME_LINE);
     expect(second.textToSpeak).not.toContain(HANDOFF_LINE);
     expect(showsEscalation(second)).toBe(false);
-    expect(after.textToSpeak).toBe(CLOSING_LINE);
+    expect(after.beatId).toBe(2);
   });
 
   // ---- Latency: everyday replies must hit the instant rules, not the remote LLM classifier

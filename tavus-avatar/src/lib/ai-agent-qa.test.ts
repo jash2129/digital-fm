@@ -3,7 +3,7 @@ import fs from "fs";
 import path from "path";
 import { processControllerTurn, resetCallState, getOrCreateCallState } from "./beat-controller";
 import { DEFAULT_DEAL_CONFIG } from "./deal-config";
-import { LEAD_IN_NO, DEFER_LINE, HANDOFF_LINE, OUT_OF_SCRIPT_LINE } from "./max-lines";
+import { LEAD_IN_NO, DEFER_LINE, HANDOFF_LINE, OUT_OF_SCRIPT_LINE, TAKE_TIME_LINE } from "./max-lines";
 import { shouldCutMaxOff } from "../components/liveavatar-demo";
 import { generateCustomerResponse, type CustomerPersona } from "./customer-simulator";
 
@@ -149,10 +149,10 @@ describe("Two-Agent Automated Call Testing (Agent 1 Max vs Agent 2 Customer Simu
     // 1st No -> LEAD_IN_NO
     const firstNoTurn = result.timingLogs.find((t) => t.userInput.toLowerCase().includes("no"));
     expect(firstNoTurn?.avatarText).toContain(LEAD_IN_NO);
-    // This persona's Nos land on Beat 1 (recording disclosure): a second No withholds consent and
-    // ends the session. Human escalation was removed, so no turn may ever offer a handoff.
-    const lastTurn = result.timingLogs[result.timingLogs.length - 1];
-    expect(lastTurn.avatarText).toBe("I understand. I'll end this session now.");
+    // This persona's Nos land on Beat 1 (recording disclosure): a second No gets TAKE_TIME_LINE and
+    // Max waits; the call never ends on "no" alone. Human escalation was removed, so no handoff either.
+    expect(result.timingLogs.some((t) => t.avatarText === TAKE_TIME_LINE)).toBe(true);
+    expect(result.timingLogs.some((t) => t.avatarText.includes("end this session"))).toBe(false);
     expect(result.timingLogs.some((t) => t.avatarText.includes(HANDOFF_LINE))).toBe(false);
   });
 
