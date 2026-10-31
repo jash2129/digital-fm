@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
-import { processControllerTurn } from "@/lib/beat-controller";
+import { processClientTurn, commitTurn } from "@/lib/beat-controller";
 import { DEFAULT_DEAL_CONFIG } from "@/lib/deal-config";
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { messages = [], sessionId = "live_session", dealConfig = DEFAULT_DEAL_CONFIG, clientBeatId } = body;
+    const { messages = [], sessionId = "live_session", dealConfig = DEFAULT_DEAL_CONFIG, clientBeatId, turnId = 0 } = body;
+
+    // Two-phase turns: the client reports whether Max's reply for turnId was actually heard
+    if (body.action === "commit") {
+      const result = commitTurn(sessionId, Number(body.turnId), Boolean(body.delivered), Number(body.spokenFraction) || 0);
+      return NextResponse.json(result);
+    }
 
     const latestUserMessage =
       [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
@@ -13,7 +19,7 @@ export async function POST(request: Request) {
     console.log(`[api/chat/grok] Processing turn for session "${sessionId}", user: "${latestUserMessage}", clientBeatId: ${clientBeatId}`);
 
     // Execute verbatim Beat Controller (LLM only classifies intent, words come strictly from script & max-lines)
-    const decision = await processControllerTurn(sessionId, latestUserMessage, dealConfig);
+    const decision = await processClientTurn(sessionId, latestUserMessage, Number(turnId), dealConfig);
 
     console.log(
       `[api/chat/grok] Decision -> Beat ${decision.beatId} (${decision.beatType}), Intent: ${decision.intent}`

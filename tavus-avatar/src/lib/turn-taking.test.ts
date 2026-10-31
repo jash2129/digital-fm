@@ -179,3 +179,26 @@ describe("Q2: the speaking flag is truthful", () => {
     expect(afterInterrupt).toContain("speak_text:C");
   });
 });
+
+describe("R2 (client): a superseded response is recognized as stale", () => {
+  it("only the most recently dispatched turn is current", async () => {
+    const ids: number[] = [];
+    const c = new TurnController({
+      runTurn: (_t, meta) => {
+        ids.push(meta.turnId);
+        return Promise.resolve();
+      },
+      isAvatarSpeaking: () => false,
+      avatarStoppedAt: () => 0,
+      isEcho: () => false,
+      log: () => {},
+    });
+    c.onTranscript("yes I drove it");
+    await vi.advanceTimersByTimeAsync(0);
+    c.onTranscript("he did the walkaround");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(ids).toEqual([1, 2]);
+    expect(c.isLatestTurn(1)).toBe(false);
+    expect(c.isLatestTurn(2)).toBe(true);
+  });
+});

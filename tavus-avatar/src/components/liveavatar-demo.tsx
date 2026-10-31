@@ -501,6 +501,24 @@ export function LiveAvatarDemo() {
   // watchdog from first audio). Dual-compatible payloads for all LiveAvatar schema revisions.
   // ---------------------------------------------------------------------------
   const turnControllerRef = useRef<TurnController | null>(null);
+
+  // Two-phase turns: the server only keeps a beat once we confirm Max's reply was heard
+  const speakingTurnRef = useRef<{ turnId: number } | null>(null);
+  const commitInFlightRef = useRef<Promise<void>>(Promise.resolve());
+  const sendCommit = (turnId: number, delivered: boolean, spokenFraction: number, reason: string) => {
+    logTurnEvent({ ts: new Date().toISOString(), event: delivered ? "turn_delivered" : "turn_not_delivered", turnId, spokenFraction, reason });
+    commitInFlightRef.current = fetch("/api/chat/grok", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "commit", sessionId: sessionIdRef.current || "live_session", turnId, delivered, spokenFraction }),
+    })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res?.rolledBack) logTurnEvent({ ts: new Date().toISOString(), event: "turn_rolled_back", turnId, spokenFraction });
+      })
+      .catch(() => {});
+  };
+
   const publishAvatarCommand = async (cmd: AvatarCommand) => {
     const room = roomRef.current;
     if (!room) throw new Error("no LiveKit room");
@@ -521,6 +539,14 @@ export function LiveAvatarDemo() {
         setIsAvatarSpeaking(speaking);
         isAvatarSpeakingRef.current = speaking;
         if (!speaking) {
+          // Did the customer hear the reply for this turn? Finished naturally, or cut late enough.
+          const turn = speakingTurnRef.current;
+          if (turn) {
+            speakingTurnRef.current = null;
+            const fraction = voiceRef.current?.tracker.spokenFraction() ?? 0;
+            const delivered = reason === "stop_event" || reason === "watchdog" || fraction >= 0.8;
+            sendCommit(turn.turnId, delivered, Math.round(fraction * 100) / 100, reason);
+          }
           avatarFinishedAtRef.current = Date.now();
           // After a barge-in keep Max muted until his next line; otherwise restore volume
           if (reason !== "interrupted") setRemoteAudioMutedLocally(false);
@@ -591,7 +617,7 @@ export function LiveAvatarDemo() {
   // Handle Chat with Grok & Tool Execution
   // ---------------------------------------------------------------------------
   const sendToGrok = useCallback(
-    async (userInput: string) => {
+    async (userInput: string, meta: { turnId: number; bypass: boolean } = { turnId: 0, bypass: false }) => {
       if (!userInput.trim()) return;
       // Serialized by TurnController: it never calls this while a request is in flight
       isGrokProcessingRef.current = true;
@@ -627,6 +653,8 @@ export function LiveAvatarDemo() {
 
       try {
         const beatBefore = currentBeat.id;
+        // A rollback for the line just interrupted must land before this turn is processed
+        await commitInFlightRef.current;
         const res = await fetch("/api/chat/grok", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -634,6 +662,7 @@ export function LiveAvatarDemo() {
             messages: updatedHistory,
             sessionId: sessionIdRef.current || sessionId || "live_session",
             clientBeatId: beatBefore,
+            turnId: meta.turnId,
           }),
         });
 
@@ -644,9 +673,11 @@ export function LiveAvatarDemo() {
 
         const data = await res.json();
 
-        // Task 2: Drop responses whose beat id is stale
-        if (data.clientBeatId !== undefined && data.clientBeatId !== currentBeat.id) {
-          console.warn(`[liveavatar turn gate] Dropped stale response (sent on beat ${data.clientBeatId}, current beat is ${currentBeat.id})`);
+        // A newer turn was dispatched while this one was in flight: never speak this reply. Tell the
+        // server it was not delivered, so it rolls the beat back instead of silently skipping it.
+        if (meta.turnId && !turnControllerRef.current?.isLatestTurn(meta.turnId)) {
+          logTurnEvent({ ts: new Date().toISOString(), event: "response_dropped", reason: "stale_superseded", turnId: meta.turnId, transcript: userInput });
+          sendCommit(meta.turnId, false, 0, "stale_response");
           return;
         }
 
@@ -741,6 +772,7 @@ export function LiveAvatarDemo() {
           ];
           setMessages([...conversationHistoryRef.current]);
           setCurrentReplicaText(assistantText);
+          speakingTurnRef.current = meta.turnId ? { turnId: meta.turnId } : null;
           await speakWithAvatar(assistantText);
         }
       } catch (err: any) {
@@ -759,7 +791,7 @@ export function LiveAvatarDemo() {
   sendToGrokRef.current = sendToGrok;
   if (!turnControllerRef.current) {
     turnControllerRef.current = new TurnController({
-      runTurn: (transcript) => sendToGrokRef.current(transcript),
+      runTurn: (transcript, meta) => sendToGrokRef.current(transcript, meta),
       isAvatarSpeaking: () => isAvatarSpeakingRef.current,
       avatarStoppedAt: () => avatarFinishedAtRef.current,
       isEcho: (t) => isNearExactEcho(t, [lastSpokenByAvatarRef.current, ...recentAvatarTextsRef.current.map((r) => r.text)]),

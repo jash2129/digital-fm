@@ -245,6 +245,11 @@ export class TurnController {
     return this.inFlight > 0;
   }
 
+  /** False once a newer turn has been dispatched: that response is stale and must not be spoken. */
+  isLatestTurn(turnId: number): boolean {
+    return turnId === this.turnSeq;
+  }
+
   /** A finished customer utterance from the speech recognizer. */
   onTranscript(text: string): void {
     const transcript = text.trim();

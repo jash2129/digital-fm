@@ -83,6 +83,11 @@ export interface CallState {
   excluded_coverages?: string[];
   /** the last question Max asked, so interjections can re-ask what is actually pending */
   last_question?: string;
+  /**
+   * Max's last reply was not heard (cut early or dropped as stale): the state was rolled back to
+   * before that turn. A bare "yes" resumes this text instead of answering a question nobody heard.
+   */
+  interrupted?: { remaining: string; after: CallState; toolCalls: ControllerDecision["toolCalls"] };
   /** consecutive Beat 25 replies that were not a name and address */
   verify_misses?: number;
   /** Beat 25 closed without the details: never claim the paperwork was finalized */
@@ -175,6 +180,7 @@ export type ClassifierIntent =
   | "number_clarification"
   | "classifier_timeout"
   | "provided_details"
+  | "resume_interrupted"
   | "other";
 
 export interface ClassificationResult {
@@ -213,6 +219,115 @@ export const activeStates =
   globalForBeatController.activeStates ?? new Map<string, CallState>();
 if (process.env.NODE_ENV !== "production") {
   globalForBeatController.activeStates = activeStates;
+}
+
+// -----------------------------------------------------------------------------
+// TWO-PHASE TURNS (live calls): a turn's state change only counts once the client confirms Max's
+// reply was delivered. Until then the pre-turn state is kept so it can be rolled back.
+// -----------------------------------------------------------------------------
+interface PendingCommit {
+  turnId: number;
+  before: CallState;
+  after: CallState;
+  text: string;
+  toolCalls: ControllerDecision["toolCalls"];
+}
+const globalForCommits = globalThis as unknown as { pendingCommits?: Map<string, PendingCommit> };
+const pendingCommits = globalForCommits.pendingCommits ?? new Map<string, PendingCommit>();
+if (process.env.NODE_ENV !== "production") globalForCommits.pendingCommits = pendingCommits;
+
+// Max must have said this much of a reply for it to count as heard
+export const DELIVERED_FRACTION = 0.8;
+
+const cloneState = (s: CallState): CallState => JSON.parse(JSON.stringify(s));
+function replaceState(target: CallState, source: CallState): void {
+  for (const k of Object.keys(target)) delete (target as unknown as Record<string, unknown>)[k];
+  Object.assign(target, cloneState(source));
+}
+
+/**
+ * A live customer turn. Like processControllerTurn, but (1) remembers the pre-turn state under
+ * turnId until commitTurn() confirms delivery, and (2) if the previous reply was not heard, a bare
+ * confirmation resumes it from the sentence where Max was cut.
+ */
+export async function processClientTurn(
+  sessionId: string,
+  customerTranscript: string,
+  turnId: number,
+  dealConfig = DEFAULT_DEAL_CONFIG
+): Promise<ControllerDecision> {
+  const state = getOrCreateCallState(sessionId, dealConfig);
+  // A new turn implies the previous reply was not rolled back in time: keep it
+  pendingCommits.delete(sessionId);
+
+  const pending = state.interrupted;
+  if (pending) {
+    state.interrupted = undefined;
+    const reply = customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+    if (isBareAck(reply)) {
+      // "yeah" after an unheard line: say the rest of it, never treat it as an answer to it
+      const t0 = Date.now();
+      const beatBefore = state.current_beat;
+      const rolledBackState = cloneState(state);
+      replaceState(state, pending.after);
+      state.last_spoken_text = pending.remaining;
+      const beat = BEATS.find((b) => b.id === state.current_beat);
+      const decision: ControllerDecision = {
+        textToSpeak: pending.remaining,
+        beatId: state.current_beat,
+        beatType: beat?.type ?? "wait",
+        toolCalls: pending.toolCalls,
+        state,
+        intent: "resume_interrupted",
+        isScriptComplete: state.is_stopped,
+      };
+      decision.metrics = {
+        classifierMs: 0,
+        usedLLM: false,
+        classifierTimedOut: false,
+        controllerMs: Date.now() - t0,
+        intent: decision.intent,
+        beatBefore,
+        beatAfter: decision.beatId,
+      };
+      pendingCommits.set(sessionId, { turnId, before: rolledBackState, after: cloneState(state), text: pending.remaining, toolCalls: pending.toolCalls });
+      return decision;
+    }
+    // Anything else is answered against the rolled-back state (the question they did hear)
+  }
+
+  const before = cloneState(state);
+  const decision = await processControllerTurn(sessionId, customerTranscript, dealConfig);
+  pendingCommits.set(sessionId, { turnId, before, after: cloneState(state), text: decision.textToSpeak, toolCalls: decision.toolCalls });
+  return decision;
+}
+
+/**
+ * The client reports whether the reply for turnId was heard. Not delivered (dropped as stale, or
+ * cut before DELIVERED_FRACTION): roll back to the pre-turn state and remember where to resume.
+ */
+export function commitTurn(
+  sessionId: string,
+  turnId: number,
+  delivered: boolean,
+  spokenFraction = 0
+): { rolledBack: boolean; reason?: string } {
+  const pending = pendingCommits.get(sessionId);
+  if (!pending || pending.turnId !== turnId) return { rolledBack: false, reason: "not_the_latest_turn" };
+  pendingCommits.delete(sessionId);
+  // The client decides delivery (finished naturally, or cut after DELIVERED_FRACTION of the line)
+  if (delivered) return { rolledBack: false };
+  const state = activeStates.get(sessionId);
+  if (!state) return { rolledBack: false, reason: "no_session" };
+
+  const sentences = splitIntoSentences(pending.text);
+  // Resume at the sentence that was cut (sentences fully heard are not repeated)
+  const cutAt = Math.min(Math.max(0, sentences.length - 1), Math.floor(spokenFraction * sentences.length));
+  const remaining = sentences.slice(cutAt).join(" ") || pending.text;
+  replaceState(state, pending.before);
+  state.interrupted = { remaining, after: pending.after, toolCalls: pending.toolCalls };
+  console.warn("[beat-controller] TURN_ROLLED_BACK", JSON.stringify({ sessionId, turnId, spokenFraction, beat: state.current_beat }));
+  return { rolledBack: true };
 }
 
 export function getOrCreateCallState(sessionId: string, dealConfig = DEFAULT_DEAL_CONFIG): CallState {
