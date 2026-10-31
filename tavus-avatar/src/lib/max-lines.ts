@@ -106,6 +106,9 @@ export const STEP_0_NEUTRAL_ACK_LINE = "Thanks for sharing that.";
 // (Beats 1-21). Followed by the pending question. Status: PENDING TXM
 export const NO_PRESSURE_LINE = "No pressure at all. I'll just walk you through the options, and the choice is always yours.";
 
+// A price objection or counter-offer before the price is quoted (Beats 1-21), then the pending
+// question. The number offered is never treated as a counter. Status: PENDING TXM
+export const PRICE_LATER_LINE = "I'll go over the price in just a moment, and there's no pressure at all. Let me finish the coverage first.";
 // Asked when the customer is still confused after an explanation. Status: PENDING TXM
 export const WHICH_PART_LINE = "Which part would you like me to explain?";
 // A second "no" at the Beat 1 recording disclosure. Until TXM confirms the two-no rule, Max waits

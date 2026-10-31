@@ -19,6 +19,7 @@ import {
   TAKE_TIME_LINE,
   WHICH_PART_LINE,
   ROLE_EXPLAIN_LINE,
+  PRICE_LATER_LINE,
   BEAT_TRANSITION_BRIDGES,
   PAUSE_LINE,
   LISTENING_LINE,
@@ -212,6 +213,7 @@ export type ClassifierIntent =
   | "pressure_objection"
   | "role_confusion"
   | "confusion"
+  | "early_price_objection"
   | "resume_interrupted"
   | "other";
 
@@ -876,6 +878,14 @@ export function isPressureObjection(norm: string): boolean {
   );
 }
 
+// "too much", "can't afford that", "can you do better", "I'll give you $2 a day". Takes the normalized transcript.
+export function isEarlyPriceObjection(norm: string): boolean {
+  return (
+    /\b(too much|too expensive|too pricey|too high|can t afford|cant afford|cannot afford|can not afford|do better|better (price|deal)|best (price|deal)|lower (the |your )?price|discount|cheaper|knock (it|that|some) (down|off)|come down)\b/.test(norm) ||
+    (parseNamedDailyPrice(norm) !== null && /\b(give you|pay|offer|how about|what about|do it for|i ll do)\b/.test(norm))
+  );
+}
+
 // Deterministic rule-based classification fallback (also used for unit/simulation tests)
 export function classifyCustomerInputRuleBased(
   transcript: string,
@@ -1002,6 +1012,12 @@ export function classifyCustomerInputRuleBased(
   // price objection and belongs to the negotiation.
   if (currentBeatId < 22 && isPressureObjection(norm)) {
     return { intent: "pressure_objection", topic_beat_ids: [] };
+  }
+
+  // 1.36. Haggling before the price is quoted ("that's too much", "I'll give you $2 a day"): the price
+  // comes at Beat 22, so nothing here is a counter-offer
+  if (currentBeatId < 22 && isEarlyPriceObjection(norm)) {
+    return { intent: "early_price_objection", topic_beat_ids: [] };
   }
 
   // 1.4. Manufacturer Warranty vs Dealership Vehicle Protection (e.g. "is this provided by the manufacturer", "should I buy the new one")
@@ -1254,7 +1270,9 @@ export function classifyCustomerInputRuleBased(
       norm.includes("come down") ||
       norm.includes("20 dollars a month") ||
       norm.includes("twenty dollars") ||
-      norm.includes("20 a month");
+      norm.includes("20 a month") ||
+      // "I'll give you $2 a day" (digits): a named daily price, only while the price is on the table
+      (currentBeatId <= 24 && parseNamedDailyPrice(norm) !== null && /\b(give you|pay|offer|how about|what about|do it for|i ll do|dollars?|bucks|a day)\b/.test(norm));
 
     if (isCounterOfferOrFloorPush) {
       return { intent: "negotiate_price", topic_beat_ids: [] };
@@ -3279,6 +3297,13 @@ async function runControllerTurn(
       if (count >= 2) textToSpeak = WHICH_PART_LINE;
       else if (intent === "role_confusion" || state.current_beat === 1) textToSpeak = `${ROLE_EXPLAIN_LINE} ${pendingQuestion(state)}`;
       else textToSpeak = `${LEAD_IN_NO} ${getFullBeatUtterance(currentBeat, state.dealConfig)}`;
+      beatType = "wait";
+      toolCalls = [];
+      break;
+    }
+
+    case "early_price_objection": {
+      textToSpeak = `${PRICE_LATER_LINE} ${pendingQuestion(state)}`;
       beatType = "wait";
       toolCalls = [];
       break;
