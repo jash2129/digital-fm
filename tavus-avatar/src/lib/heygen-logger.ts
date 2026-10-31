@@ -8,10 +8,23 @@ export type HeygenUtteranceEntry = {
   timestamp: string;
 };
 
+/** Server-side breakdown of one controller turn (from /api/chat/grok `metrics`). */
+export type ControllerTurnMetrics = {
+  classifierMs: number;
+  controllerMs: number;
+  usedLLM: boolean;
+  classifierTimedOut: boolean;
+  intent: string;
+  beatBefore: number;
+  beatAfter: number;
+};
+
 export type TurnTimingLog = {
   turnId: number;
   userInput: string;
   avatarText: string;
+  /** controller breakdown; total_latency_ms (end of customer speech -> avatar audio) is in `gaps` */
+  controller?: ControllerTurnMetrics;
   timestamps: {
     user_speech_end: number;
     final_transcript: number;
@@ -58,6 +71,10 @@ export type HeygenCallLog = {
     beatBefore: number;
     beatAfter: number;
     reason: string;
+    classifierMs?: number;
+    controllerMs?: number;
+    usedLLM?: boolean;
+    classifierTimedOut?: boolean;
   }>;
 };
 

@@ -17,6 +17,8 @@ interface Fact {
   topic: string;
   answer: string;
   status: string;
+  /** retrieval keywords defined in the JSON itself, merged with KEYWORDS below */
+  keywords?: string[];
 }
 interface NeedsEntry {
   question: string;
@@ -28,6 +30,8 @@ export interface GroundedResult {
   kind: "answer" | "handoff";
   text: string;
   sources: string[];
+  /** a remote LLM rewrite was attempted (for per-turn latency logging) */
+  usedLLM?: boolean;
 }
 
 // Recall keywords per fact. Deliberately conservative: a question must hit a real
@@ -73,7 +77,7 @@ function approvedFacts(): Array<{ id: string; answer: string; keywords: string[]
   const out: Array<{ id: string; answer: string; keywords: string[] }> = [];
   for (const f of (kbData as { facts: Fact[] }).facts) {
     if (f.status !== "script" && f.status !== "approved") continue;
-    out.push({ id: f.id, answer: cleanAnswer(f.answer), keywords: KEYWORDS[f.id] ?? [] });
+    out.push({ id: f.id, answer: cleanAnswer(f.answer), keywords: [...(KEYWORDS[f.id] ?? []), ...(f.keywords ?? [])] });
   }
   for (const n of (kbData as { needs_txm: NeedsEntry[] }).needs_txm) {
     if (n.status === "approved" && n.answer) {
@@ -150,15 +154,16 @@ export async function answerFromKnowledgeBase(question: string): Promise<Grounde
   if (hits.length === 0) return { kind: "handoff", text: UNKNOWN_QUESTION_LINE, sources: [] };
   const passages = hits.map((h) => h.answer);
 
+  const usedLLM = Boolean(process.env.XAI_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim());
   const llm = await rewriteWithLLM(question, passages);
   if (llm && llm !== "NO_ANSWER" && isSupported(llm, passages)) {
-    return { kind: "answer", text: llm, sources: hits.map((h) => h.id) };
+    return { kind: "answer", text: llm, sources: hits.map((h) => h.id), usedLLM };
   }
-  if (llm === "NO_ANSWER") return { kind: "handoff", text: UNKNOWN_QUESTION_LINE, sources: [] };
+  if (llm === "NO_ANSWER") return { kind: "handoff", text: UNKNOWN_QUESTION_LINE, sources: [], usedLLM };
 
   // No key, or the draft failed the checks: use TXM's approved sentences directly.
   const text = firstSentences(passages[0], 2);
-  return { kind: "answer", text, sources: [hits[0].id] };
+  return { kind: "answer", text, sources: [hits[0].id], usedLLM };
 }
 
 /** Looks like a customer question or objection that deserves an answer, as opposed to a filler sound. */

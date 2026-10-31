@@ -246,6 +246,23 @@
         "Now that we've confirmed your paperwork, let me quickly verify your full legal name, spelling, and current mailing address before final signature."
       ],
       "status": "script"
+    },
+    {
+      "id": "seventy_hundred",
+      "topic": "What 'seventy hundred dollar' means in the labor example",
+      "answer": "Seventy hundred dollars means seven thousand dollars.",
+      "source_beats": [
+        15
+      ],
+      "source_quotes": [
+        "so instead you pay seventy hundred dollar for parts plus ten hours and fifteen hoursof labor"
+      ],
+      "status": "approved",
+      "keywords": [
+        "seventy hundred",
+        "seven thousand"
+      ],
+      "note": "PENDING TXM confirm. Clarifies a script slip in Beat 15 without editing beats.json."
     }
   ],
   "conflicts": [

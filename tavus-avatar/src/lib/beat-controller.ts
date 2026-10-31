@@ -71,6 +71,8 @@ export interface CallState {
   price_defer_count?: number;
   /** consecutive questions the knowledge base could not answer */
   ungrounded_count?: number;
+  /** customer already said yes to a finalize question, so Beat 24 must not ask again */
+  finalize_confirmed?: boolean;
   last_check_in_tag?: string;
   is_impatient_flow?: boolean;
   sentence_index?: number;
@@ -156,11 +158,25 @@ export type ClassifierIntent =
   | "call_purpose"
   | "language_request"
   | "why_asking"
+  | "number_clarification"
+  | "classifier_timeout"
   | "other";
 
 export interface ClassificationResult {
   intent: ClassifierIntent;
   topic_beat_ids: number[];
+  /** the remote LLM classifier was called (rules alone could not classify) */
+  usedLLM?: boolean;
+  /** the remote classifier hit LLM_CLASSIFIER_TIMEOUT_MS */
+  timedOut?: boolean;
+}
+
+/** Per-turn latency breakdown, logged by the client and shown in the Inspector. */
+export interface TurnMetrics {
+  classifierMs: number;
+  /** any remote LLM call this turn: the classifier or a knowledge-base rewrite */
+  usedLLM: boolean;
+  classifierTimedOut: boolean;
 }
 
 export interface ControllerDecision {
@@ -171,6 +187,7 @@ export interface ControllerDecision {
   state: CallState;
   intent: ClassifierIntent | "step0" | "greeting";
   isScriptComplete?: boolean;
+  metrics?: TurnMetrics & { controllerMs: number; intent: string; beatBefore: number; beatAfter: number };
 }
 
 // In-memory session state store for controller turns persisted across Next.js dev reloads
@@ -448,6 +465,13 @@ function isReExplainRequest(norm: string): boolean {
   );
 }
 
+// Checking a number Max just said: "you mean seven thousand?", "so that's ten hours?",
+// "did you say seventy hundred?". Takes the normalized transcript.
+const NUMBER_WORD = /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fourty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|dollars?|percent)\b/;
+function isNumberClarification(norm: string): boolean {
+  return /\b(you mean|so that s|so thats|did you say)\b/.test(norm) && NUMBER_WORD.test(norm);
+}
+
 // Customer praising the vehicle ("beautiful car", "love it", "nice ride"). Takes the normalized transcript.
 function isVehicleCompliment(norm: string): boolean {
   return (
@@ -707,6 +731,12 @@ export function classifyCustomerInputRuleBased(
     return { intent: "restart_request", topic_beat_ids: [] };
   }
 
+  // 3.4. Checking a number Max said ("you mean seven thousand?"): answer it from the knowledge base,
+  // never re-recite the beat. Before the offer only; from Beat 22 on, numbers are negotiation (5.5).
+  if (currentBeatId < 22 && isNumberClarification(norm)) {
+    return { intent: "number_clarification", topic_beat_ids: [] };
+  }
+
   // 3.5. "Why do you keep asking me that": re-ask only the current check-in
   if (
     norm.includes("why do you keep asking") ||
@@ -743,6 +773,24 @@ export function classifyCustomerInputRuleBased(
     norm.includes("tell me the price") ||
     norm.includes("pay as i go") ||
     norm.includes("pay as you go")
+  ) {
+    return { intent: "price_ask", topic_beat_ids: [] };
+  }
+
+  // 5.1. Casual price asks before the offer ("what's this gonna cost me", "and the price?").
+  // From Beat 22 on, cost talk is negotiation and is handled in 5.5.
+  if (
+    currentBeatId < 22 &&
+    (norm.includes("gonna cost") ||
+      norm.includes("going to cost") ||
+      norm.includes("and the price") ||
+      norm.includes("about the price") ||
+      norm.includes("what about price") ||
+      norm.includes("what s the cost") ||
+      norm.includes("whats the cost") ||
+      norm.includes("what is the cost") ||
+      norm === "price" ||
+      norm.endsWith(" the price"))
   ) {
     return { intent: "price_ask", topic_beat_ids: [] };
   }
@@ -1467,9 +1515,20 @@ export function isAffirmativeOrProgression(norm: string): boolean {
   // Trailing hesitation
   if (norm.endsWith(" uh") || norm.endsWith(" um") || norm.endsWith(" hmm")) return false;
 
+  // Backchannel sounds ("mm-hm", "uh-huh", "mhm"). A bare "hm"/"hmm" is doubt and stays excluded above.
+  if (/^(m+ ?h+m+|uh ?huh)$/.test(words.join(" "))) return true;
+
+  // Leading reactions and fillers don't change the answer: "wow, okay" and "uh, okay, continue"
+  // are judged on what follows them. A reaction on its own ("wow") is not an answer.
+  const leadIns = new Set(["uh", "um", "oh", "ah", "wow", "well", "so", "geez", "jeez", "man", "dang", "damn"]);
+  let start = 0;
+  while (start < words.length - 1 && leadIns.has(words[start])) start++;
+  const core = words.slice(start);
+  const coreNorm = core.join(" ");
+
   // If the sentence starts with an affirmative anchor and has no questions/negations:
   const affirmativeAnchors = ["yes", "yeah", "yep", "yup", "yea", "sure", "ok", "okay", "alright", "right", "sounds good", "go on", "go ahead"];
-  if (affirmativeAnchors.some((a) => norm === a || norm.startsWith(`${a} `))) {
+  if (affirmativeAnchors.some((a) => coreNorm === a || coreNorm.startsWith(`${a} `))) {
     return true;
   }
 
@@ -1485,7 +1544,7 @@ export function isAffirmativeOrProgression(norm: string): boolean {
     "mhm", "mmhmm"
   ]);
 
-  if (words.every((w) => affirmativeVocabulary.has(w))) {
+  if (core.every((w) => affirmativeVocabulary.has(w))) {
     return true;
   }
 
@@ -1501,6 +1560,9 @@ export function isAffirmativeOrProgression(norm: string): boolean {
 
   return false;
 }
+
+// Longest the remote classifier may take before the turn falls back to hold + CLARIFY_LINE
+export const LLM_CLASSIFIER_TIMEOUT_MS = 800;
 
 // LLM Classifier using fast model with temperature: 0
 export async function classifyWithLLM(
@@ -1565,6 +1627,9 @@ Otherwise: []`;
     customer_transcript: customerTranscript,
   });
 
+  // Hard cap: dead air hurts more than a re-ask, so a slow classifier falls back to hold + clarify
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LLM_CLASSIFIER_TIMEOUT_MS);
   try {
     const res = await fetch(endpoint, {
       method: "POST",
@@ -1580,10 +1645,11 @@ Otherwise: []`;
           { role: "user", content: userMessage },
         ],
       }),
+      signal: controller.signal,
     });
 
     if (!res.ok) {
-      return fastRuleResult;
+      return { ...fastRuleResult, usedLLM: true };
     }
 
     const data = await res.json();
@@ -1594,10 +1660,17 @@ Otherwise: []`;
     return {
       intent: parsed.intent || "other",
       topic_beat_ids: Array.isArray(parsed.topic_beat_ids) ? parsed.topic_beat_ids : [],
+      usedLLM: true,
     };
   } catch (err) {
+    if (controller.signal.aborted) {
+      console.warn(`[beat-controller] LLM classifier exceeded ${LLM_CLASSIFIER_TIMEOUT_MS}ms, holding with the clarify line`);
+      return { intent: "classifier_timeout", topic_beat_ids: [], usedLLM: true, timedOut: true };
+    }
     console.warn("[beat-controller] LLM classification error, falling back to rule-based:", err);
-    return fastRuleResult;
+    return { ...fastRuleResult, usedLLM: true };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -1984,9 +2057,11 @@ STRICT CONSTRAINTS:
 async function handleGroundedTurn(
   customerTranscript: string,
   state: CallState,
-  currentBeat: Beat
+  currentBeat: Beat,
+  metrics?: TurnMetrics,
+  skipQuestionGate = false
 ): Promise<{ text: string; beatType: "wait" | "continue" | "stop"; toolCalls: Array<{ name: string; args: Record<string, any> }> }> {
-  if (!looksLikeQuestion(customerTranscript)) {
+  if (!skipQuestionGate && !looksLikeQuestion(customerTranscript)) {
     return { text: CLARIFY_LINE, beatType: "wait", toolCalls: [] };
   }
   const normQ = customerTranscript.toLowerCase();
@@ -1995,6 +2070,7 @@ async function handleGroundedTurn(
     return { text: `${OUT_OF_SCRIPT_LINE} ${CLARIFY_LINE}`, beatType: "wait", toolCalls: [] };
   }
   const result = await answerFromKnowledgeBase(customerTranscript);
+  if (metrics && result.usedLLM) metrics.usedLLM = true;
   if (result.kind === "answer") {
     state.ungrounded_count = 0;
     const bridge = "Now, back to where we were.";
@@ -2027,6 +2103,27 @@ export async function processControllerTurn(
   customerTranscript: string,
   dealConfig = DEFAULT_DEAL_CONFIG,
   mockClassification?: ClassificationResult
+): Promise<ControllerDecision> {
+  const t0 = Date.now();
+  const beatBefore = getOrCreateCallState(sessionId, dealConfig).current_beat;
+  const metrics: TurnMetrics = { classifierMs: 0, usedLLM: false, classifierTimedOut: false };
+  const decision = await runControllerTurn(sessionId, customerTranscript, dealConfig, mockClassification, metrics);
+  decision.metrics = {
+    ...metrics,
+    controllerMs: Date.now() - t0,
+    intent: decision.intent,
+    beatBefore,
+    beatAfter: decision.beatId,
+  };
+  return decision;
+}
+
+async function runControllerTurn(
+  sessionId: string,
+  customerTranscript: string,
+  dealConfig: DealConfig,
+  mockClassification: ClassificationResult | undefined,
+  metrics: TurnMetrics
 ): Promise<ControllerDecision> {
   const state = getOrCreateCallState(sessionId, dealConfig);
 
@@ -2084,7 +2181,11 @@ export async function processControllerTurn(
   // ===========================================================================
   // 3.4 & 3.5 Intent Classification & Matrix Handling
   // ===========================================================================
+  const tClassify = Date.now();
   const classification = mockClassification || (await classifyWithLLM(customerTranscript, state));
+  metrics.classifierMs = Date.now() - tClassify;
+  if (classification.usedLLM) metrics.usedLLM = true;
+  if (classification.timedOut) metrics.classifierTimedOut = true;
   const { intent, topic_beat_ids } = classification;
 
   console.log(`[beat-controller] Turn Intent: "${intent}", Current Beat: ${state.current_beat}`);
@@ -2145,6 +2246,27 @@ export async function processControllerTurn(
         if (norm.includes("works for me") || norm.includes("that works") || norm.includes("i'll take it") || norm.includes("ill take it") || norm.includes("deal")) {
           nextBeatId = 24;
         }
+      }
+
+      // The customer just said yes to a finalize question that named a price (the floor line, or
+      // "I can bring that down to ... Does that sound fair?"). Speak Beat 24's confirmation without
+      // asking "Are you ready to finalize?" a second time, and carry straight on into Beat 25's
+      // verification. Beat 23's own "sound fair?" (about which coverages matter) names no price, so a
+      // yes to it is not price acceptance and Beat 24 still asks.
+      const lastAsk = state.last_spoken_text;
+      const acceptedPricedFinalize =
+        /(ready to finalize[^?]*\?|sound fair\?|get you locked in\.)\s*$/i.test(lastAsk) && /dollars/i.test(lastAsk);
+      if (state.current_beat === 23 && acceptedPricedFinalize) {
+        state.finalize_confirmed = true;
+        const beat24 = BEATS.find((b) => b.id === 24)!;
+        const beat25 = BEATS.find((b) => b.id === 25)!;
+        state.delivered_beats.push(24, 25);
+        state.current_beat = 25;
+        const confirmation = formatSpeechText(renderBeatText(beat24, state.dealConfig));
+        textToSpeak = `${confirmation} ${getFullBeatUtterance(beat25, state.dealConfig, state)}`;
+        beatType = beat25.type;
+        toolCalls = getBeatToolCalls(24);
+        break;
       }
 
       // Check if finished all script beats
@@ -2322,7 +2444,7 @@ export async function processControllerTurn(
     }
 
     case "question_out_of_script": {
-      const g = await handleGroundedTurn(customerTranscript, state, BEATS.find((b) => b.id === state.current_beat)!);
+      const g = await handleGroundedTurn(customerTranscript, state, BEATS.find((b) => b.id === state.current_beat)!, metrics);
       textToSpeak = g.text;
       beatType = g.beatType;
       toolCalls = g.toolCalls;
@@ -2585,6 +2707,23 @@ export async function processControllerTurn(
 
     case "language_request": {
       textToSpeak = LANGUAGE_LINE;
+      beatType = "wait";
+      break;
+    }
+
+    case "number_clarification": {
+      // "You mean seven thousand?": answer from the knowledge base, hold the beat, re-ask its check-in.
+      // Never re-recite the beat (that would repeat the number being questioned).
+      const g = await handleGroundedTurn(customerTranscript, state, BEATS.find((b) => b.id === state.current_beat)!, metrics, true);
+      textToSpeak = g.text;
+      beatType = "wait";
+      toolCalls = g.toolCalls;
+      break;
+    }
+
+    case "classifier_timeout": {
+      // The remote classifier was too slow: hold the beat rather than leave dead air or guess
+      textToSpeak = CLARIFY_LINE;
       beatType = "wait";
       break;
     }
@@ -2873,7 +3012,7 @@ export async function processControllerTurn(
         break;
       }
 
-      const g = await handleGroundedTurn(customerTranscript, state, BEATS.find((b) => b.id === state.current_beat)!);
+      const g = await handleGroundedTurn(customerTranscript, state, BEATS.find((b) => b.id === state.current_beat)!, metrics);
       textToSpeak = g.text;
       beatType = g.beatType;
       toolCalls = g.toolCalls;

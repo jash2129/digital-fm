@@ -9,6 +9,7 @@ import PricingLadderPage from "@/app/content/pricing-ladder/page";
 import DealSummaryPage from "@/app/content/deal-summary/page";
 import EscalatePage from "@/app/content/escalate/page";
 import { CallSummaryScreen } from "@/components/CallSummaryScreen";
+import type { ControllerTurnMetrics } from "@/lib/heygen-logger";
 
 // =============================================================================
 // SPEED & BARGE-IN TUNING CONFIGURATION
@@ -301,6 +302,7 @@ export function LiveAvatarDemo() {
 
   // Latency & Barge-In Instrumentation Refs
   const userSpeechEndTimestampRef = useRef<number>(0);
+  const lastHeardWordsRef = useRef<string>("");
   const continuePauseTimerRef = useRef<any>(null);
   const currentTurnTimingRef = useRef<{
     turnId: number;
@@ -311,6 +313,7 @@ export function LiveAvatarDemo() {
     controller_decision: number;
     speak_sent: number;
     avatar_audio_start: number;
+    controller?: ControllerTurnMetrics;
   } | null>(null);
   const turnCounterRef = useRef<number>(0);
   const timingLogsRef = useRef<any[]>([]);
@@ -364,6 +367,10 @@ export function LiveAvatarDemo() {
     beatBefore: number;
     beatAfter: number;
     reason: string;
+    classifierMs?: number;
+    controllerMs?: number;
+    usedLLM?: boolean;
+    classifierTimedOut?: boolean;
   }>>([]);
 
   // LiveKit WebRTC references
@@ -449,6 +456,7 @@ export function LiveAvatarDemo() {
         turnId: timing.turnId,
         userInput: timing.userInput,
         avatarText: timing.avatarText,
+        controller: timing.controller,
         timestamps: {
           user_speech_end: timing.user_speech_end,
           final_transcript: timing.final_transcript,
@@ -690,6 +698,10 @@ export function LiveAvatarDemo() {
           beatBefore,
           beatAfter,
           reason: "processed",
+          classifierMs: data.metrics?.classifierMs,
+          controllerMs: data.metrics?.controllerMs,
+          usedLLM: data.metrics?.usedLLM,
+          classifierTimedOut: data.metrics?.classifierTimedOut,
         };
         console.log("[liveavatar turn gate]:", JSON.stringify(turnLog));
         turnLogsRef.current.push(turnLog);
@@ -699,6 +711,7 @@ export function LiveAvatarDemo() {
         if (currentTurnTimingRef.current) {
           currentTurnTimingRef.current.controller_decision = decisionTime;
           currentTurnTimingRef.current.avatarText = assistantText;
+          currentTurnTimingRef.current.controller = data.metrics;
         }
         if (data.beatType) {
           lastBeatTypeRef.current = data.beatType;
@@ -809,7 +822,14 @@ export function LiveAvatarDemo() {
       const currentSpoken = (interimText || finalTranscript).trim();
       if (!currentSpoken) return;
 
-      userSpeechEndTimestampRef.current = Date.now();
+      // End-of-speech = the last moment NEW words were heard. The final result usually repeats the
+      // last interim words ~0.5-1s after the customer stopped, so it must not move the timestamp,
+      // or latency would be measured from ASR finalization instead of from when they stopped talking.
+      const heardWords = currentSpoken.toLowerCase().replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
+      if (heardWords !== lastHeardWordsRef.current) {
+        lastHeardWordsRef.current = heardWords;
+        userSpeechEndTimestampRef.current = Date.now();
+      }
       if (continuePauseTimerRef.current) {
         clearTimeout(continuePauseTimerRef.current);
         continuePauseTimerRef.current = null;

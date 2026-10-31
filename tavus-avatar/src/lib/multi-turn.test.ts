@@ -6,12 +6,15 @@
  * Human escalation was removed by the client: Max must never stop the call or offer a handoff
  * because of a question.
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   processControllerTurn,
   getOrCreateCallState,
   resetCallState,
   getBeatCheckInQuestion,
+  classifyCustomerInputRuleBased,
+  classifyWithLLM,
+  LLM_CLASSIFIER_TIMEOUT_MS,
   renderBeatText,
   formatSpeechText,
   BEATS,
@@ -215,4 +218,105 @@ describe("multi-turn regressions", () => {
     expect(showsEscalation(second)).toBe(false);
     expect(after.textToSpeak).toBe(CLOSING_LINE);
   });
+
+  // ---- Latency: everyday replies must hit the instant rules, not the remote LLM classifier
+  // (Inspector flagged 3.0s of dead air on "wow, okay" in a simulated call)
+
+  it("acknowledgements with fillers or backchannel sounds are classified instantly as agree", () => {
+    for (const [beat, say] of [[9, "mm-hm"], [14, "wow, okay"], [15, "uh, okay, continue"], [9, "uh huh"], [11, "oh okay"], [14, "geez, okay"]] as const) {
+      expect(classifyCustomerInputRuleBased(say, beat).intent, say).toBe("agree");
+    }
+  });
+
+  it("doubt and bare reactions still never count as agreement", () => {
+    for (const say of ["hmm", "hm", "uh", "wow"]) {
+      expect(classifyCustomerInputRuleBased(say, 7).intent, say).not.toBe("agree");
+    }
+  });
+
+  it("casual price asks before the offer get the price path instantly", () => {
+    for (const [beat, say] of [[16, "yeah I'm with you. what's this gonna cost me though"], [18, "okay. and the price?"]] as const) {
+      expect(classifyCustomerInputRuleBased(say, beat).intent, say).toBe("price_ask");
+    }
+    // From Beat 22 on, cost talk is negotiation
+    expect(classifyCustomerInputRuleBased("that's gonna cost me too much", 22).intent).toBe("negotiate_price");
+  });
+
+  // ---- Follow-up 3 (from the Inspector replay of sim-ladder_negotiator_buyer)
+
+  it("A: checking a number Max said gets a grounded answer, holds the beat, never re-recites it", async () => {
+    const beat15 = BEATS.find((b) => b.id === 15)!;
+    const body = formatSpeechText(renderBeatText(beat15, getOrCreateCallState("probe15").dealConfig));
+    const [d] = await play(15, "wait, seventy hundred? you mean seven thousand?");
+    expect(d.intent).toBe("number_clarification");
+    expect(d.textToSpeak.toLowerCase()).toContain("seven thousand");
+    expect(d.beatId).toBe(15);
+    expect(d.stopped).toBe(false);
+    expect(d.textToSpeak).not.toContain("I don't have that detail");
+    expect(d.textToSpeak).not.toContain(body);
+    expect(d.textToSpeak).toContain(getBeatCheckInQuestion(beat15));
+  });
+
+  it("A: 'what do you mean' without a number is still a repeat request", () => {
+    expect(classifyCustomerInputRuleBased("what do you mean", 10).intent).toBe("repeat_request");
+  });
+
+  it("B: a yes to the finalize question is not asked again, it goes straight to verification", async () => {
+    const turns = await play(22, "that's too much", "still too much", "still too much", "yes");
+    expect(turns[2].textToSpeak).toMatch(/ready to finalize/i);
+    const last = turns[3];
+    expect(last.beatId).toBe(25);
+    expect(last.textToSpeak.trim()).not.toMatch(/Are you ready to finalize\??$/);
+    expect(last.textToSpeak).toContain("three dollars a day");
+    expect(last.textToSpeak.toLowerCase()).toContain("verify");
+    expect(last.stopped).toBe(false);
+  });
+
+  it("C: every turn reports a latency breakdown", async () => {
+    const [d] = await play(9, "yes");
+    expect(d.metrics).toMatchObject({ usedLLM: false, classifierTimedOut: false, intent: "agree", beatBefore: 9, beatAfter: 10 });
+    expect(d.metrics!.controllerMs).toBeGreaterThanOrEqual(d.metrics!.classifierMs);
+  });
+
+  it("B: a yes to the priced 'does that sound fair?' also skips the second finalize ask", async () => {
+    const turns = await play(22, "that's too much", "still too much", "yes");
+    expect(turns[1].textToSpeak).toMatch(/twenty-five cents a day\. Does that sound fair\?$/);
+    expect(turns[2].beatId).toBe(25);
+    expect(turns[2].textToSpeak).toContain("three dollars and twenty-five cents a day");
+  });
+
+  it("B: Beat 23's own coverage 'sound fair?' names no price, so Beat 24 still asks to finalize", async () => {
+    const [d] = await play(23, "yes");
+    expect(d.beatId).toBe(24);
+    expect(d.textToSpeak.trim()).toMatch(/Are you ready to finalize\?$/);
+  });
+
+  it("C: a remote classifier slower than the cap holds the beat with the clarify line", async () => {
+    const saved = { xai: process.env.XAI_API_KEY, openai: process.env.OPENAI_API_KEY };
+    process.env.XAI_API_KEY = "test-key";
+    // A classifier that never answers, but honors the abort signal
+    vi.stubGlobal("fetch", (_url: string, init: { signal: AbortSignal }) =>
+      new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new Error("aborted"))))
+    );
+    try {
+      const sid = fresh(9);
+      const line = "my neighbor bought one of these last spring and liked it";
+      expect(classifyCustomerInputRuleBased(line, 9).intent).toBe("other");
+      const t0 = Date.now();
+      const c = await classifyWithLLM(line, getOrCreateCallState(sid));
+      expect(Date.now() - t0).toBeLessThan(LLM_CLASSIFIER_TIMEOUT_MS + 400);
+      expect(c).toMatchObject({ intent: "classifier_timeout", timedOut: true, usedLLM: true });
+
+      const d = await processControllerTurn(sid, line);
+      expect(d.textToSpeak).toBe(CLARIFY_LINE);
+      expect(d.beatId).toBe(9);
+      expect(d.metrics).toMatchObject({ usedLLM: true, classifierTimedOut: true });
+    } finally {
+      vi.unstubAllGlobals();
+      process.env.XAI_API_KEY = saved.xai ?? "";
+      if (saved.xai === undefined) delete process.env.XAI_API_KEY;
+      if (saved.openai !== undefined) process.env.OPENAI_API_KEY = saved.openai;
+    }
+  });
 });
+

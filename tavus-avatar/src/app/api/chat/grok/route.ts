@@ -28,6 +28,8 @@ export async function POST(request: Request) {
       intent: decision.intent,
       isScriptComplete: decision.isScriptComplete,
       clientBeatId,
+      // classifierMs, controllerMs, usedLLM, classifierTimedOut, intent, beatBefore, beatAfter
+      metrics: decision.metrics,
     });
   } catch (error: any) {
     console.error("[api/chat/grok error, returning safe fallback]:", error);

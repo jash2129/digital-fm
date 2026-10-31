@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import type { CallExperienceAnalysis, TimelineBlock, ExperienceFlaw } from "@/lib/call-experience-analyzer";
+import type { TurnTimingLog } from "@/lib/heygen-logger";
 
 type SessionSummary = {
   sessionId: string;
@@ -19,6 +20,7 @@ export default function CallInspectorPage() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string>("");
   const [analysis, setAnalysis] = useState<CallExperienceAnalysis | null>(null);
+  const [turnTimings, setTurnTimings] = useState<TurnTimingLog[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,6 +71,9 @@ export default function CallInspectorPage() {
         if (!res.ok) throw new Error("Failed to load call analysis");
         const data: CallExperienceAnalysis = await res.json();
         setAnalysis(data);
+        // Raw log for the per-turn latency table (the analysis only keeps timeline blocks)
+        const raw = await fetch(`/api/heygen/logs/${selectedSessionId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+        setTurnTimings(raw?.timingLogs || []);
       } catch (err: any) {
         setError(err.message || "Failed to analyze call");
       } finally {
@@ -499,6 +504,72 @@ export default function CallInspectorPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+
+            {/* Per-turn latency breakdown */}
+            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+              <div>
+                <h2 className="text-base font-bold text-white flex items-center gap-2">
+                  ⚡ Turn Latency Breakdown ({turnTimings.length} turns)
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Total = from the END of the customer&apos;s speech to Max&apos;s first audio. The timeline&apos;s &quot;User
+                  spoke&quot; marker is the START of speech, so a long sentence there is not latency. Click a row to jump to it.
+                </p>
+              </div>
+
+              {turnTimings.length === 0 ? (
+                <div className="py-6 text-center text-slate-500 text-sm">No per-turn timing recorded for this call.</div>
+              ) : (
+                <div className="overflow-x-auto max-h-96 overflow-y-auto rounded-xl border border-slate-800">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-950 text-slate-400 font-semibold sticky top-0 border-b border-slate-800">
+                      <tr>
+                        <th className="p-3">Turn</th>
+                        <th className="p-3">Customer said</th>
+                        <th className="p-3">Intent</th>
+                        <th className="p-3">Beat</th>
+                        <th className="p-3 text-right">Classifier</th>
+                        <th className="p-3 text-right">Controller</th>
+                        <th className="p-3">LLM</th>
+                        <th className="p-3 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 font-mono">
+                      {turnTimings.map((t) => {
+                        const c = t.controller;
+                        const total = t.gaps?.total_latency_ms ?? 0;
+                        const callStart = Date.parse(analysis.startTime);
+                        const atSec = t.timestamps?.avatar_audio_start ? Math.max(0, Math.floor((t.timestamps.avatar_audio_start - callStart) / 1000)) : 0;
+                        return (
+                          <tr key={t.turnId} className="hover:bg-slate-800/40 cursor-pointer transition" onClick={() => seekToSecond(atSec)}>
+                            <td className="p-3 font-bold text-blue-400">T{t.turnId}</td>
+                            <td className="p-3 text-slate-300 font-sans max-w-xs truncate" title={t.userInput}>{t.userInput}</td>
+                            <td className="p-3 text-slate-300">{c?.intent ?? "-"}</td>
+                            <td className="p-3 text-slate-300">{c ? `${c.beatBefore} → ${c.beatAfter}` : "-"}</td>
+                            <td className="p-3 text-right text-slate-300">{c ? `${c.classifierMs} ms` : "-"}</td>
+                            <td className="p-3 text-right text-slate-300">{c ? `${c.controllerMs} ms` : `${t.gaps?.controller_gap_ms ?? 0} ms`}</td>
+                            <td className="p-3">
+                              {!c ? (
+                                <span className="text-slate-500">-</span>
+                              ) : c.classifierTimedOut ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-500/20 text-rose-400 border border-rose-500/30">timeout</span>
+                              ) : c.usedLLM ? (
+                                <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30">yes</span>
+                              ) : (
+                                <span className="text-slate-500">no</span>
+                              )}
+                            </td>
+                            <td className={`p-3 text-right font-bold ${total > 1500 ? "text-rose-400" : total > 800 ? "text-amber-400" : "text-emerald-400"}`}>
+                              {total} ms
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
