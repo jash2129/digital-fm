@@ -398,6 +398,18 @@
       "status": "needs_txm"
     },
     {
+      "question": "Is this mandatory? Can I decline it?",
+      "txm_must_provide": "Whether the protection package is mandatory or optional, and the approved wording for telling the customer they can decline it and still buy the car. Asked in simulated calls (follow-up 9); today it gets the unknown-question line.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
+      "question": "Why should I buy yours instead of an outside or third-party warranty?",
+      "txm_must_provide": "An approved comparison with an outside / third-party extended warranty (what this package does that one does not), with no claims about other companies that TXM has not approved. Asked in simulated calls (follow-up 9); today it gets the unknown-question line.",
+      "answer": null,
+      "status": "needs_txm"
+    },
+    {
       "question": "Who is the warranty company? Is it the manufacturer?",
       "txm_must_provide": "Name of the provider or administrator.",
       "answer": null,

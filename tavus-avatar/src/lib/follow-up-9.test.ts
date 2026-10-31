@@ -5,6 +5,7 @@
 import { describe, it, expect } from "vitest";
 import { processControllerTurn, getOrCreateCallState, resetCallState, BEATS } from "./beat-controller";
 import { DEFAULT_DEAL_CONFIG } from "./deal-config";
+import kb from "./max-knowledge-base.json";
 import { STEP_0_CHECKIN_LINE, VEHICLE_NOTED_LINE, ROLE_EXPLAIN_LINE, WHICH_PART_LINE, UNKNOWN_QUESTION_LINE, PRICE_LATER_LINE, FLOOR_PRICE_LINE, CLARIFY_LINE } from "./max-lines";
 
 const GLAD = "so glad to hear that";
@@ -219,5 +220,23 @@ describe("5: 'okay, continue' after a pause resumes, never asks 'continue, or go
     const t = await say(sid, "okay, continue");
     expect(t.textToSpeak).toBe(STEP_0_CHECKIN_LINE);
     expect(t.textToSpeak).not.toContain(GLAD);
+  });
+});
+
+describe("6: core objections wait for an approved TXM answer", () => {
+  it("both questions are on the TXM review list with no answer yet", () => {
+    const needs = (kb as { needs_txm: Array<{ question: string; status: string; answer: string | null }> }).needs_txm;
+    for (const q of ["Is this mandatory? Can I decline it?", "Why should I buy yours instead of an outside or third-party warranty?"]) {
+      const entry = needs.find((n) => n.question === q);
+      expect(entry, q).toBeDefined();
+      expect(entry!.status).toBe("needs_txm");
+      expect(entry!.answer).toBeNull();
+    }
+  });
+
+  it.each(["Why should I buy yours?", "Is this mandatory?"])("until then, '%s' gets the unknown-question line, never an invented answer", async (q) => {
+    const t = await say(atBeat(7), q);
+    expect(t.textToSpeak).toContain(UNKNOWN_QUESTION_LINE);
+    expect(t.beatId).toBe(7);
   });
 });
