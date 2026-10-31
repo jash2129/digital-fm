@@ -33,6 +33,15 @@ import {
   UNKNOWN_QUESTION_LINE,
   CLARIFY_LINE,
   ANSWER_CHECK_LINE,
+  TIRE_EXCLUSION_LINE,
+  MAINTENANCE_EXCLUSION_LINE,
+  DROP_COVERAGE_LINE,
+  UNIT_PRICE_LINE,
+  TOTAL_PRICE_LINE,
+  THINK_ABOUT_IT_LINE,
+  NOT_FUNNY_LINE,
+  TECH_ISSUE_LINE,
+  MARKUP_OBJECTION_LINE,
 } from "./max-lines";
 import { answerFromKnowledgeBase, looksLikeQuestion } from "./grounded-answer";
 
@@ -41,6 +50,7 @@ export interface Beat {
   type: "wait" | "continue";
   text: string;
   check_in: string | null;
+  expects?: "consent" | "yes_no" | "open" | "statement";
 }
 
 export const BEATS: Beat[] = beatsData as Beat[];
@@ -61,6 +71,36 @@ export interface CallState {
   ungrounded_count?: number;
   last_check_in_tag?: string;
   is_impatient_flow?: boolean;
+  sentence_index?: number;
+  total_sentences?: number;
+}
+
+export function splitIntoSentences(text: string): string[] {
+  const clean = text.replace(/[""]/g, '"').trim();
+  const raw = clean.match(/[^.!?]+[.!?]+(\s+|$)|[^.!?]+$/g) || [clean];
+  return raw.map((s) => s.trim()).filter((s) => s.length > 0);
+}
+
+export function getBeatCheckInQuestion(beat: Beat): string {
+  if (beat.check_in) {
+    const ci = beat.check_in.trim();
+    const capitalized = ci.charAt(0).toUpperCase() + ci.slice(1);
+    return capitalized.endsWith("?") ? capitalized : `${capitalized}?`;
+  }
+  switch (beat.id) {
+    case 1:
+      return "Is that okay with you?";
+    case 2:
+      return "Did you get a chance to take it for a test drive?";
+    case 3:
+      return "Did the salesperson do the walkaround with you?";
+    case 4:
+      return "Did the salesperson go over the warranty with you?";
+    case 22:
+      return "Does that work for you?";
+    default:
+      return "Does that make sense?";
+  }
 }
 
 export const BEAT_RECAPS: Record<number, string> = {
@@ -95,6 +135,7 @@ export type ClassifierIntent =
   | "repeat_request"
   | "restart_request"
   | "human_request"
+  | "hang_up"
   | "ai_question"
   | "tech_check_ack"
   | "pause_request"
@@ -166,10 +207,15 @@ export function resetCallState(sessionId: string): void {
 // Render raw beat text with placeholders replaced by deal variables
 export function renderBeatText(beat: Beat, dealConfig: DealConfig): string {
   let rendered = beat.text;
-  rendered = rendered.replace(/\{\{vehicle_year\}\}/g, dealConfig.vehicle_year);
-  rendered = rendered.replace(/\{\{vehicle_make\}\}/g, dealConfig.vehicle_make);
-  rendered = rendered.replace(/\{\{vehicle_model\}\}/g, dealConfig.vehicle_model);
-  rendered = rendered.replace(/\{\{per_day_price\}\}/g, dealConfig.per_day_price);
+  if (beat.id === 24) {
+    const yearMakeModel = `${dealConfig.vehicle_year} ${dealConfig.vehicle_make} ${dealConfig.vehicle_model}`.trim();
+    rendered = `"Great, so to confirm, we're moving forward with full vehicle protection for ${dealConfig.per_day_price} a day on your ${yearMakeModel}."`;
+  } else {
+    rendered = rendered.replace(/\{\{vehicle_year\}\}/g, dealConfig.vehicle_year);
+    rendered = rendered.replace(/\{\{vehicle_make\}\}/g, dealConfig.vehicle_make);
+    rendered = rendered.replace(/\{\{vehicle_model\}\}/g, dealConfig.vehicle_model);
+    rendered = rendered.replace(/\{\{per_day_price\}\}/g, dealConfig.per_day_price);
+  }
   return rendered;
 }
 
@@ -374,6 +420,35 @@ export function classifyCustomerInputRuleBased(
   // 0. Avatar Script Echo Protection: Never treat Max's own script echoed from laptop speakers as user progression
   if (isAvatarScriptEcho(transcript)) {
     return { intent: "avatar_echo", topic_beat_ids: [] };
+  }
+
+  // 0.5. Recording objection at Beat 1
+  if (
+    currentBeatId === 1 &&
+    (norm.includes("don t want to be recorded") ||
+      norm.includes("dont want to be recorded") ||
+      norm.includes("do not want to be recorded") ||
+      norm.includes("not recorded") ||
+      norm.includes("not want to be recorded") ||
+      norm.includes("stop recording") ||
+      norm.includes("stop the recording") ||
+      norm.includes("don't want to be recorded") ||
+      norm.includes("dont record") ||
+      norm.includes("do not record") ||
+      norm.includes("consent to recording") ||
+      norm.includes("consent to be recorded"))
+  ) {
+    return { intent: "human_request", topic_beat_ids: [] };
+  }
+
+  // 0.6. Customer hanging up / ending call
+  if (
+    norm.includes("hang up") ||
+    norm.includes("hanging up") ||
+    norm.includes("gonna hang up") ||
+    norm.includes("going to hang up")
+  ) {
+    return { intent: "hang_up", topic_beat_ids: [] };
   }
 
   // 1. AI Question (check before human request so questions like "are you an AI avatar or a real person?" are handled as AI disclosure)
@@ -581,13 +656,42 @@ export function classifyCustomerInputRuleBased(
     norm.includes("what is this wrap protection going to cost") ||
     norm.includes("going to cost me") ||
     norm.includes("what will it cost") ||
-    norm.includes("tell me the price")
+    norm.includes("tell me the price") ||
+    norm.includes("pay as i go") ||
+    norm.includes("pay as you go")
   ) {
     return { intent: "price_ask", topic_beat_ids: [] };
   }
 
   // 5.5. Contextual Progression & Negotiation at Beats 22-25 (Evaluate BEFORE generic topic keywords!)
   if (currentBeatId >= 22) {
+    const isCloseConfirmation =
+      norm.includes("works") ||
+      norm.includes("let s do it") ||
+      norm.includes("lets do it") ||
+      norm.includes("let's do it") ||
+      norm.includes("take it") ||
+      norm.includes("i'll take it") ||
+      norm.includes("ill take it") ||
+      norm.includes("sounds good") ||
+      norm.includes("sounds great") ||
+      norm.includes("that works") ||
+      norm.includes("works for me") ||
+      norm.includes("confirm") ||
+      norm.includes("forward") ||
+      norm.includes("finish the paperwork") ||
+      norm.includes("finalize") ||
+      norm.includes("we have a deal") ||
+      norm.includes("it's a deal") ||
+      norm.includes("its a deal") ||
+      norm.includes("it s a deal") ||
+      norm === "deal" ||
+      (norm.includes("deal") && !norm.includes("no deal") && !norm.includes("best deal") && !norm.includes("better deal"));
+
+    if (isCloseConfirmation) {
+      return { intent: "agree", topic_beat_ids: [] };
+    }
+
     const isCounterOfferOrFloorPush =
       norm.includes("three dollar") ||
       norm.includes("three dollars") ||
@@ -624,27 +728,13 @@ export function classifyCustomerInputRuleBased(
       norm.includes("dollar fifty") ||
       norm.includes("1.50") ||
       norm.includes("no deal") ||
-      norm.includes("come down");
+      norm.includes("come down") ||
+      norm.includes("20 dollars a month") ||
+      norm.includes("twenty dollars") ||
+      norm.includes("20 a month");
 
     if (isCounterOfferOrFloorPush) {
       return { intent: "negotiate_price", topic_beat_ids: [] };
-    }
-
-    const isCloseConfirmation =
-      norm.includes("confirm") ||
-      norm.includes("forward") ||
-      norm.includes("finish the paperwork") ||
-      norm.includes("finalize") ||
-      norm.includes("let's do it") ||
-      norm.includes("lets do it") ||
-      norm.includes("we have a deal") ||
-      norm.includes("it's a deal") ||
-      norm.includes("its a deal") ||
-      norm === "deal" ||
-      (norm.includes("deal") && !norm.includes("no deal") && !norm.includes("best deal") && !norm.includes("better deal"));
-
-    if (isCloseConfirmation) {
-      return { intent: "agree", topic_beat_ids: [] };
     }
 
     if (currentBeatId === 22) {
@@ -737,6 +827,7 @@ export function classifyCustomerInputRuleBased(
         norm === "yep" ||
         norm === "sure" ||
         norm === "fine" ||
+        norm.startsWith("fine ") ||
         norm === "alright" ||
         norm === "understood" ||
         norm === "i understand" ||
@@ -790,11 +881,6 @@ export function classifyCustomerInputRuleBased(
     }
 
     const hasProgressionWord =
-      norm.includes("go ahead") ||
-      norm.includes("go on") ||
-      norm.includes("continue") ||
-      norm.includes("carry on") ||
-      norm.includes("sounds good") ||
       norm.includes("did that") ||
       norm.includes("drove") ||
       norm.includes("drive");
@@ -824,29 +910,48 @@ export function classifyCustomerInputRuleBased(
     if (isExplicitYesDrive) {
       return { intent: "agree", topic_beat_ids: [] };
     }
+  }
 
-    // Customer only said vague acknowledgment (e.g. "ok", "okay", "alright", "gotcha", "cool", "uh huh", "mhm")
-    // Especially after file correction: they have NOT answered whether they drove the car yet!
-    const isNeutralAck =
-      !hasProgressionWord &&
-      (norm === "ok" ||
-        norm === "okay" ||
-        norm === "alright" ||
-        norm === "all right" ||
-        norm === "gotcha" ||
-        norm === "cool" ||
-        norm === "uh huh" ||
-        norm === "mhm" ||
-        norm === "ok got it" ||
-        norm === "okay got it" ||
-        norm === "got it");
+  // 5.77. Customer answers Beat 3 (Walkaround Qualifying Question)
+  if (currentBeatId === 3) {
+    const isExplicitNoWalkaround =
+      norm === "no" ||
+      norm === "nope" ||
+      norm.startsWith("no ") ||
+      norm.includes("didn t") ||
+      norm.includes("didnt") ||
+      norm.includes("did not") ||
+      norm.includes("never") ||
+      norm.includes("rushed") ||
+      norm.includes("not really");
 
-    if (isNeutralAck && !isVehicleDiscrepancy) {
-      return { intent: "repeat_request", topic_beat_ids: [] };
+    if (isExplicitNoWalkaround) {
+      return { intent: "no", topic_beat_ids: [] };
+    }
+
+    const isExplicitYesWalkaround =
+      norm === "yes" ||
+      norm === "yeah" ||
+      norm === "yep" ||
+      norm === "he did" ||
+      norm === "they did" ||
+      norm === "we did" ||
+      norm === "yes he did" ||
+      norm === "yeah he did" ||
+      norm === "sure did" ||
+      norm.startsWith("yes ") ||
+      norm.startsWith("yeah ") ||
+      norm.includes("showed me") ||
+      norm.includes("walkaround") ||
+      norm.includes("walk around") ||
+      norm.includes("went over");
+
+    if (isExplicitYesWalkaround) {
+      return { intent: "agree", topic_beat_ids: [] };
     }
   }
 
-  // 5.8. Customer answers Beat 4 (Warranty Understanding inquiry)
+  // 5.8. Customer answers Beat 4 (Warranty Understanding inquiry - open)
   if (currentBeatId === 4) {
     const isExplicitNoWarranty =
       norm.startsWith("no") ||
@@ -863,28 +968,14 @@ export function classifyCustomerInputRuleBased(
       return { intent: "no", topic_beat_ids: [] };
     }
 
-    const isWarrantyExplanation =
-      norm.includes("salesperson") ||
-      norm.includes("sales person") ||
-      norm.includes("salesman") ||
-      norm.includes("he told") ||
-      norm.includes("he said") ||
-      norm.includes("they said") ||
-      norm.includes("defect") ||
-      norm.includes("benefited") ||
-      norm.includes("benefit") ||
-      norm.includes("factory warranty") ||
-      norm.includes("warranty") ||
-      norm.includes("only when") ||
-      norm.includes("only applicable") ||
-      norm.includes("only applied") ||
-      norm.includes("only apply") ||
-      norm.includes("did go over") ||
-      norm.includes("went over") ||
-      norm.includes("yes he did") ||
-      norm.includes("yeah he did");
+    // Filler sounds like "uh", "hmm", "well" do NOT answer open question
+    const fillers = new Set(["uh", "um", "hmm", "hm", "well", "ah", "er", "uh huh", "mhm"]);
+    if (fillers.has(norm) || words.every(w => fillers.has(w))) {
+      return { intent: "other", topic_beat_ids: [] };
+    }
 
-    if (isWarrantyExplanation) {
+    // Any real sentence answers (at least 2 words or a meaningful explanation)
+    if (words.length >= 2 || norm.includes("warranty") || norm.includes("cover") || norm.includes("everything")) {
       return { intent: "agree", topic_beat_ids: [] };
     }
   }
@@ -915,16 +1006,26 @@ export function classifyCustomerInputRuleBased(
   ) {
     return { intent: "question_in_script", topic_beat_ids: [13, 14, 15] };
   }
-  if (
-    norm.includes("tire") ||
-    norm.includes("wheel")
-  ) {
+  const isTireExclusionOrCustom =
+    norm.includes("own tire") ||
+    norm.includes("my own tires") ||
+    norm.includes("don t need tire") ||
+    norm.includes("dont need tire") ||
+    norm.includes("drop the tire") ||
+    norm.includes("without the tire") ||
+    norm.includes("remove the tire");
+
+  const isOilExclusionOrCustom =
+    norm.includes("own oil") ||
+    norm.includes("my own oil") ||
+    norm.includes("do my own") ||
+    norm.includes("don t need maintenance") ||
+    norm.includes("dont need maintenance");
+
+  if (!isTireExclusionOrCustom && (norm.includes("tire") || norm.includes("wheel"))) {
     return { intent: "question_in_script", topic_beat_ids: [17] };
   }
-  if (
-    norm.includes("oil change") ||
-    norm.includes("maintenance")
-  ) {
+  if (!isOilExclusionOrCustom && (norm.includes("oil change") || norm.includes("maintenance"))) {
     return { intent: "question_in_script", topic_beat_ids: [18] };
   }
 
@@ -1154,7 +1255,7 @@ export function classifyCustomerInputRuleBased(
     norm.includes("thrilled") ||
     norm.includes("haha") ||
     norm.includes("lol") ||
-    norm.includes("funny") ||
+    (!norm.includes("not funny") && !norm.includes("isnt funny") && !norm.includes("isn t funny") && norm.includes("funny")) ||
     norm.includes("hilarious")
   ) {
     return { intent: "compliment", topic_beat_ids: [] };
@@ -1215,6 +1316,40 @@ export function classifyCustomerInputRuleBased(
     return { intent: "customer_anxious", topic_beat_ids: [] };
   }
 
+  // 8.84. Beat 2 / Beat 3 bare progression check (yes_no beats)
+  // Evaluated after all objections, pause requests, questions, anxiety, and frustration
+  if (currentBeatId === 2 || currentBeatId === 3) {
+    const hasProgressionAction =
+      norm.includes("go ahead") ||
+      norm.includes("go on") ||
+      norm.includes("continue") ||
+      norm.includes("carry on") ||
+      norm.includes("sounds good") ||
+      norm.includes("did that") ||
+      norm.includes("drove") ||
+      norm.includes("drive");
+
+    const isBareAffirmative =
+      !hasProgressionAction &&
+      (norm === "ok" ||
+        norm === "okay" ||
+        norm === "alright" ||
+        norm === "all right" ||
+        norm === "sure" ||
+        norm === "fine" ||
+        norm === "gotcha" ||
+        norm === "cool" ||
+        norm === "uh huh" ||
+        norm === "mhm" ||
+        norm.startsWith("ok ") ||
+        norm.startsWith("okay ") ||
+        norm.startsWith("alright "));
+
+    if (isBareAffirmative) {
+      return { intent: "repeat_request", topic_beat_ids: [] };
+    }
+  }
+
   // 9. Comprehensive Natural Affirmation / Progression
   // Handles compound colloquial variations ("yeah, yeah, okay, go on", "ok sure sounds good", "carry on", etc.)
   if (isAffirmativeOrProgression(norm)) {
@@ -1247,6 +1382,12 @@ export function isAffirmativeOrProgression(norm: string): boolean {
   const nonAffirmativeWords = new Set(["what", "why", "how", "who", "where", "when", "which", "rate", "apr", "cost", "price", "payment", "trade"]);
   if (words.some((w) => nonAffirmativeWords.has(w))) return false;
 
+  // Bare filler words are NOT affirmations
+  const bareFillers = new Set(["uh", "um", "hmm", "hm", "whatever", "maybe"]);
+  if (bareFillers.has(norm) || (words.length === 1 && bareFillers.has(words[0]))) return false;
+  // Trailing hesitation
+  if (norm.endsWith(" uh") || norm.endsWith(" um") || norm.endsWith(" hmm")) return false;
+
   // If the sentence starts with an affirmative anchor and has no questions/negations:
   const affirmativeAnchors = ["yes", "yeah", "yep", "yup", "yea", "sure", "ok", "okay", "alright", "right", "sounds good", "go on", "go ahead"];
   if (affirmativeAnchors.some((a) => norm === a || norm.startsWith(`${a} `))) {
@@ -1262,7 +1403,7 @@ export function isAffirmativeOrProgression(norm: string): boolean {
     "he", "she", "they", "we", "i", "did", "have", "got", "it", "that", "done", "already",
     "drove", "test", "car", "vehicle",
     "definitely", "absolutely", "please", "ready", "set", "perfect", "true", "to", "me",
-    "whatever", "mhm", "mmhmm"
+    "mhm", "mmhmm"
   ]);
 
   if (words.every((w) => affirmativeVocabulary.has(w))) {
@@ -1414,6 +1555,49 @@ export async function generateStep0Turn(
     };
   }
 
+  // Check tech issues first
+  const isTechIssue =
+    norm.includes("cant see") ||
+    norm.includes("can t see") ||
+    norm.includes("cannot see") ||
+    norm.includes("can not see") ||
+    norm.includes("cant hear") ||
+    norm.includes("can t hear") ||
+    norm.includes("cannot hear") ||
+    norm.includes("screen is black") ||
+    norm.includes("no video") ||
+    norm.includes("no audio");
+
+  if (isTechIssue) {
+    return {
+      text: TECH_ISSUE_LINE,
+      moveToBeat1: false,
+    };
+  }
+
+  const isSalesAsk =
+    (norm.includes("sales") &&
+      (norm.includes("call") ||
+        norm.includes("score") ||
+        norm.includes("pitch") ||
+        norm.includes("or not") ||
+        norm.includes("is this") ||
+        norm.includes("are you"))) ||
+    norm.includes("sales call") ||
+    norm.includes("sales pitch") ||
+    norm.includes("sell me") ||
+    norm.includes("selling me") ||
+    norm.includes("trying to sell") ||
+    norm.includes("selling something") ||
+    norm.includes("selling");
+
+  if (isSalesAsk) {
+    return {
+      text: SALES_CALL_LINE,
+      moveToBeat1: false,
+    };
+  }
+
   // Turn 1: customer confirmed audio/video ("i can see you", "yes", etc.)
   // Build rapport & deliver formal greeting asking how their experience was
   if (step0Turns <= 1) {
@@ -1458,19 +1642,6 @@ export async function generateStep0Turn(
       moveToBeat1: false,
     };
   }
-
-  const isSalesAsk =
-    (norm.includes("sales") &&
-      (norm.includes("call") ||
-        norm.includes("score") ||
-        norm.includes("pitch") ||
-        norm.includes("or not") ||
-        norm.includes("is this") ||
-        norm.includes("are you"))) ||
-    norm.includes("sell me") ||
-    norm.includes("trying to sell") ||
-    norm.includes("selling something") ||
-    norm.includes("selling");
 
   if (isSalesAsk) {
     if (isWaitingOrRushed) {
@@ -1745,7 +1916,18 @@ async function handleGroundedTurn(
   const result = await answerFromKnowledgeBase(customerTranscript);
   if (result.kind === "answer") {
     state.ungrounded_count = 0;
-    return { text: `${result.text} ${ANSWER_CHECK_LINE}`, beatType: "wait", toolCalls: [] };
+    const bridge = "Now, back to where we were.";
+    if (state.sentence_index !== undefined && state.sentence_index > 0) {
+      const fullUtterance = getFullBeatUtterance(currentBeat, state.dealConfig, state);
+      const sentences = splitIntoSentences(fullUtterance);
+      if (state.sentence_index < sentences.length) {
+        const remaining = sentences.slice(state.sentence_index).join(" ");
+        state.sentence_index = undefined;
+        return { text: `${result.text} ${bridge} ${remaining}`, beatType: "wait", toolCalls: [] };
+      }
+    }
+    const checkIn = getBeatCheckInQuestion(currentBeat);
+    return { text: `${result.text} ${bridge} ${checkIn}`, beatType: "wait", toolCalls: [] };
   }
   state.ungrounded_count = (state.ungrounded_count || 0) + 1;
   console.warn("[beat-controller] UNANSWERED_QUESTION", JSON.stringify({ beat: currentBeat.id, q: customerTranscript }));
@@ -1772,10 +1954,11 @@ export async function processControllerTurn(
 ): Promise<ControllerDecision> {
   const state = getOrCreateCallState(sessionId, dealConfig);
 
-  // If already stopped after Beat 22 or handoff, speak HANDOFF_LINE and stop
+  // If already stopped after Beat 22 or handoff, speak appropriate terminal line and stop
   if (state.is_stopped) {
+    const terminalText = state.current_beat >= 25 ? SCRIPT_COMPLETE_LINE : HANDOFF_LINE;
     return {
-      textToSpeak: HANDOFF_LINE,
+      textToSpeak: terminalText,
       beatId: state.current_beat,
       beatType: "stop",
       toolCalls: [],
@@ -1835,16 +2018,64 @@ export async function processControllerTurn(
 
   switch (intent) {
     case "agree": {
+      const currentBeatObj = BEATS.find((b) => b.id === state.current_beat);
+      if (currentBeatObj) {
+        const expects = currentBeatObj.expects || (currentBeatObj.check_in ? "statement" : "statement");
+        const norm = customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+        // In yes_no beat (Beat 2, 3), a bare "ok" or "sure" without confirmation must NOT advance
+        if (expects === "yes_no") {
+          const isExplicitDriveOrWalkaround =
+            Boolean(mockClassification) ||
+            norm.includes("drove") ||
+            norm.includes("drive") ||
+            norm.includes("walkaround") ||
+            norm.includes("showed") ||
+            norm.includes("went over") ||
+            norm.includes("did that") ||
+            norm === "yes" ||
+            norm === "yeah" ||
+            norm === "yep" ||
+            norm.startsWith("yes ") ||
+            norm.startsWith("yeah ") ||
+            norm.includes(" yes ") ||
+            norm.includes(" yeah ") ||
+            norm === "i did" ||
+            norm === "we did" ||
+            norm === "he did" ||
+            norm === "they did" ||
+            norm === "sure did";
+
+          if (!isExplicitDriveOrWalkaround) {
+            // Uncertain - hold beat and ask confirmation
+            if (state.current_beat === 2) {
+              textToSpeak = "Just to confirm, did you get a chance to take it for a test drive, or have you not driven it yet?";
+            } else {
+              textToSpeak = "Just to confirm, did the salesperson do the walkaround with you, or did they not get to that?";
+            }
+            beatType = "wait";
+            break;
+          }
+        }
+      }
+
       state.no_count_in_a_row = 0;
       state.ungrounded_count = 0;
       let nextBeatId = state.current_beat + 1;
 
+      // If customer explicitly accepts the offer at Beat 22, jump directly to Beat 24 (confirmation), skipping negotiation (Beat 23)
+      if (state.current_beat === 22) {
+        const norm = customerTranscript.toLowerCase();
+        if (norm.includes("works for me") || norm.includes("that works") || norm.includes("i'll take it") || norm.includes("ill take it") || norm.includes("deal")) {
+          nextBeatId = 24;
+        }
+      }
+
       // Check if finished all script beats
       if (nextBeatId > BEATS.length) {
         state.is_stopped = true;
-        textToSpeak = HANDOFF_LINE;
+        textToSpeak = SCRIPT_COMPLETE_LINE;
         beatType = "stop";
-        toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
+        toolCalls = [{ name: "show_content", args: { item: "deal_summary" } }];
         onScriptComplete(state);
         break;
       }
@@ -1894,7 +2125,7 @@ export async function processControllerTurn(
           state.delivered_beats.push(4);
           const beat4 = BEATS.find((b) => b.id === 4)!;
           const beat4Utterance = getFullBeatUtterance(beat4, state.dealConfig, state);
-          textToSpeak = `No problem at all, we'll make sure our team gives you a full test drive and walkaround before you take delivery. ${beat4Utterance}`;
+          textToSpeak = `No problem, thanks for letting me know. ${beat4Utterance}`;
           beatType = beat4.type;
           toolCalls = getBeatToolCalls(4);
           break;
@@ -1908,7 +2139,7 @@ export async function processControllerTurn(
         state.delivered_beats.push(4);
         const beat4 = BEATS.find((b) => b.id === 4)!;
         const beat4Utterance = getFullBeatUtterance(beat4, state.dealConfig);
-        textToSpeak = `No problem at all, I'll make sure we go over all the features and paperwork so you have full clarity before you take delivery. ${beat4Utterance}`;
+        textToSpeak = `No problem, thanks for letting me know. ${beat4Utterance}`;
         beatType = beat4.type;
         toolCalls = getBeatToolCalls(4);
         break;
@@ -2049,7 +2280,10 @@ export async function processControllerTurn(
         norm.includes("dollar fifty") ||
         norm.includes("1.50") ||
         norm.includes("2.50") ||
-        norm.includes("2.00");
+        norm.includes("2.00") ||
+        norm.includes("20 dollars a month") ||
+        norm.includes("twenty dollars") ||
+        norm.includes("20 a month");
 
       if (hasOfferBelowThree) {
         state.concession_stage = 4;
@@ -2057,7 +2291,6 @@ export async function processControllerTurn(
         textToSpeak = FLOOR_PRICE_LINE;
         beatType = "wait";
         toolCalls = [{ name: "show_payment_breakdown", args: { daily_rate: 3.0 } }];
-        state.current_beat = 23;
         break;
       }
 
@@ -2138,6 +2371,11 @@ export async function processControllerTurn(
         beatType = "wait";
         break;
       }
+      if (state.current_beat === 3 && !isExplicitRepeat) {
+        textToSpeak = "Just to confirm, did the salesperson do the walkaround with you, or did they not get to that?";
+        beatType = "wait";
+        break;
+      }
       const currentBeat = BEATS.find((b) => b.id === state.current_beat)!;
       textToSpeak = getFullBeatUtterance(currentBeat, state.dealConfig);
       beatType = currentBeat.type;
@@ -2155,7 +2393,21 @@ export async function processControllerTurn(
     case "human_request": {
       // Speak HANDOFF_LINE and stop
       state.is_stopped = true;
-      textToSpeak = HANDOFF_LINE;
+      const norm = customerTranscript.toLowerCase();
+      if (state.current_beat === 1 && (norm.includes("recorded") || norm.includes("recording"))) {
+        textToSpeak = "I understand. I'll end this session now.";
+      } else {
+        textToSpeak = HANDOFF_LINE;
+      }
+      beatType = "stop";
+      toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
+      onScriptComplete(state);
+      break;
+    }
+
+    case "hang_up": {
+      state.is_stopped = true;
+      textToSpeak = "I understand. I'll end this session now.";
       beatType = "stop";
       toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
       onScriptComplete(state);
@@ -2194,7 +2446,7 @@ export async function processControllerTurn(
       const isLaughterOrHumor =
         norm.includes("haha") ||
         norm.includes("lol") ||
-        norm.includes("funny") ||
+        (!norm.includes("not funny") && !norm.includes("isnt funny") && !norm.includes("isn t funny") && norm.includes("funny")) ||
         norm.includes("hilarious") ||
         norm.includes("crack me up");
 
@@ -2225,7 +2477,7 @@ export async function processControllerTurn(
 
       // 1. Retail / Dealership markup objection
       if (norm.includes("markup") || norm.includes("ridiculous") || norm.includes("ripoff") || norm.includes("overpriced")) {
-        textToSpeak = "I completely hear you—retail parts prices and dealership labor can feel outrageous. That's exactly why we don't want you paying out-of-pocket retail markup; our protection covers parts and certified labor with zero deductible. Does that make sense?";
+        textToSpeak = MARKUP_OBJECTION_LINE;
         beatType = "wait";
         toolCalls = [];
         break;
@@ -2343,21 +2595,17 @@ export async function processControllerTurn(
     }
 
     case "ai_question": {
-      // Speak AI_DISCLOSURE_LINE, then resume
-      const nextBeatId = state.current_beat + 1;
-      if (nextBeatId <= BEATS.length) {
-        state.current_beat = nextBeatId;
-        state.delivered_beats.push(nextBeatId);
-        const nextBeat = BEATS.find((b) => b.id === nextBeatId)!;
-        const nextUtterance = getFullBeatUtterance(nextBeat, state.dealConfig);
-        textToSpeak = `${AI_DISCLOSURE_LINE} ${nextUtterance}`;
-        beatType = nextBeat.type;
-        toolCalls = getBeatToolCalls(nextBeatId);
+      // Speak AI_DISCLOSURE_LINE, hold current beat, re-prompt check-in
+      const currentBeat = BEATS.find((b) => b.id === state.current_beat);
+      if (currentBeat) {
+        const checkIn = getBeatCheckInQuestion(currentBeat);
+        textToSpeak = `${AI_DISCLOSURE_LINE} ${checkIn}`;
+        beatType = "wait";
+        toolCalls = [];
       } else {
-        textToSpeak = `${AI_DISCLOSURE_LINE} ${HANDOFF_LINE}`;
-        state.is_stopped = true;
-        beatType = "stop";
-        toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
+        textToSpeak = `${AI_DISCLOSURE_LINE} Can you hear and see me alright?`;
+        beatType = "wait";
+        toolCalls = [];
       }
       break;
     }
@@ -2441,6 +2689,59 @@ export async function processControllerTurn(
 
     case "other":
     default: {
+      const norm = customerTranscript.toLowerCase();
+      if (state.current_beat === 22) {
+        if (norm.includes("per day") || norm.includes("per month") || norm.includes("day or month")) {
+          textToSpeak = UNIT_PRICE_LINE;
+          beatType = "wait";
+          toolCalls = [];
+          break;
+        }
+        if (norm.includes("total") || norm.includes("what is the total") || norm.includes("whats the total") || norm.includes("what s the total")) {
+          textToSpeak = TOTAL_PRICE_LINE;
+          beatType = "wait";
+          toolCalls = [];
+          break;
+        }
+        if (norm.includes("think") || norm.includes("kids") || norm.includes("children")) {
+          textToSpeak = THINK_ABOUT_IT_LINE;
+          beatType = "wait";
+          toolCalls = [];
+          break;
+        }
+        if (norm.includes("drop") || norm.includes("drop the tires") || norm.includes("without tires")) {
+          textToSpeak = DROP_COVERAGE_LINE;
+          beatType = "wait";
+          toolCalls = [];
+          break;
+        }
+      }
+
+      if (state.current_beat === 17) {
+        if (norm.includes("own tire") || norm.includes("don t need tire") || norm.includes("dont need tire") || norm.includes("without tire")) {
+          textToSpeak = TIRE_EXCLUSION_LINE;
+          beatType = "wait";
+          toolCalls = [];
+          break;
+        }
+      }
+
+      if (state.current_beat === 18) {
+        if (norm.includes("own oil") || norm.includes("my own") || norm.includes("don t need maintenance") || norm.includes("dont need maintenance")) {
+          textToSpeak = MAINTENANCE_EXCLUSION_LINE;
+          beatType = "wait";
+          toolCalls = [];
+          break;
+        }
+      }
+
+      if (state.current_beat === 19 && (norm.includes("not funny") || norm.includes("isnt funny") || norm.includes("isn t funny"))) {
+        textToSpeak = NOT_FUNNY_LINE;
+        beatType = "wait";
+        toolCalls = [];
+        break;
+      }
+
       const g = await handleGroundedTurn(customerTranscript, state, BEATS.find((b) => b.id === state.current_beat)!);
       textToSpeak = g.text;
       beatType = g.beatType;

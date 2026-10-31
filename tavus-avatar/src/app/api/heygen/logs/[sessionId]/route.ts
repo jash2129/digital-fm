@@ -35,6 +35,7 @@ export async function POST(
       transcript: body.transcript || existingLog.transcript || [],
       timingLogs: body.timingLogs || existingLog.timingLogs || [],
       bargeIns: body.bargeIns || existingLog.bargeIns || [],
+      turnLogs: body.turnLogs || existingLog.turnLogs || [],
     };
 
     saveHeygenTranscript(logData);

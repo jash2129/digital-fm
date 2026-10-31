@@ -50,6 +50,15 @@ export type HeygenCallLog = {
   transcript: HeygenUtteranceEntry[];
   timingLogs?: TurnTimingLog[];
   bargeIns?: BargeInLog[];
+  turnLogs?: Array<{
+    ts: string;
+    rawTranscript: string;
+    avatarSpeaking: boolean;
+    intent: string;
+    beatBefore: number;
+    beatAfter: number;
+    reason: string;
+  }>;
 };
 
 export function getHeygenLogsDir() {

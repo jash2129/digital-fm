@@ -154,7 +154,7 @@
     {
       "id": "service_location",
       "topic": "Where to get service",
-      "answer": "Customer is kindly asked to come to the dealership for service. The dealership only benefits when customers visit its service locations across the metroplex. They can go anywhere with zero deductible.",
+      "answer": "We kindly ask you to come here to the dealership for service, where we only benefit when you visit our service locations across the metroplex, but you can go anywhere with zero deductible.",
       "source_beats": [
         16
       ],

@@ -14,12 +14,12 @@ describe("Client Scenarios Human Experience Validation", () => {
 
     // Turn 2: Sales Objection 1
     const t2 = await processControllerTurn(sessionId, "Is this a sales call or what?", DEFAULT_DEAL_CONFIG);
-    expect(t2.textToSpeak).toContain("This isn't a sales call");
+    expect(t2.textToSpeak).toContain("coverage options with you before you sign");
     expect(t2.textToSpeak).not.toContain("Awesome, so glad to hear that!");
 
     // Turn 3: Sales Objection 2 (STT 'sales score' insistence)
     const t3 = await processControllerTurn(sessionId, "Let me make you clear, is this a sales score or not? Just let me know.", DEFAULT_DEAL_CONFIG);
-    expect(t3.textToSpeak).toContain("This isn't a sales call");
+    expect(t3.textToSpeak).toContain("coverage options with you before you sign");
     expect(t3.textToSpeak).not.toContain("Awesome, so glad to hear that!");
 
     // Turn 4: Agreement to proceed into disclosure
@@ -147,7 +147,7 @@ describe("Client Scenarios Human Experience Validation", () => {
 
     // Turn 13: Human Escalation Request Test: 'Let me talk to a real person'
     const t13 = await processControllerTurn(sessionId, "I want to speak with a human manager right now.", DEFAULT_DEAL_CONFIG);
-    expect(t13.textToSpeak).toContain("I have full authority to handle your paperwork");
+    expect(t13.textToSpeak).toContain("What question can I answer?");
     expect(t13.textToSpeak).not.toContain("bring in my colleague");
 
     // Turn 14: Final Agreement at $3.00/day
@@ -171,7 +171,7 @@ describe("Client Scenarios Human Experience Validation", () => {
 
     // Turn 3: Sales Pitch Warning
     const t3 = await processControllerTurn(sessionId, "Fine, whatever. Just don't waste my time with extra sales pitches.", DEFAULT_DEAL_CONFIG);
-    expect(t3.textToSpeak).toContain("zero sales pressure");
+    expect(t3.textToSpeak).toContain("coverage options with you before you sign");
 
     // Turn 4: Impatience / Get to point command into Legal Disclosure
     const t4 = await processControllerTurn(sessionId, "I'm listening, get to the point.", DEFAULT_DEAL_CONFIG);

@@ -5,12 +5,12 @@ import { DEFAULT_DEAL_CONFIG } from "@/lib/deal-config";
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { messages = [], sessionId = "live_session", dealConfig = DEFAULT_DEAL_CONFIG } = body;
+    const { messages = [], sessionId = "live_session", dealConfig = DEFAULT_DEAL_CONFIG, clientBeatId } = body;
 
     const latestUserMessage =
       [...messages].reverse().find((m: any) => m.role === "user")?.content || "";
 
-    console.log(`[api/chat/grok] Processing turn for session "${sessionId}", user: "${latestUserMessage}"`);
+    console.log(`[api/chat/grok] Processing turn for session "${sessionId}", user: "${latestUserMessage}", clientBeatId: ${clientBeatId}`);
 
     // Execute verbatim Beat Controller (LLM only classifies intent, words come strictly from script & max-lines)
     const decision = await processControllerTurn(sessionId, latestUserMessage, dealConfig);
@@ -27,6 +27,7 @@ export async function POST(request: Request) {
       beatType: decision.beatType,
       intent: decision.intent,
       isScriptComplete: decision.isScriptComplete,
+      clientBeatId,
     });
   } catch (error: any) {
     console.error("[api/chat/grok error, returning safe fallback]:", error);

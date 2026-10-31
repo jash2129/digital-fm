@@ -21,8 +21,8 @@ export const DEFER_LINE = "I'm going to cover that in just a moment.";
 export const OUT_OF_SCRIPT_LINE = "Those purchase terms are locked in on your primary sales agreement — let's make sure your new vehicle is 100% protected before you sign.";
 
 // Spoken when customer asks for a human or manager
-// Status: APPROVED — Self-sufficient finance director, zero escalation
-export const HANDOFF_LINE = "I have full authority to handle your paperwork and finalize your protection package right here. How can I help you?";
+// Status: PENDING TXM — stay in character, do not claim "full authority"
+export const HANDOFF_LINE = "I'm Max, your finance manager, and I'll go through everything with you right here. What question can I answer?";
 
 // Spoken when all beats and paperwork review are complete
 export const SCRIPT_COMPLETE_LINE = "Everything on your paperwork is all set and finalized. Congratulations on your new vehicle, and enjoy the ride!";
@@ -104,13 +104,16 @@ export const EQ_HUMOR_BRIDGES = {
 };
 
 // Spoken when customer asks if regular car insurance covers mechanical repairs
-export const INSURANCE_LINE = "Auto insurance only covers accident collisions and physical damage, not mechanical breakdowns, electronics, or wear and tear.";
+// Status: PENDING TXM
+export const INSURANCE_LINE = "Insurance and this coverage are separate; the paperwork explains what each one covers.";
 
 // Spoken when customer mentions spouse or wife decision-maker
-export const SPOUSE_LINE = "I completely respect that! In fact, most couples choose this package specifically because it protects the family budget from surprise multi-thousand dollar repair bills. What questions can I answer for her?";
+// Status: PENDING TXM
+export const SPOUSE_LINE = "I completely respect that! In fact, this package is designed specifically to protect the family budget from surprise multi-thousand dollar repair bills. What questions can I answer for her?";
 
 // Spoken when customer asks about cancellation or selling the car early
-export const CANCELLATION_LINE = "Yes absolutely, the policy is fully transferable if you sell the car, and pro-rated refundable if you pay off or trade in the vehicle early.";
+// Status: PENDING TXM
+export const CANCELLATION_LINE = "That's covered in your contract paperwork, and I'll go over the details with you before you sign.";
 
 // Spoken when customer notes they are buying a different car or reports vehicle mismatch
 export const VEHICLE_DISCREPANCY_LINE = "Oh, thank you for catching that! My system pulled up the Mazda CX-5 file, but let me immediately note that you're buying the {{vehicle_model}} so sales and titling update your paperwork right away. While they make that quick update, the protection coverage works the exact same way — did you get a chance to test drive the vehicle?";
@@ -119,7 +122,8 @@ export const VEHICLE_DISCREPANCY_LINE = "Oh, thank you for catching that! My sys
 export const MANUFACTURER_VS_DEALER_LINE = "Great question. The factory warranty comes directly from the manufacturer, but it only covers manufacturer defects. The vehicle protection packages we're reviewing are our dealership's comprehensive coverage, which covers wear and tear, mechanical breakdowns, sensors, and electronic parts that the factory warranty excludes. Does that make sense?";
 
 // Spoken when customer asks if this is a sales call or trying to sell them something
-export const SALES_CALL_LINE = "Not at all! This isn't a sales call—my job is simply to review your paperwork and factory warranty before you sign anything. Did our sales team treat you well today?";
+// Status: PENDING TXM
+export const SALES_CALL_LINE = "I'm Max, your finance manager. My job is to go over your paperwork and the coverage options with you before you sign.";
 
 // Spoken when customer asks what this call is for or why they are meeting with finance
 export const CALL_PURPOSE_LINE = "Every buyer meets with finance before delivery to verify paperwork, registration details, and review factory warranty coverage. Did you get a good feel for the car on your test drive?";
@@ -135,3 +139,15 @@ export const CLARIFY_LINE = "Would you like me to continue, or go over that agai
 // Spoken after an answer from the knowledge base, before returning to the script.
 // Status: PENDING TXM APPROVAL.
 export const ANSWER_CHECK_LINE = "Does that answer your question?";
+
+// Contextual objection and exclusion stand-ins.
+// Status: PENDING TXM APPROVAL.
+export const TIRE_EXCLUSION_LINE = "You can certainly use your own tires, but the tire and wheel package protects your tires and wheels against road hazard damage with zero deductible.";
+export const MAINTENANCE_EXCLUSION_LINE = "I understand you do your own maintenance! The package covers synthetic oil and filter changes so you have zero out-of-pocket expenses.";
+export const DROP_COVERAGE_LINE = "If you'd like to drop the tire and wheel package, we can adjust the coverage options to fit what you need most.";
+export const UNIT_PRICE_LINE = "That's four dollars a day, which works out to about one hundred and twenty dollars a month on your paperwork.";
+export const TOTAL_PRICE_LINE = "The total for full vehicle protection is four dollars a day over your contract term.";
+export const THINK_ABOUT_IT_LINE = "I completely understand taking time to think about it. Protecting your family budget from sudden repair bills is important. What part of the coverage can I clarify for you?";
+export const NOT_FUNNY_LINE = "I understand. Let's focus on the protection options for your vehicle.";
+export const TECH_ISSUE_LINE = "I'm sorry about that! Let me check the connection on my end. Can you see and hear me clearly now?";
+export const MARKUP_OBJECTION_LINE = "I completely hear you—retail parts prices and dealership labor can feel outrageous. That's exactly why we don't want you paying out-of-pocket retail markup; our protection covers parts and certified labor with zero deductible. Does that make sense?";

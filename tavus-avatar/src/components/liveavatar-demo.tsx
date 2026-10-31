@@ -355,6 +355,16 @@ export function LiveAvatarDemo() {
   const avatarFinishedAtRef = useRef<number>(0);
   const lastInterruptedAtRef = useRef<number>(0);
   const isListeningRef = useRef<boolean>(false);
+  const lastCustomerTranscriptRef = useRef<string>("");
+  const turnLogsRef = useRef<Array<{
+    ts: string;
+    rawTranscript: string;
+    avatarSpeaking: boolean;
+    intent: string;
+    beatBefore: number;
+    beatAfter: number;
+    reason: string;
+  }>>([]);
 
   // LiveKit WebRTC references
   const roomRef = useRef<Room | null>(null);
@@ -644,12 +654,14 @@ export function LiveAvatarDemo() {
       };
 
       try {
+        const beatBefore = currentBeat.id;
         const res = await fetch("/api/chat/grok", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             messages: updatedHistory,
             sessionId: sessionIdRef.current || sessionId || "live_session",
+            clientBeatId: beatBefore,
           }),
         });
 
@@ -659,7 +671,28 @@ export function LiveAvatarDemo() {
         }
 
         const data = await res.json();
+
+        // Task 2: Drop responses whose beat id is stale
+        if (data.clientBeatId !== undefined && data.clientBeatId !== currentBeat.id) {
+          console.warn(`[liveavatar turn gate] Dropped stale response (sent on beat ${data.clientBeatId}, current beat is ${currentBeat.id})`);
+          return;
+        }
+
         const assistantText = data.text || "";
+        const beatAfter = data.currentBeatId !== undefined ? data.currentBeatId : beatBefore;
+
+        // Task 2: Log every turn as one JSON line
+        const turnLog = {
+          ts: new Date().toISOString(),
+          rawTranscript: userInput,
+          avatarSpeaking: isAvatarSpeakingRef.current,
+          intent: data.intent || "unknown",
+          beatBefore,
+          beatAfter,
+          reason: "processed",
+        };
+        console.log("[liveavatar turn gate]:", JSON.stringify(turnLog));
+        turnLogsRef.current.push(turnLog);
 
         // Record controller decision timestamp
         const decisionTime = Date.now();
@@ -872,28 +905,46 @@ export function LiveAvatarDemo() {
           return;
         }
 
-        // 2. If Max is still speaking when silence timer fires:
-        if (isAvatarSpeakingRef.current) {
-          if (!shouldCutMaxOff(spoken)) {
-            console.warn("[liveavatar] Discarded speech during avatar playback as speaker leakage:", spoken);
-            return;
-          }
-          // User spoke an intentional turn: cut off Max immediately!
-          console.log("[liveavatar] Interrupting Max in silence timer due to user speech:", spoken);
-          void interruptAvatar();
-        }
+        // Task 2: Ignore transcripts that arrive while avatar is speaking or within 600 ms after it stops,
+        // unless they contain a stop word (stop, wait, hold on, excuse me, etc.)
+        const stopWords = ["stop", "wait", "hold on", "excuse me", "hang on", "hold up", "pause"];
+        const normSpokenLower = spoken.toLowerCase();
+        const containsStopWord = stopWords.some((sw) => normSpokenLower.includes(sw));
 
-        // 3. For 1500ms after avatar stops speaking, Web Speech API delayed packets can still arrive:
-        if (
-          timeSinceAvatarStop < 1500 &&
-          isNearExactEcho(spoken, [
-            lastSpokenByAvatarRef.current,
-            ...recentAvatarTextsRef.current.map((r) => r.text),
-          ])
-        ) {
-          console.warn("[liveavatar] Discarded delayed post-avatar speaker echo:", spoken);
+        if ((isAvatarSpeakingRef.current || timeSinceAvatarStop < 600) && !containsStopWord) {
+          const logEntry = {
+            ts: new Date().toISOString(),
+            rawTranscript: spoken,
+            avatarSpeaking: isAvatarSpeakingRef.current,
+            intent: "dropped_speaking_gate",
+            beatBefore: currentBeat.id,
+            beatAfter: currentBeat.id,
+            reason: isAvatarSpeakingRef.current ? "avatar_speaking" : "within_600ms_post_stop",
+          };
+          console.warn("[liveavatar turn gate] Discarded transcript during speaking/600ms buffer:", JSON.stringify(logEntry));
+          turnLogsRef.current.push(logEntry);
           return;
         }
+
+        // Task 2: Drop a transcript that equals or is contained in the previous customer turn (e.g. STT trailing chunks)
+        const prevCustomer = lastCustomerTranscriptRef.current.toLowerCase().trim();
+        const normSpokenTrim = normSpokenLower.trim();
+        if (prevCustomer && (prevCustomer === normSpokenTrim || prevCustomer.includes(normSpokenTrim) || normSpokenTrim.includes(prevCustomer))) {
+          const logEntry = {
+            ts: new Date().toISOString(),
+            rawTranscript: spoken,
+            avatarSpeaking: isAvatarSpeakingRef.current,
+            intent: "dropped_trailing_chunk",
+            beatBefore: currentBeat.id,
+            beatAfter: currentBeat.id,
+            reason: "contained_in_or_equals_previous_customer_turn",
+          };
+          console.warn("[liveavatar turn gate] Discarded duplicate/trailing customer transcript chunk:", JSON.stringify(logEntry));
+          turnLogsRef.current.push(logEntry);
+          return;
+        }
+
+        lastCustomerTranscriptRef.current = spoken;
 
         console.log(
           `[speech-recognition] Speech silence timeout (${delayMs}ms) fired turn dispatch:`,

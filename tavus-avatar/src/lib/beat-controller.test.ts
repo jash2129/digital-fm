@@ -15,6 +15,7 @@ import {
   DEFER_LINE,
   OUT_OF_SCRIPT_LINE,
   HANDOFF_LINE,
+  SCRIPT_COMPLETE_LINE,
   AI_DISCLOSURE_LINE,
   STEP_0_GREETING,
   PAUSE_LINE,
@@ -53,7 +54,7 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       const salesDecision = await processControllerTurn(qSessionId, "Is this a sales call?");
       expect(salesDecision.beatId).toBe(0);
       expect(salesDecision.state.step0_completed).toBe(false);
-      expect(salesDecision.textToSpeak).toContain("Not at all! This isn't a sales call");
+      expect(salesDecision.textToSpeak).toContain("coverage options with you before you sign");
 
       // Turn 3: Customer answers rapport question -> transitions to Beat 1 with disclosure
       const decision2 = await processControllerTurn(sessionId, "The team was great today");
@@ -225,8 +226,8 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
           userInput: "Can we restart from the beginning?",
           intent: "restart_request",
           topic_beat_ids: [],
-          // Off-script turns now hold the beat instead of skipping, so the pointer is still on Beat 5
-          expectedKeyword: "more information about the warranty",
+          // Off-script and AI disclosure turns now hold the beat instead of skipping, so the pointer is still on Beat 4
+          expectedKeyword: "understanding of the warranty",
         },
         {
           stepName: "11. other -> answers from the approved knowledge base, holds the beat",
@@ -331,7 +332,7 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
         intent: "agree",
         topic_beat_ids: [],
       });
-      expect(finalTurn.textToSpeak).toBe(HANDOFF_LINE);
+      expect(finalTurn.textToSpeak).toBe(SCRIPT_COMPLETE_LINE);
       expect(finalTurn.beatType).toBe("stop");
       expect(finalTurn.isScriptComplete).toBe(true);
       expect(finalTurn.state.is_stopped).toBe(true);
@@ -518,7 +519,7 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       const noWalkaroundTurn = await processControllerTurn(sessionId, "No, he didn't show me anything");
       expect(noWalkaroundTurn.intent).toBe("no");
       expect(noWalkaroundTurn.beatId).toBe(4);
-      expect(noWalkaroundTurn.textToSpeak).toContain("No problem at all, I'll make sure we go over all the features");
+      expect(noWalkaroundTurn.textToSpeak).toContain("No problem, thanks for letting me know.");
       expect(noWalkaroundTurn.textToSpeak).toContain("What's your understanding of the warranty that comes with the vehicle?");
       expect(noWalkaroundTurn.state.is_stopped).toBe(false);
     });
@@ -531,7 +532,7 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       const noDriveTurn = await processControllerTurn(sessionId, "I didn't get a chance to drive the vehicle");
       expect(noDriveTurn.intent).toBe("no");
       expect(noDriveTurn.beatId).toBe(4);
-      expect(noDriveTurn.textToSpeak).toContain("No problem at all, we'll make sure our team gives you a full test drive and walkaround before you take delivery");
+      expect(noDriveTurn.textToSpeak).toContain("No problem, thanks for letting me know.");
       expect(noDriveTurn.textToSpeak).toContain("What's your understanding of the warranty that comes with the vehicle?");
       expect(noDriveTurn.textToSpeak).not.toContain("When you came back from the test drive");
       expect(noDriveTurn.state.is_stopped).toBe(false);
@@ -562,7 +563,7 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       const freshSession = "test-sales-score-" + Date.now();
       await processControllerTurn(freshSession, "Yes, I can hear you");
       const salesAskTurn = await processControllerTurn(freshSession, "Let me make you clear, is this a sales score or not? Just let me know.");
-      expect(salesAskTurn.textToSpeak).toContain("This isn't a sales call");
+      expect(salesAskTurn.textToSpeak).toContain("coverage options with you before you sign");
       expect(salesAskTurn.textToSpeak).not.toContain("Awesome, so glad to hear that!");
     });
 
