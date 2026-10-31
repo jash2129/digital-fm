@@ -4,7 +4,7 @@
 import { describe, it, expect } from "vitest";
 import { processControllerTurn, getOrCreateCallState, resetCallState, repromptText, BEATS } from "./beat-controller";
 import { DEFAULT_DEAL_CONFIG } from "./deal-config";
-import { STEP_0_CHECKIN_LINE, STEP_0_SORRY_LINE, NO_PRESSURE_LINE, UNKNOWN_QUESTION_LINE, LEAD_IN_NO, TAKE_TIME_LINE } from "./max-lines";
+import { STEP_0_CHECKIN_LINE, STEP_0_SORRY_LINE, NO_PRESSURE_LINE, UNKNOWN_QUESTION_LINE, LEAD_IN_NO, TAKE_TIME_LINE, CLARIFY_LINE } from "./max-lines";
 
 const GLAD = "so glad to hear that";
 
@@ -156,5 +156,25 @@ describe("5: Step 0 answers re-ask the Step 0 question", () => {
     const t = await say(newCall(), "Is this a sales call?");
     expect(t.textToSpeak.startsWith("I'm Max, your finance manager.")).toBe(true);
     expect(t.textToSpeak.endsWith(STEP_0_CHECKIN_LINE)).toBe(true);
+  });
+});
+
+describe("6: a 'yeah' to the clarify line re-asks the unanswered question", () => {
+  it("Beat 2: 'I guess' -> clarify -> 'Yeah' re-asks whether they drove it, then 'yes I drove it' advances", async () => {
+    const sid = atBeat(2);
+    const unsure = await say(sid, "I guess");
+    expect(unsure.textToSpeak.endsWith(CLARIFY_LINE)).toBe(true);
+    const yeah = await say(sid, "Yeah");
+    expect(yeah.beatId).toBe(2);
+    expect(yeah.textToSpeak).toMatch(/test drive\?$/);
+    const drove = await say(sid, "yes I drove it");
+    expect(drove.beatId).toBe(3);
+  });
+
+  it("at a statement beat, 'yes' to the clarify line still continues", async () => {
+    const sid = atBeat(7);
+    getOrCreateCallState(sid).last_spoken_text = CLARIFY_LINE;
+    const t = await say(sid, "yes");
+    expect(t.beatId).toBeGreaterThan(7);
   });
 });

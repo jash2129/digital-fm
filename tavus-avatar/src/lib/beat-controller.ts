@@ -2592,6 +2592,14 @@ async function runControllerTurn(
       if (currentBeatObj) {
         const expects = currentBeatObj.expects || (currentBeatObj.check_in ? "statement" : "statement");
         const norm = customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+        // A bare "yeah" right after the clarify line answers "continue, or go over that again?", not the
+        // beat's own question (S3: "I guess" -> clarify -> "Yeah" skipped "did you drive it?"). Re-ask it.
+        if ((expects === "yes_no" || expects === "open") && state.last_spoken_text.endsWith(CLARIFY_LINE) && isBareAck(norm)) {
+          textToSpeak = pendingQuestion(state);
+          beatType = "wait";
+          toolCalls = [];
+          break;
+        }
         // In yes_no beat (Beat 2, 3), a bare "ok" or "sure" without confirmation must NOT advance
         if (expects === "yes_no") {
           const isExplicitDriveOrWalkaround =
@@ -3425,7 +3433,8 @@ async function runControllerTurn(
 
   state.last_spoken_text = textToSpeak;
   const askedNow = lastQuestionOf(textToSpeak);
-  if (askedNow) {
+  // The clarify line is about the reply, not the beat: the beat's own question stays pending
+  if (askedNow && askedNow !== CLARIFY_LINE) {
     state.last_question = askedNow;
     state.last_question_beat = state.current_beat;
   }
