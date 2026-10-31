@@ -209,8 +209,10 @@ export default function CallInspectorPage() {
               <div className="p-4 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between">
                 <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Premature Cut-Offs</span>
                 <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-2xl font-black text-rose-400">{analysis.interruptedTurnsCount}</span>
-                  <span className="text-xs text-slate-400">mid-sentence interruptions</span>
+                  <span className="text-2xl font-black text-rose-400">{analysis.bargeInsCount}</span>
+                  <span className="text-xs text-slate-400">
+                    cuts across {analysis.interruptedTurnsCount} line{analysis.interruptedTurnsCount === 1 ? "" : "s"}
+                  </span>
                 </div>
                 <p className="mt-2 text-xs text-slate-400">
                   Times Max was abruptly stopped before finishing his sentences

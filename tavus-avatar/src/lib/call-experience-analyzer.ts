@@ -22,7 +22,7 @@ export interface ExperienceFlaw {
   id: string;
   second: number;
   timeFormatted: string;
-  category: "echo_loop" | "premature_cutoff" | "dialogue_mashup" | "high_latency" | "rapid_turns";
+  category: "echo_loop" | "premature_cutoff" | "dialogue_mashup" | "high_latency" | "rapid_turns" | "barge_in";
   title: string;
   description: string;
   humanImpact: string;
@@ -96,6 +96,13 @@ export function analyzeCallExperience(log: HeygenCallLog): CallExperienceAnalysi
   let totalLatency = 0;
   let latencyCount = 0;
 
+  // Whole words only ("ok" is not inside "okay" or "look"); "ok" and "okay" are the same word
+  const normText = (t: string) =>
+    t.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim().replace(/\bok\b/g, "okay");
+  const containsWords = (hay: string[], needle: string[]) =>
+    needle.length > 0 && hay.some((_, i) => needle.every((w, j) => hay[i + j] === w));
+  let prevAvatarEndRelSec: number | null = null;
+
   // Process timing logs into blocks
   timingLogs.forEach((turn, idx) => {
     const userInputStr = turn.userInput || "";
@@ -134,9 +141,23 @@ export function analyzeCallExperience(log: HeygenCallLog): CallExperienceAnalysi
     // Check if user input was patched/display-only
     const isPatched = (turn as any).inputType === "PATCHED_DISPLAY_ONLY" || userInputStr === "Call Start" || userInputStr === "[NO_CUSTOMER_INPUT]";
 
-    // Check if user input was acoustic echo (ignore patched inputs)
-    const isEcho = !isPatched && (isAvatarScriptEcho(userInputStr) || 
-      (idx > 0 && (timingLogs[idx - 1]?.avatarText || "").toLowerCase().includes(userInputStr.toLowerCase().trim())));
+    // Check if user input was acoustic echo (ignore patched inputs).
+    // A short reply that only matches Max's final word(s) ("okay" after "...understand first okay.")
+    // arriving in the last 1.5 s of his line, or after it, is the customer answering, not echo.
+    const prevAvatarNorm = idx > 0 ? normText(timingLogs[idx - 1]?.avatarText || "") : "";
+    const userNorm = normText(userInputStr);
+    const userWordList = userNorm.split(" ").filter(Boolean);
+    const prevWordList = prevAvatarNorm.split(" ").filter(Boolean);
+    const matchesOnlyFinalWords =
+      userWordList.length > 0 &&
+      userWordList.length <= 2 &&
+      prevWordList.slice(-userWordList.length).join(" ") === userNorm &&
+      !containsWords(prevWordList.slice(0, -userWordList.length), userWordList);
+    const arrivedAtEndOfLine = prevAvatarEndRelSec === null || userEndRelSec >= prevAvatarEndRelSec - 1.5;
+    const containedInPrevLine = containsWords(prevWordList, userWordList);
+    const isEcho =
+      !isPatched &&
+      (isAvatarScriptEcho(userInputStr) || (containedInPrevLine && !(matchesOnlyFinalWords && arrivedAtEndOfLine)));
 
     if (isEcho) {
       echoCount++;
@@ -153,20 +174,6 @@ export function analyzeCallExperience(log: HeygenCallLog): CallExperienceAnalysi
       });
     }
 
-    // Check if turn was interrupted too quickly
-    if (wasInterrupted && spokeDurationSec < 2.0 && percentSpoken < 40) {
-      experienceFlaws.push({
-        id: `flaw-cutoff-${idx}`,
-        second: Math.round(avatarStartRelSec),
-        timeFormatted: formatTimeSec(avatarStartRelSec),
-        category: "premature_cutoff",
-        title: `Max Cut Off After ${spokeDurationSec.toFixed(1)}s`,
-        description: `Max was interrupted while speaking: only completed ${percentSpoken}% of his line (${words.slice(0, 6).join(" ")}...)`,
-        humanImpact: "Max sounded disjointed, stuttering and jumping between topics before finishing his thought.",
-        recommendation: "Ensure barge-in only activates on intentional keywords ('stop', 'wait', 'who is this') and ignores speaker leakage.",
-        severity: "critical",
-      });
-    }
 
     // Check for Dialogue Mash-Up (e.g. "How can I assist you today? What's your understanding...")
     if (
@@ -232,6 +239,35 @@ export function analyzeCallExperience(log: HeygenCallLog): CallExperienceAnalysi
       latencyMs: turn.gaps?.total_latency_ms || 0,
       status: wasInterrupted ? "interrupted" : "smooth",
     });
+    prevAvatarEndRelSec = avatarEndRelSec;
+  });
+
+  // Every barge-in is a cut, listed with what triggered it, so the count here always matches the
+  // session picker's "N cuts" (several cuts during one line used to be counted once).
+  bargeIns.forEach((b, i) => {
+    const sec = Math.max(0, (b.timestamp - minTimeMs) / 1000);
+    const line = timelineBlocks.find((blk) => blk.speaker === "avatar" && sec >= blk.startSec - 0.2 && sec <= blk.endSec + 1.0);
+    const msIntoLine = b.msIntoLine ?? (line ? Math.max(0, Math.round((sec - line.startSec) * 1000)) : undefined);
+    const wordCount = b.words ?? b.spokenText.trim().split(/\s+/).filter(Boolean).length;
+    const early = msIntoLine !== undefined && msIntoLine < 2000;
+    const when = msIntoLine !== undefined ? ` ${(msIntoLine / 1000).toFixed(1)}s into Max's line` : "";
+    experienceFlaws.push({
+      id: `flaw-bargein-${i}`,
+      second: Math.round(sec),
+      timeFormatted: formatTimeSec(sec),
+      category: "barge_in",
+      title: `Cut ${i + 1} of ${bargeIns.length}: "${b.spokenText.slice(0, 40)}"${when}`,
+      description:
+        `Triggered by "${b.spokenText}" (${wordCount} word${wordCount === 1 ? "" : "s"}${b.reason ? `, rule: ${b.reason}` : ""}) ` +
+        `while Max was saying "${(b.avatarTextWhenInterrupted || line?.text || "").slice(0, 70)}..."`,
+      humanImpact: early
+        ? "Max was cut before his point landed, so the customer may never have heard his question."
+        : "The customer took the floor mid-line.",
+      recommendation: early
+        ? "Backchannels and the first 1.5 s of a line must not cut Max off (bargeInDecision in turn-taking.ts)."
+        : "Expected when the customer genuinely interrupts; check the reply resumed the cut line.",
+      severity: early ? "critical" : "warning",
+    });
   });
 
   // Build second-by-second timeline array
@@ -271,10 +307,10 @@ export function analyzeCallExperience(log: HeygenCallLog): CallExperienceAnalysi
   let summaryRating: "Poor" | "Needs Improvement" | "Good" | "Excellent" = "Good";
   let summaryVerdict = "Call progressed smoothly with clean conversational exchanges.";
 
-  if (echoCount >= 2 || interruptedTurnsCount >= 2 || mashupCount >= 1) {
+  if (echoCount >= 2 || bargeIns.length >= 2 || mashupCount >= 1) {
     summaryRating = "Poor";
-    summaryVerdict = `High friction detected: ${echoCount} speaker-to-mic echo loops and ${interruptedTurnsCount} mid-sentence cutoffs made Max feel erratic and robotic.`;
-  } else if (echoCount > 0 || interruptedTurnsCount > 0) {
+    summaryVerdict = `High friction detected: ${echoCount} speaker-to-mic echo loops and ${bargeIns.length} mid-sentence cutoffs made Max feel erratic and robotic.`;
+  } else if (echoCount > 0 || bargeIns.length > 0) {
     summaryRating = "Needs Improvement";
     summaryVerdict = "Occasional echo or early interruption interrupted conversational pacing.";
   }
