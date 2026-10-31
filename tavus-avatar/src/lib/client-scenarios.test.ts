@@ -9,7 +9,8 @@ describe("Client Scenarios Human Experience Validation", () => {
 
     // Turn 1: Tech Check
     const t1 = await processControllerTurn(sessionId, "Yeah, I'm here.", DEFAULT_DEAL_CONFIG);
-    expect(t1.textToSpeak).toContain("Max");
+    // Follow-up 7 D: the short opener asks the check-in; Max introduces himself on the way into Beat 1
+    expect(t1.textToSpeak).toContain("How has your experience been with our team so far?");
     expect(t1.textToSpeak).not.toContain("colleague");
 
     // Turn 2: Sales Objection 1
@@ -163,7 +164,8 @@ describe("Client Scenarios Human Experience Validation", () => {
 
     // Turn 1: Tech Check
     const t1 = await processControllerTurn(sessionId, "Yeah, I'm here.", DEFAULT_DEAL_CONFIG);
-    expect(t1.textToSpeak).toContain("Max");
+    // Follow-up 7 D: the short opener asks the check-in; Max introduces himself on the way into Beat 1
+    expect(t1.textToSpeak).toContain("How has your experience been with our team so far?");
 
     // Turn 2: Anger / 3-hour wait complaint + identity question
     const t2 = await processControllerTurn(sessionId, "Honestly, I've been waiting at this dealership for three hours. Who are you, and can we hurry this up?", DEFAULT_DEAL_CONFIG);

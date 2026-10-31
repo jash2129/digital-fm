@@ -305,3 +305,37 @@ describe("Follow-up 7 B: the customer says the vehicle is wrong", () => {
     expect(classifyCustomerInputRuleBased("I love this Mazda", 5).intent).not.toBe("vehicle_discrepancy");
   });
 });
+
+describe("Follow-up 7 D: a short Step 0 opener the customer can answer", () => {
+  const step0 = () => {
+    const sid = `s0_${Math.random().toString(36).slice(2)}`;
+    resetCallState(sid);
+    getOrCreateCallState(sid);
+    return sid;
+  };
+
+  it("the check-in question starts within ~6 s of speech", async () => {
+    const d = await processClientTurn(step0(), "Yeah, I can see you.", 1);
+    expect(d.textToSpeak).toBe("Awesome, great to connect with you! First of all, congratulations on your new vehicle... How has your experience been with our team so far?");
+    const beforeQuestion = d.textToSpeak.split("How has your experience")[0].trim().split(/\s+/).length;
+    expect(beforeQuestion / 2.8).toBeLessThan(6); // ~2.8 spoken words per second
+    expect(d.textToSpeak).not.toMatch(/mazda|\.\.\.\./i);
+  });
+
+  it("Max introduces himself once, on the way into Beat 1", async () => {
+    const sid = step0();
+    await processClientTurn(sid, "Yeah.", 1);
+    const t = await processClientTurn(sid, "it was good", 2);
+    expect(t.beatId).toBe(1);
+    expect(t.textToSpeak.match(/I'm Max/g)?.length).toBe(1);
+  });
+
+  it("after 'Who are you?' the Beat 1 transition does not introduce him again", async () => {
+    const sid = step0();
+    const who = await processClientTurn(sid, "Who are you?", 1);
+    expect(who.textToSpeak.startsWith("I'm Max")).toBe(true);
+    const t = await processClientTurn(sid, "it was good", 2);
+    expect(t.beatId).toBe(1);
+    expect(t.textToSpeak).not.toContain("I'm Max");
+  });
+});

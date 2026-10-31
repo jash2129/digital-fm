@@ -119,7 +119,8 @@ describe("Two-Agent Automated Call Testing (Agent 1 Max vs Agent 2 Customer Simu
     expect(result.timingLogs.length).toBe(5);
 
     // Turn 0: Stage 0 Rapport & Formal Greeting
-    expect(result.timingLogs[0].avatarText).toContain("congratulations on your 2026 Mazda CX five");
+    // Follow-up 7 D: the short opener asks the check-in; Max introduces himself on the way into Beat 1
+    expect(result.timingLogs[0].avatarText).toContain("congratulations on your new vehicle");
     // Turn 1: Beat 1 Legal Disclosure
     expect(result.timingLogs[1].avatarText).toContain("this transaction is recorded audio and video");
     // Turn 2: Beat 2

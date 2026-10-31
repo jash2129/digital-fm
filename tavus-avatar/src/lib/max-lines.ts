@@ -85,6 +85,15 @@ export const STEP_0_GREETING = "Can you hear and see me alright?";
 // Status: APPROVED
 export const STEP_0_RAPPORT_LINE = "Awesome, great to connect with you! First of all, congratulations on your {{vehicle_year}} {{vehicle_make}} {{vehicle_model}}, and thank you for buying with us today! I'm Max, your finance manager, and I'll be handling your paperwork today. How has your experience been with our team so far?";
 
+// Stage 0 opener, split so the check-in question lands within ~6 s (the full rapport line ran ~17 s
+// and customers always talked over it). Spoken as: opener, pause, check-in.
+// Status: PENDING TXM (split and shortened from STEP_0_RAPPORT_LINE)
+export const STEP_0_OPENER_LINE = "Awesome, great to connect with you! First of all, congratulations on your new vehicle.";
+// TXM's own check-in question from STEP_0_RAPPORT_LINE
+export const STEP_0_CHECKIN_LINE = "How has your experience been with our team so far?";
+// TXM's introduction from STEP_0_RAPPORT_LINE, now said once on the way into Beat 1
+export const STEP_0_INTRO_LINE = "I'm Max, your finance manager, and I'll be handling your paperwork today.";
+
 // Stage 0 Transition into Legal Disclosure
 // Status: APPROVED
 export const STEP_0_TRANSITION_LINE = "Glad to hear that! Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.";

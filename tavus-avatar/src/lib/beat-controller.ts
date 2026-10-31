@@ -10,6 +10,9 @@ import {
   STEP_0_GREETING,
   STEP_0_RAPPORT_LINE,
   STEP_0_TRANSITION_LINE,
+  STEP_0_OPENER_LINE,
+  STEP_0_CHECKIN_LINE,
+  STEP_0_INTRO_LINE,
   BEAT_TRANSITION_BRIDGES,
   PAUSE_LINE,
   LISTENING_LINE,
@@ -97,6 +100,8 @@ export interface CallState {
   interrupted?: { remaining: string; after: DeliveryPointer; toolCalls: ControllerDecision["toolCalls"] };
   /** full text of the last line re-spoken from its first sentence (a line restarts from the top once at most) */
   restarted_text?: string;
+  /** Max has already said who he is (identity answer), so the Beat 1 transition skips the intro */
+  max_introduced?: boolean;
   /** the customer said the vehicle on file is wrong: every line says "your new vehicle" instead */
   vehicle_disputed?: boolean;
   /** how many times the customer has corrected the vehicle (each reply differs) */
@@ -2004,10 +2009,14 @@ Otherwise: []`;
 }
 
 // Step 0 Dynamic Rapport Generator (CONTEXT_RULES.md Stage 0 & Step 1)
+// The Step 0 opener: short opener, a pause, then the check-in question (lands within ~6 s)
+export const STEP_0_OPENING = formatSpeechText(`${STEP_0_OPENER_LINE.replace(/\.$/, "")}... ${STEP_0_CHECKIN_LINE}`);
+
 export async function generateStep0Turn(
   customerTranscript: string,
   step0Turns: number,
-  dealConfig = DEFAULT_DEAL_CONFIG
+  dealConfig = DEFAULT_DEAL_CONFIG,
+  opts: { introduced?: boolean } = {}
 ): Promise<{ text: string; moveToBeat1: boolean }> {
   const norm = customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
   const isTechAck =
@@ -2028,14 +2037,7 @@ export async function generateStep0Turn(
   // Prevent avatar echo from advancing Step 0 into Beat 1
   if (isAvatarScriptEcho(customerTranscript)) {
     console.warn(`[beat-controller] Step 0 detected avatar script echo: "${customerTranscript}". Staying on Step 0.`);
-    let rapportText = STEP_0_RAPPORT_LINE;
-    rapportText = rapportText.replace(/\{\{vehicle_year\}\}/g, dealConfig.vehicle_year);
-    rapportText = rapportText.replace(/\{\{vehicle_make\}\}/g, dealConfig.vehicle_make);
-    rapportText = rapportText.replace(/\{\{vehicle_model\}\}/g, dealConfig.vehicle_model);
-    return {
-      text: formatSpeechText(rapportText),
-      moveToBeat1: false,
-    };
+    return { text: STEP_0_CHECKIN_LINE, moveToBeat1: false };
   }
 
   // Check tech issues first
@@ -2091,14 +2093,7 @@ export async function generateStep0Turn(
       norm === "whats this" ||
       norm === "who";
     if (asksWho) {
-      const rapport = formatSpeechText(
-        STEP_0_RAPPORT_LINE.replace(/\{\{vehicle_year\}\}/g, dealConfig.vehicle_year)
-          .replace(/\{\{vehicle_make\}\}/g, dealConfig.vehicle_make)
-          .replace(/\{\{vehicle_model\}\}/g, dealConfig.vehicle_model)
-          .replace(/^Awesome, great/, "Great")
-          .replace(/ I'm Max, your finance manager, and I'll be handling your paperwork today\./, "")
-      );
-      return { text: `${IDENTITY_LINE} ${rapport}`, moveToBeat1: false };
+      return { text: `${IDENTITY_LINE} ${STEP_0_OPENING.replace(/^Awesome, great/, "Great")}`, moveToBeat1: false };
     }
     // "Can you hear me?" before answering: acknowledge, then repeat the tech check
     if (/\bcan you (hear|see) me\b/.test(norm)) {
@@ -2109,14 +2104,7 @@ export async function generateStep0Turn(
   // Turn 1: customer confirmed audio/video ("i can see you", "yes", etc.)
   // Build rapport & deliver formal greeting asking how their experience was
   if (step0Turns <= 1) {
-    let rapportText = STEP_0_RAPPORT_LINE;
-    rapportText = rapportText.replace(/\{\{vehicle_year\}\}/g, dealConfig.vehicle_year);
-    rapportText = rapportText.replace(/\{\{vehicle_make\}\}/g, dealConfig.vehicle_make);
-    rapportText = rapportText.replace(/\{\{vehicle_model\}\}/g, dealConfig.vehicle_model);
-    return {
-      text: formatSpeechText(rapportText),
-      moveToBeat1: false,
-    };
+    return { text: STEP_0_OPENING, moveToBeat1: false };
   }
 
   // Turn 2+: Check if customer is asking a question or interrupting BEFORE giving a rapport answer
@@ -2277,6 +2265,9 @@ export async function generateStep0Turn(
       "Awesome, so glad to hear that! Our team works really hard to take care of our customers."
     );
   }
+
+  // The opener no longer introduces Max; do it once here unless he already answered "who are you?"
+  if (!opts.introduced) transitionLine = transitionLine.replace("Now before I start", `${STEP_0_INTRO_LINE} Now before I start`);
 
   return {
     text: formatSpeechText(transitionLine),
@@ -2511,7 +2502,10 @@ async function runControllerTurn(
       state.last_spoken_text = text;
       return { textToSpeak: text, beatId: 0, beatType: "wait", toolCalls: [], state, intent: "vehicle_discrepancy" };
     }
-    const step0Result = await generateStep0Turn(customerTranscript, state.step0_turns, state.dealConfig);
+    const step0Result = await generateStep0Turn(customerTranscript, state.step0_turns, state.dealConfig, {
+      introduced: state.max_introduced,
+    });
+    if (/\bI'm Max\b/.test(step0Result.text)) state.max_introduced = true;
 
     if (step0Result.moveToBeat1) {
       state.step0_completed = true;
