@@ -5,7 +5,7 @@
 import { describe, it, expect } from "vitest";
 import { processControllerTurn, getOrCreateCallState, resetCallState, BEATS } from "./beat-controller";
 import { DEFAULT_DEAL_CONFIG } from "./deal-config";
-import { STEP_0_CHECKIN_LINE, VEHICLE_NOTED_LINE } from "./max-lines";
+import { STEP_0_CHECKIN_LINE, VEHICLE_NOTED_LINE, ROLE_EXPLAIN_LINE, WHICH_PART_LINE, UNKNOWN_QUESTION_LINE } from "./max-lines";
 
 const GLAD = "so glad to hear that";
 
@@ -96,5 +96,40 @@ describe("2: a happy rambler is not treated as rushed", () => {
     const t = await say(sid, "I've been sitting here for three hours");
     expect(t.textToSpeak).toContain(RUSHED);
     expect(t.textToSpeak).not.toContain(GLAD);
+  });
+});
+
+describe("3: 'I didn't catch that' and 'I don't understand' get the right reply", () => {
+  it("Step 0 'Sorry, what? I didn't catch that.' repeats the Step 0 question", async () => {
+    const sid = await atCheckIn();
+    const t = await say(sid, "Sorry, what? I didn't catch that.");
+    expect(t.textToSpeak).toBe(STEP_0_CHECKIN_LINE);
+    expect(t.beatId).toBe(0);
+  });
+
+  it("Beat 1 'I don't understand what you do' explains Max's role, then re-asks", async () => {
+    const sid = atBeat(1);
+    const t = await say(sid, "I don't understand what you do");
+    expect(t.textToSpeak.startsWith(ROLE_EXPLAIN_LINE)).toBe(true);
+    expect(t.textToSpeak).toMatch(/\?$/);
+    expect(t.textToSpeak).not.toContain("recorded audio and video");
+    expect(t.beatId).toBe(1);
+  });
+
+  it("'I still don't get it': the explanation once, then 'which part?'", async () => {
+    const sid = atBeat(1);
+    const first = await say(sid, "I still don't get it");
+    expect(first.textToSpeak.startsWith(ROLE_EXPLAIN_LINE)).toBe(true);
+    expect(first.textToSpeak).not.toContain(UNKNOWN_QUESTION_LINE);
+    const second = await say(sid, "I still don't get it");
+    expect(second.textToSpeak).toBe(WHICH_PART_LINE);
+    expect(second.beatId).toBe(1);
+  });
+
+  it("the role explanation and 'I still don't get it' share the count", async () => {
+    const sid = atBeat(1);
+    await say(sid, "I don't understand what you do");
+    const t = await say(sid, "I still don't get it");
+    expect(t.textToSpeak).toBe(WHICH_PART_LINE);
   });
 });

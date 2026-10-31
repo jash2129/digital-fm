@@ -106,9 +106,14 @@ export const STEP_0_NEUTRAL_ACK_LINE = "Thanks for sharing that.";
 // (Beats 1-21). Followed by the pending question. Status: PENDING TXM
 export const NO_PRESSURE_LINE = "No pressure at all. I'll just walk you through the options, and the choice is always yours.";
 
+// Asked when the customer is still confused after an explanation. Status: PENDING TXM
+export const WHICH_PART_LINE = "Which part would you like me to explain?";
 // A second "no" at the Beat 1 recording disclosure. Until TXM confirms the two-no rule, Max waits
 // instead of ending the call. Status: PENDING TXM
-export const TAKE_TIME_LINE = "No problem, we can take as long as you like. Which part would you like me to explain?";
+export const TAKE_TIME_LINE = `No problem, we can take as long as you like. ${WHICH_PART_LINE}`;
+// "I don't understand what you do" / "I don't get it" at the disclosure: a short role explanation,
+// then the pending question. Status: PENDING TXM
+export const ROLE_EXPLAIN_LINE = "I'm Max, the finance manager. I go over your paperwork and your coverage options with you before you sign.";
 
 // Stage 0 Transition into Legal Disclosure
 // Status: APPROVED

@@ -17,6 +17,8 @@ import {
   STEP_0_NEUTRAL_ACK_LINE,
   NO_PRESSURE_LINE,
   TAKE_TIME_LINE,
+  WHICH_PART_LINE,
+  ROLE_EXPLAIN_LINE,
   BEAT_TRANSITION_BRIDGES,
   PAUSE_LINE,
   LISTENING_LINE,
@@ -104,6 +106,9 @@ export interface CallState {
   interrupted?: { remaining: string; after: DeliveryPointer; toolCalls: ControllerDecision["toolCalls"] };
   /** full text of the last line re-spoken from its first sentence (a line restarts from the top once at most) */
   restarted_text?: string;
+  /** How many times the customer said they were confused at `confusion_beat` */
+  confusion_count?: number;
+  confusion_beat?: number;
   /** Step 0: a bare filler ("hmm") already got the check-in re-asked once */
   step0_filler_reasked?: boolean;
   /** Max has already said who he is (identity answer), so the Beat 1 transition skips the intro */
@@ -205,6 +210,8 @@ export type ClassifierIntent =
   | "classifier_timeout"
   | "provided_details"
   | "pressure_objection"
+  | "role_confusion"
+  | "confusion"
   | "resume_interrupted"
   | "other";
 
@@ -1054,6 +1061,11 @@ export function classifyCustomerInputRuleBased(
     return { intent: "sales_question", topic_beat_ids: [] };
   }
 
+  // 1.65. Confused about Max's role ("I don't understand what you do", "what's your job")
+  if (/\b(what (do|exactly do) you do|what you do|what is your (job|role)|whats your (job|role)|what s your (job|role)|what are you for)\b/.test(norm)) {
+    return { intent: "role_confusion", topic_beat_ids: [] };
+  }
+
   // 1.7. Call purpose inquiry (e.g. "what is this about", "why are we doing this", "what is this call for")
   if (
     norm.includes("what is this about") ||
@@ -1120,6 +1132,11 @@ export function classifyCustomerInputRuleBased(
     norm.includes("why you keep asking")
   ) {
     return { intent: "why_asking", topic_beat_ids: [] };
+  }
+
+  // 3.6. "I still don't get it", "I'm confused": an explanation once, then "which part?"
+  if (/\b(don t get it|dont get it|do not get it|i m confused|im confused|i am confused|i m lost|im lost|makes no sense|doesn t make sense|doesnt make sense|not following|you lost me)\b/.test(norm)) {
+    return { intent: "confusion", topic_beat_ids: [] };
   }
 
   // 4. Repeat request, including asking Max to re-explain what he just said
@@ -2101,6 +2118,12 @@ export async function generateStep0Turn(
       moveToBeat1: false,
     };
   }
+
+  // "Sorry, what? I didn't catch that." is not an answer: ask the Step 0 question again
+  const didntCatch =
+    /\b(didn t catch|didnt catch|did not catch|didn t hear|didnt hear|did not hear|sorry what|say that again|say again|come again|pardon|repeat that|what did you say|one more time)\b/.test(norm) ||
+    /^(what|sorry|huh|excuse me)$/.test(norm);
+  if (didntCatch) return { text: step0Turns <= 1 ? STEP_0_GREETING : STEP_0_CHECKIN_LINE, moveToBeat1: false };
 
   const isSalesAsk =
     (norm.includes("sales") &&
@@ -3242,6 +3265,22 @@ async function runControllerTurn(
         textToSpeak = IDENTITY_LINE;
         beatType = "wait";
       }
+      break;
+    }
+
+    case "role_confusion":
+    case "confusion": {
+      // First time at this beat: the role explanation (at the disclosure, or when asked what Max does)
+      // or the beat once more; after that, ask which part instead of repeating it again
+      const count = state.confusion_beat === state.current_beat ? (state.confusion_count ?? 0) + 1 : 1;
+      state.confusion_beat = state.current_beat;
+      state.confusion_count = count;
+      const currentBeat = BEATS.find((b) => b.id === state.current_beat)!;
+      if (count >= 2) textToSpeak = WHICH_PART_LINE;
+      else if (intent === "role_confusion" || state.current_beat === 1) textToSpeak = `${ROLE_EXPLAIN_LINE} ${pendingQuestion(state)}`;
+      else textToSpeak = `${LEAD_IN_NO} ${getFullBeatUtterance(currentBeat, state.dealConfig)}`;
+      beatType = "wait";
+      toolCalls = [];
       break;
     }
 
