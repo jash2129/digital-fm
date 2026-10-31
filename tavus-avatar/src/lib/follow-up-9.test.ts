@@ -258,3 +258,80 @@ describe("Questions and stories about someone else are never the answer to a bea
     expect(t.beatId).toBe(3);
   });
 });
+
+// The five simulated calls, rebuilt from the lines quoted in the follow-up 9 brief. Each turn: what
+// the customer says, the beat Max must be on afterwards, and what his reply must (or must not) contain.
+type Turn = { say: string; beat: number; has?: string | RegExp; not?: string | RegExp };
+const RUSHED = "I value your time";
+const SCRIPTS: Record<string, Turn[]> = {
+  "rambler": [
+    { say: "Yeah.", beat: 0, has: STEP_0_CHECKIN_LINE },
+    { say: "Oh it was great, the salesman Dave was awesome... the drive over here took forever because of the traffic", beat: 1, has: GLAD, not: RUSHED },
+    { say: "okay", beat: 2 },
+    { say: "yes I drove it", beat: 3 },
+    { say: "my brother in law has a Toyota and he never bought any warranty", beat: 3, not: VEHICLE_NOTED_LINE },
+    { say: "yes he did", beat: 4, has: "understanding of the warranty", not: /new vehicle that comes|your manufacturer/i },
+  ],
+  "haggler": [
+    { say: "yes", beat: 0 },
+    { say: "good", beat: 1 },
+    { say: "okay", beat: 2 },
+    { say: "yes", beat: 3 },
+    { say: "yes", beat: 4 },
+    { say: "not sure", beat: 6 },
+    { say: "yes", beat: 7 },
+    { say: "That's too much", beat: 7, has: PRICE_LATER_LINE },
+    { say: "yes", beat: 8 },
+    { say: "I can't afford that", beat: 8, has: PRICE_LATER_LINE },
+    { say: "okay", beat: 9 },
+    { say: "can you do better", beat: 9, has: PRICE_LATER_LINE, not: UNKNOWN_QUESTION_LINE },
+    { say: "I'll give you $2 a day", beat: 9, has: PRICE_LATER_LINE, not: /two dollars|three dollars/i },
+    { say: "yes", beat: 10 },
+  ],
+  "confused": [
+    { say: "yes", beat: 0, has: STEP_0_CHECKIN_LINE },
+    { say: "Sorry, what? I didn't catch that.", beat: 0, has: STEP_0_CHECKIN_LINE, not: "Thanks for sharing" },
+    { say: "good", beat: 1, has: GLAD },
+    { say: "I don't understand what you do", beat: 1, has: ROLE_EXPLAIN_LINE, not: "recorded audio and video" },
+    { say: "I still don't get it", beat: 1, has: WHICH_PART_LINE, not: UNKNOWN_QUESTION_LINE },
+    { say: "okay", beat: 2 },
+  ],
+  "changes mind": [
+    { say: "yes", beat: 0 },
+    { say: "good", beat: 1 },
+    { say: "okay", beat: 2 },
+    { say: "yes I drove it", beat: 3 },
+    { say: "yes", beat: 4 },
+    { say: "not sure", beat: 6 },
+    { say: "Wait, I changed my mind, I don't want to continue", beat: 6, not: /continue, or go over|have that detail in front of me/ },
+    { say: "okay, continue", beat: 7, not: CLARIFY_LINE },
+    { say: "fine, continue", beat: 8, not: CLARIFY_LINE },
+  ],
+  "already covered": [
+    { say: "yes", beat: 0 },
+    { say: "good", beat: 1 },
+    { say: "okay", beat: 2 },
+    { say: "yes", beat: 3 },
+    { say: "yes", beat: 4 },
+    { say: "Why should I buy yours?", beat: 4, has: UNKNOWN_QUESTION_LINE },
+    { say: "Is this mandatory?", beat: 4, has: UNKNOWN_QUESTION_LINE },
+    { say: "I already have a warranty", beat: 5 },
+  ],
+};
+
+describe("Follow-up 9 regression: the five simulated calls", () => {
+  it.each(Object.entries(SCRIPTS))("%s", async (_name, turns) => {
+    const sid = newCall();
+    for (const turn of turns) {
+      const d = await say(sid, turn.say);
+      const where = `after "${turn.say}": ${d.textToSpeak}`;
+      expect(d.beatId, where).toBe(turn.beat);
+      expect(d.isScriptComplete, where).toBeFalsy();
+      if (typeof turn.has === "string") expect(d.textToSpeak, where).toContain(turn.has);
+      else if (turn.has) expect(d.textToSpeak, where).toMatch(turn.has);
+      if (typeof turn.not === "string") expect(d.textToSpeak, where).not.toContain(turn.not);
+      else if (turn.not) expect(d.textToSpeak, where).not.toMatch(turn.not);
+    }
+    expect(getOrCreateCallState(sid).vehicle_disputed, "no call here disputes the vehicle").toBeFalsy();
+  });
+});
