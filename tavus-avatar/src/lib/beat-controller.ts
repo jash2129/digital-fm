@@ -37,6 +37,8 @@ import {
   VERIFY_DEFER_LINE,
   CHOSEN_COVERAGE_CONFIRM_LINE,
   KEEP_COVERAGES_REASK_LINE,
+  STILL_WITH_ME_LINE,
+  PRESENCE_LINE,
   CLARIFY_LINE,
   ANSWER_CHECK_LINE,
   TIRE_EXCLUSION_LINE,
@@ -328,6 +330,28 @@ export function commitTurn(
   state.interrupted = { remaining, after: pending.after, toolCalls: pending.toolCalls };
   console.warn("[beat-controller] TURN_ROLLED_BACK", JSON.stringify({ sessionId, turnId, spokenFraction, beat: state.current_beat }));
   return { rolledBack: true };
+}
+
+/**
+ * Something for Max to say when the line has gone quiet, without a customer turn:
+ *  - "resume": the dead-man switch (no audio 4 s after the customer spoke). Resumes an unheard
+ *    reply if one was rolled back, else re-asks the pending question.
+ *  - "still_with_me": first 7 s customer silence at a wait beat.
+ *  - "clarify": later silences.
+ * Never advances the script except to re-apply a reply the customer is about to hear.
+ */
+export function repromptText(sessionId: string, kind: "resume" | "still_with_me" | "clarify"): string {
+  const state = getOrCreateCallState(sessionId);
+  if (!state.step0_completed) return STEP_0_GREETING;
+  if (kind === "resume" && state.interrupted) {
+    const { remaining, after } = state.interrupted;
+    replaceState(state, after);
+    state.last_spoken_text = remaining;
+    return remaining;
+  }
+  const text = kind === "clarify" ? CLARIFY_LINE : kind === "still_with_me" ? `${STILL_WITH_ME_LINE} ${pendingQuestion(state)}` : pendingQuestion(state);
+  state.last_spoken_text = text;
+  return text;
 }
 
 export function getOrCreateCallState(sessionId: string, dealConfig = DEFAULT_DEAL_CONFIG): CallState {
@@ -917,7 +941,11 @@ export function classifyCustomerInputRuleBased(
     norm.includes("can you hear me") ||
     norm.includes("anybody there") ||
     norm.includes("anyone there") ||
-    norm.includes("are you still there")
+    norm.includes("are you still there") ||
+    // Live call 1ee5181b: the customer waiting on a question they never heard
+    norm.includes("say something") ||
+    /\bwhat (was|s|is) the question\b/.test(norm) ||
+    /\bwhy (aren t|arent|are not) you (asking|speaking|talking|saying)\b/.test(norm)
   ) {
     return { intent: "greeting_check", topic_beat_ids: [] };
   }
@@ -3083,11 +3111,9 @@ async function runControllerTurn(
       // Reassure presence and re-prompt current beat WITHOUT advancing the script!
       const currentBeat = BEATS.find((b) => b.id === state.current_beat);
       if (currentBeat) {
-        const checkInOrUtterance = currentBeat.check_in
-          ? `I'm right here with you! ${formatSpeechText(currentBeat.check_in)}`
-          : `I'm right here with you! Listening loud and clear, please go ahead.`;
-        textToSpeak = checkInOrUtterance;
-        beatType = currentBeat.type;
+        // Answer, then re-ask the question Max is waiting on, so the next "yeah" answers that question
+        textToSpeak = `${PRESENCE_LINE} ${pendingQuestion(state)}`;
+        beatType = "wait";
         toolCalls = getBeatToolCalls(state.current_beat);
       } else {
         textToSpeak = "I'm right here with you! Can you hear and see me alright?";

@@ -38,6 +38,14 @@ export const CHOSEN_COVERAGE_CONFIRM_LINE = "Great, so to confirm, we're moving 
 // Status: PENDING TXM
 export const KEEP_COVERAGES_REASK_LINE = "Just to be sure I have it right, which coverages would you like to keep?";
 
+// Silence watchdog: 7 s of customer silence after Max finishes a wait beat, spoken before the
+// pending question. Status: PENDING TXM
+export const STILL_WITH_ME_LINE = "Are you still with me?";
+
+// Presence check ("are you there?", "say something"): spoken before re-asking the pending question.
+// Status: PENDING TXM
+export const PRESENCE_LINE = "I'm right here with you!";
+
 // Beat 25 verification: re-asked when the reply is not a name and address (a bare yes, a filler).
 // Status: PENDING TXM
 export const VERIFY_REASK_LINE = "I just need your full legal name, spelling, and current mailing address to verify.";

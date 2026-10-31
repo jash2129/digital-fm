@@ -10,7 +10,7 @@ import DealSummaryPage from "@/app/content/deal-summary/page";
 import EscalatePage from "@/app/content/escalate/page";
 import { CallSummaryScreen } from "@/components/CallSummaryScreen";
 import type { ControllerTurnMetrics } from "@/lib/heygen-logger";
-import { TurnController, AvatarVoice, type AvatarCommand, type TurnLogEvent } from "@/lib/turn-taking";
+import { TurnController, AvatarVoice, type AvatarCommand, type RepromptKind, type TurnLogEvent } from "@/lib/turn-taking";
 
 // =============================================================================
 // SPEED & BARGE-IN TUNING CONFIGURATION
@@ -786,12 +786,50 @@ export function LiveAvatarDemo() {
     [speakWithAvatar, interruptAvatar]
   );
 
+  // Make Max speak without a customer turn: dead-man switch ("resume") and silence prompts
+  const repromptAvatar = async (kind: RepromptKind) => {
+    if (kind === "resume") {
+      // The reply nobody heard is rolled back first, so the server re-delivers it consistently
+      const turn = speakingTurnRef.current;
+      if (turn) {
+        speakingTurnRef.current = null;
+        sendCommit(turn.turnId, false, 0, "dead_man_switch");
+      }
+      // Regardless of what the speaking flag claims
+      voiceRef.current?.tracker.reset("dead_man_switch");
+    }
+    await commitInFlightRef.current;
+    try {
+      const res = await fetch("/api/chat/grok", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reprompt", sessionId: sessionIdRef.current || "live_session", kind }),
+      });
+      const data = await res.json();
+      if (!data?.text) return;
+      logTurnEvent({ ts: new Date().toISOString(), event: "reprompt_spoken", reason: kind, transcript: data.text });
+      conversationHistoryRef.current = [...conversationHistoryRef.current, { role: "assistant", content: data.text }];
+      setMessages([...conversationHistoryRef.current]);
+      setCurrentReplicaText(data.text);
+      lastBeatTypeRef.current = "wait";
+      await speakWithAvatar(data.text);
+    } catch (err) {
+      logTurnEvent({ ts: new Date().toISOString(), event: "reprompt_failed", reason: String(err) });
+    }
+  };
+  const repromptAvatarRef = useRef(repromptAvatar);
+  repromptAvatarRef.current = repromptAvatar;
+  const interruptAvatarRef = useRef(interruptAvatar);
+  interruptAvatarRef.current = interruptAvatar;
+
   // One TurnController for the component's lifetime; it reaches the latest callbacks through refs
   const sendToGrokRef = useRef(sendToGrok);
   sendToGrokRef.current = sendToGrok;
   if (!turnControllerRef.current) {
     turnControllerRef.current = new TurnController({
       runTurn: (transcript, meta) => sendToGrokRef.current(transcript, meta),
+      interrupt: () => interruptAvatarRef.current(),
+      reprompt: (kind) => repromptAvatarRef.current(kind),
       isAvatarSpeaking: () => isAvatarSpeakingRef.current,
       avatarStoppedAt: () => avatarFinishedAtRef.current,
       isEcho: (t) => isNearExactEcho(t, [lastSpokenByAvatarRef.current, ...recentAvatarTextsRef.current.map((r) => r.text)]),
@@ -829,6 +867,7 @@ export function LiveAvatarDemo() {
 
       const currentSpoken = (interimText || finalTranscript).trim();
       if (!currentSpoken) return;
+      turnControllerRef.current?.onCustomerActivity();
 
       // End-of-speech = the last moment NEW words were heard. The final result usually repeats the
       // last interim words ~0.5-1s after the customer stopped, so it must not move the timestamp,
@@ -1337,6 +1376,7 @@ export function LiveAvatarDemo() {
           ) {
             recordAvatarAudioStarted();
             voiceRef.current?.tracker.onStarted();
+            turnControllerRef.current?.onAvatarAudio();
           } else if (
             ev.includes("stop_talking") ||
             ev.includes("stopped_speaking") ||
@@ -1346,6 +1386,8 @@ export function LiveAvatarDemo() {
           ) {
             // Flag, timers, unmute and the pending-transcript replay all follow from this
             voiceRef.current?.tracker.onStopped();
+            // At a wait beat, 7 s of customer silence now gets a prompt
+            turnControllerRef.current?.onAvatarFinished(lastBeatTypeRef.current);
 
             // Put avatar in attentive listening / head-nod state while waiting for user response
             void voiceRef.current?.queue.startListening().catch(() => {});

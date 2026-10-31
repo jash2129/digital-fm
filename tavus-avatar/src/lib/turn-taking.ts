@@ -218,6 +218,25 @@ export class AvatarVoice {
   }
 }
 
+/** "Are you there?", "say something", "what was the question": the customer thinks the line is dead. */
+export function isPresenceCheck(transcript: string): boolean {
+  const n = norm(transcript);
+  return (
+    /^(hello|hey|hi)( max| there)?$/.test(n) ||
+    /\b(are you there|you still there|anybody there|anyone there|can you hear me|say something)\b/.test(n) ||
+    /\bwhat (was|s|is) the question\b/.test(n) ||
+    /\bwhy (aren t|arent|are not) you (asking|speaking|talking|saying|responding|answering)\b/.test(n)
+  );
+}
+
+export type RepromptKind = "resume" | "still_with_me" | "clarify";
+
+// No audio this long after the customer spoke (and nothing in flight): make Max speak
+export const DEAD_MAN_MS = 4000;
+// Customer silence after Max finishes a wait beat before prompting, and the most prompts in a row
+export const SILENCE_PROMPT_MS = 7000;
+export const MAX_SILENCE_PROMPTS = 3;
+
 export const PENDING_MAX_AGE_MS = 8000;
 // Transcripts this soon after Max stops are usually the tail of his own audio
 export const POST_SPEECH_GUARD_MS = 600;
@@ -231,6 +250,10 @@ export interface TurnControllerDeps {
   avatarStoppedAt(): number;
   isEcho(transcript: string): boolean;
   log(event: TurnLogEvent): void;
+  /** Barge-in for a presence check while the speaking flag is set (possibly stuck). */
+  interrupt?(): Promise<void>;
+  /** Make Max say something without a customer turn (dead-man switch, silence watchdog). */
+  reprompt?(kind: RepromptKind): Promise<void>;
 }
 
 export class TurnController {
@@ -238,6 +261,10 @@ export class TurnController {
   private turnSeq = 0;
   private pending: { text: string; at: number } | null = null;
   private flushTimer: ReturnType<typeof setTimeout> | null = null;
+  private deadMan: ReturnType<typeof setTimeout> | null = null;
+  private heardAudioSinceTurn = false;
+  private silenceTimer: ReturnType<typeof setTimeout> | null = null;
+  private silencePrompts = 0;
 
   constructor(private deps: TurnControllerDeps) {}
 
@@ -254,6 +281,8 @@ export class TurnController {
   onTranscript(text: string): void {
     const transcript = text.trim();
     if (!transcript) return;
+    this.onCustomerActivity();
+    if (isPresenceCheck(transcript)) return this.presenceCheck(transcript);
     const blocked = this.blockedReason(transcript);
     if (blocked) {
       this.park(transcript, blocked);
@@ -265,6 +294,74 @@ export class TurnController {
   /** Call whenever Max stops speaking or anything else may have made the line idle. */
   notifyIdle(): void {
     this.scheduleFlush();
+  }
+
+  /** Any customer speech (interim results too): the line is not silent. */
+  onCustomerActivity(): void {
+    if (this.silenceTimer) clearTimeout(this.silenceTimer);
+    this.silenceTimer = null;
+    this.silencePrompts = 0;
+  }
+
+  /** HeyGen confirmed first audio of a line. */
+  onAvatarAudio(): void {
+    this.heardAudioSinceTurn = true;
+    if (this.deadMan) clearTimeout(this.deadMan);
+    this.deadMan = null;
+  }
+
+  /** Max finished a line naturally. At a wait beat, start the silence watchdog. */
+  onAvatarFinished(beatType: string): void {
+    if (this.silenceTimer) clearTimeout(this.silenceTimer);
+    this.silenceTimer = null;
+    if (beatType !== "wait" || this.silencePrompts >= MAX_SILENCE_PROMPTS || !this.deps.reprompt) return;
+    this.silenceTimer = setTimeout(() => {
+      this.silenceTimer = null;
+      if (this.inFlight > 0 || this.deps.isAvatarSpeaking()) return;
+      this.silencePrompts++;
+      const kind: RepromptKind = this.silencePrompts === 1 ? "still_with_me" : "clarify";
+      this.deps.log({ ts: new Date().toISOString(), event: "silence_prompt", reason: kind, count: this.silencePrompts });
+      void this.deps.reprompt?.(kind);
+    }, SILENCE_PROMPT_MS);
+  }
+
+  /**
+   * The customer thinks the line is dead. Bypass the speaking gate and the in-flight lock: if a reply
+   * is already on its way it answers them (and the dead-man switch covers it never arriving);
+   * otherwise interrupt whatever the flag says Max is doing and send it now.
+   */
+  private presenceCheck(transcript: string): void {
+    const base = { ts: new Date().toISOString(), transcript };
+    if (this.inFlight > 0) {
+      this.deps.log({ ...base, event: "presence_check", reason: "reply_in_flight" });
+      return;
+    }
+    this.pending = null;
+    if (this.deps.isAvatarSpeaking()) {
+      this.deps.log({ ...base, event: "presence_check", reason: "interrupting_speaking_flag" });
+      void this.deps.interrupt?.();
+    } else {
+      this.deps.log({ ...base, event: "presence_check", reason: "line_idle" });
+    }
+    void this.dispatch(transcript, true);
+  }
+
+  /** Armed when a customer turn is sent: if no audio follows within DEAD_MAN_MS, force Max to speak. */
+  private armDeadMan(): void {
+    if (!this.deps.reprompt) return;
+    this.heardAudioSinceTurn = false;
+    if (this.deadMan) clearTimeout(this.deadMan);
+    const check = () => {
+      this.deadMan = null;
+      if (this.heardAudioSinceTurn) return;
+      if (this.inFlight > 0) {
+        this.deadMan = setTimeout(check, 500); // wait for the request, then re-check
+        return;
+      }
+      this.deps.log({ ts: new Date().toISOString(), event: "dead_man_switch", reason: "no_audio_after_customer_turn" });
+      void this.deps.reprompt?.("resume");
+    };
+    this.deadMan = setTimeout(check, DEAD_MAN_MS);
   }
 
   private blockedReason(transcript: string): string | null {
@@ -286,6 +383,7 @@ export class TurnController {
   protected async dispatch(transcript: string, bypass: boolean): Promise<void> {
     const turnId = ++this.turnSeq;
     this.inFlight++;
+    this.armDeadMan();
     try {
       await this.deps.runTurn(transcript, { turnId, bypass });
     } finally {

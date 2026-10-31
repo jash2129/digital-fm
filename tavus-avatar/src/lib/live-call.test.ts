@@ -11,8 +11,11 @@ import {
   renderBeatText,
   formatSpeechText,
   splitIntoSentences,
+  repromptText,
+  classifyCustomerInputRuleBased,
   BEATS,
 } from "./beat-controller";
+import { STILL_WITH_ME_LINE, CLARIFY_LINE, PRESENCE_LINE } from "./max-lines";
 
 function fresh(beat: number) {
   const sid = `live_${Math.random().toString(36).slice(2)}`;
@@ -74,5 +77,39 @@ describe("R2: a beat only counts when it was delivered", () => {
     await processClientTurn(sid, "yes he did", 2);
     expect(commitTurn(sid, 1, false, 0)).toMatchObject({ rolledBack: false, reason: "not_the_latest_turn" });
     expect(getOrCreateCallState(sid).current_beat).toBe(4);
+  });
+});
+
+describe("W (server): reprompts and presence checks", () => {
+  it("the dead-man 'resume' re-delivers a rolled-back reply in full", async () => {
+    const sid = fresh(2);
+    const reply = await processClientTurn(sid, "yeah I drove it", 1);
+    commitTurn(sid, 1, false, 0);
+    expect(repromptText(sid, "resume")).toBe(splitIntoSentences(reply.textToSpeak).join(" "));
+    expect(getOrCreateCallState(sid).current_beat).toBe(3);
+    expect(getOrCreateCallState(sid).interrupted).toBeUndefined();
+  });
+
+  it("without an unheard reply, 'resume' re-asks the pending question and does not advance", () => {
+    const sid = fresh(4);
+    expect(repromptText(sid, "resume")).toMatch(/warranty/i);
+    expect(getOrCreateCallState(sid).current_beat).toBe(4);
+  });
+
+  it("silence prompts: still-with-me plus the pending question, then the clarify line", () => {
+    const sid = fresh(2);
+    expect(repromptText(sid, "still_with_me")).toBe(`${STILL_WITH_ME_LINE} Did you get a chance to take it for a test drive?`);
+    expect(repromptText(sid, "clarify")).toBe(CLARIFY_LINE);
+  });
+
+  it("the live call's unanswered lines are presence checks that re-ask the pending question", async () => {
+    for (const say of ["say something", "what was the question", "what's the question", "why aren't you asking questions"]) {
+      expect(classifyCustomerInputRuleBased(say, 4).intent, say).toBe("greeting_check");
+      const sid = fresh(4);
+      const d = await processClientTurn(sid, say, 1);
+      expect(d.textToSpeak.startsWith(PRESENCE_LINE), say).toBe(true);
+      expect(d.textToSpeak, say).not.toContain("please go ahead");
+      expect(d.beatId, say).toBe(4);
+    }
   });
 });

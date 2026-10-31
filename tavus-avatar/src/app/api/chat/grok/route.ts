@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { processClientTurn, commitTurn } from "@/lib/beat-controller";
+import { processClientTurn, commitTurn, repromptText } from "@/lib/beat-controller";
 import { DEFAULT_DEAL_CONFIG } from "@/lib/deal-config";
 
 export async function POST(request: Request) {
@@ -11,6 +11,12 @@ export async function POST(request: Request) {
     if (body.action === "commit") {
       const result = commitTurn(sessionId, Number(body.turnId), Boolean(body.delivered), Number(body.spokenFraction) || 0);
       return NextResponse.json(result);
+    }
+
+    // Dead-man switch / silence watchdog: something to say when the line has gone quiet
+    if (body.action === "reprompt") {
+      const kind = ["resume", "still_with_me", "clarify"].includes(body.kind) ? body.kind : "resume";
+      return NextResponse.json({ text: repromptText(sessionId, kind), kind });
     }
 
     const latestUserMessage =
