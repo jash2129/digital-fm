@@ -2,9 +2,9 @@
  * Follow-up 8: failures found by 5 simulated weird-customer calls (offline, rule-based).
  */
 import { describe, it, expect } from "vitest";
-import { processControllerTurn, getOrCreateCallState, resetCallState } from "./beat-controller";
+import { processControllerTurn, getOrCreateCallState, resetCallState, repromptText, BEATS } from "./beat-controller";
 import { DEFAULT_DEAL_CONFIG } from "./deal-config";
-import { STEP_0_CHECKIN_LINE, STEP_0_SORRY_LINE } from "./max-lines";
+import { STEP_0_CHECKIN_LINE, STEP_0_SORRY_LINE, NO_PRESSURE_LINE, UNKNOWN_QUESTION_LINE } from "./max-lines";
 
 const GLAD = "so glad to hear that";
 
@@ -15,6 +15,17 @@ function newCall() {
   return sid;
 }
 const say = (sid: string, text: string) => processControllerTurn(sid, text, DEFAULT_DEAL_CONFIG);
+
+// Mid-script at `beat`, as if Max had just delivered it
+function atBeat(beat: number) {
+  const sid = newCall();
+  const st = getOrCreateCallState(sid);
+  st.step0_completed = true;
+  st.current_beat = beat;
+  st.delivered_beats = Array.from({ length: beat }, (_, i) => i + 1);
+  st.last_spoken_text = BEATS.find((b) => b.id === beat)?.text ?? "";
+  return sid;
+}
 
 // Past the tech check: Max has just asked "How has your experience been with our team so far?"
 async function atCheckIn() {
@@ -72,5 +83,25 @@ describe("1: Step 0 only says 'glad to hear that' to a good answer", () => {
     const sid = await atCheckIn();
     const t = await say(sid, answer);
     expect(t.textToSpeak.startsWith(STEP_0_SORRY_LINE)).toBe(true);
+  });
+});
+
+describe("2: a no-pressure reply to 'I'm not paying for anything extra'", () => {
+  it.each([1, 4, 9])("at Beat %i: reassures, then re-asks the pending question", async (beat) => {
+    for (const line of ["I'm not paying for anything extra.", "you always upsell", "don't pressure me"]) {
+      const sid = atBeat(beat);
+      const t = await say(sid, line);
+      expect(t.textToSpeak.startsWith(NO_PRESSURE_LINE)).toBe(true);
+      expect(t.textToSpeak).not.toContain(UNKNOWN_QUESTION_LINE);
+      expect(t.beatId).toBe(beat);
+      const pending = repromptText(sid, "resume");
+      expect(pending).toMatch(/\?$/);
+      expect(t.textToSpeak.endsWith(pending)).toBe(true);
+    }
+  });
+
+  it("at the price (Beat 22) 'not paying' stays with the negotiation", async () => {
+    const t = await say(atBeat(22), "I'm not paying for anything extra.");
+    expect(t.textToSpeak).not.toContain(NO_PRESSURE_LINE);
   });
 });

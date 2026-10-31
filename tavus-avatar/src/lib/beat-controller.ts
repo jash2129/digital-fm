@@ -15,6 +15,7 @@ import {
   STEP_0_INTRO_LINE,
   STEP_0_SORRY_LINE,
   STEP_0_NEUTRAL_ACK_LINE,
+  NO_PRESSURE_LINE,
   BEAT_TRANSITION_BRIDGES,
   PAUSE_LINE,
   LISTENING_LINE,
@@ -202,6 +203,7 @@ export type ClassifierIntent =
   | "number_clarification"
   | "classifier_timeout"
   | "provided_details"
+  | "pressure_objection"
   | "resume_interrupted"
   | "other";
 
@@ -836,6 +838,15 @@ export function scrubDisputedVehicle(text: string, state: CallState): string {
   return out;
 }
 
+// "not paying for anything extra", "no extras", "you always upsell", "don't pressure me", "scam". Takes the normalized transcript.
+export function isPressureObjection(norm: string): boolean {
+  if (/\btire pressure\b/.test(norm)) return false;
+  return (
+    /\b(not paying|won t pay|wont pay|will not pay|not going to pay|not buying anything|don t want anything|dont want anything|do not want anything|no extras?|nothing extra|anything extra)\b/.test(norm) ||
+    /\b(upsell\w*|pushy|push me|pushing me|pressure|pressuring|scam\w*|rip ?off|don t trust|dont trust|do not trust)\b/.test(norm)
+  );
+}
+
 // Deterministic rule-based classification fallback (also used for unit/simulation tests)
 export function classifyCustomerInputRuleBased(
   transcript: string,
@@ -961,6 +972,13 @@ export function classifyCustomerInputRuleBased(
 
   if (isVehicleDiscrepancy) {
     return { intent: "vehicle_discrepancy", topic_beat_ids: [] };
+  }
+
+  // 1.35. Sales-pressure objection before the price ("I'm not paying for anything extra", "you always
+  // upsell"): reassure, never answer it as an unknown question. From Beat 22 a "not paying" is a
+  // price objection and belongs to the negotiation.
+  if (currentBeatId < 22 && isPressureObjection(norm)) {
+    return { intent: "pressure_objection", topic_beat_ids: [] };
   }
 
   // 1.4. Manufacturer Warranty vs Dealership Vehicle Protection (e.g. "is this provided by the manufacturer", "should I buy the new one")
@@ -3219,6 +3237,13 @@ async function runControllerTurn(
         textToSpeak = IDENTITY_LINE;
         beatType = "wait";
       }
+      break;
+    }
+
+    case "pressure_objection": {
+      textToSpeak = `${NO_PRESSURE_LINE} ${pendingQuestion(state)}`;
+      beatType = "wait";
+      toolCalls = [];
       break;
     }
 

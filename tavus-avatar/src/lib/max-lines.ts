@@ -102,6 +102,10 @@ export const STEP_0_SORRY_LINE = "I'm sorry to hear that, I'll do my best to mak
 // Status: PENDING TXM
 export const STEP_0_NEUTRAL_ACK_LINE = "Thanks for sharing that.";
 
+// "I'm not paying for anything extra", "you always upsell", "don't pressure me" before the price
+// (Beats 1-21). Followed by the pending question. Status: PENDING TXM
+export const NO_PRESSURE_LINE = "No pressure at all. I'll just walk you through the options, and the choice is always yours.";
+
 // Stage 0 Transition into Legal Disclosure
 // Status: APPROVED
 export const STEP_0_TRANSITION_LINE = "Glad to hear that! Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.";
