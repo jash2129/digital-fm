@@ -232,7 +232,7 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
         },
         {
           stepName: "11. other -> answers from the approved knowledge base, holds the beat",
-          userInput: "The weather in Texas is crazy today",
+          userInput: "Does the Texas heat really damage the car?",
           intent: "other",
           topic_beat_ids: [],
           expectedKeyword: "110 degrees",

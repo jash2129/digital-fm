@@ -105,3 +105,16 @@ describe("2: a no-pressure reply to 'I'm not paying for anything extra'", () => 
     expect(t.textToSpeak).not.toContain(NO_PRESSURE_LINE);
   });
 });
+
+describe("3: small talk about the weather is not the warranty climate fact", () => {
+  it("'What's the weather like today?' gets the unknown-question line", async () => {
+    const t = await say(atBeat(2), "What's the weather like today?");
+    expect(t.textToSpeak).toContain(UNKNOWN_QUESTION_LINE);
+    expect(t.textToSpeak).not.toContain("110 degrees");
+  });
+
+  it("a climate question about the car still gets the fact", async () => {
+    const t = await say(atBeat(9), "Does the Texas heat really damage the car?");
+    expect(t.textToSpeak).toContain("110 degrees");
+  });
+});

@@ -41,7 +41,8 @@ const KEYWORDS: Record<string, string[]> = {
   manufacturer_warranty: ["powertrain", "power train", "base limited", "factory warranty", "manufacturer warranty", "two warranties", "comes with the car", "already have a warranty", "factory coverage"],
   warranty_fine_print: ["manual", "glovebox", "glove box", "page 4", "page four", "mis built", "misbuilt", "defect", "defects only", "only defects", "what does the factory cover"],
   wear_and_tear: ["wear and tear", "ware and tear", "95", "ninety five", "three reasons", "main reasons", "why do cars break", "what causes", "normal use"],
-  climate: ["climate", "heat", "hot", "110", "cold", "weather", "texas summer"],
+  // No bare "weather"/"hot"/"cold"/"heat": "What's the weather like today?" is small talk, not this fact
+  climate: ["climate", "110", "texas heat", "texas summer"],
   road: ["road", "pothole", "construction", "bad roads"],
   driving_habits: ["driving habit", "how i drive", "my driving", "the way i drive", "drive hard"],
   breakdown_process: ["who pays", "who will pay", "diagnose", "breaks down", "break down", "broke down", "manufacturer decide", "who decides", "manufacturer pays", "who covers", "who is responsible", "my fault", "wear and tear", "who pays for repairs"],
@@ -57,6 +58,11 @@ const KEYWORDS: Record<string, string[]> = {
   two_most_valuable: ["which two", "most value"],
   confirm: ["confirm"],
   verify: ["legal name", "mailing address", "verify my"],
+};
+
+// Facts that only count when the question is about the car, not small talk ("how's the climate here?")
+const NEEDS_CAR_CONTEXT: Record<string, RegExp> = {
+  climate: /\b(warrant\w*|cover\w*|damag\w*|car|cars|vehicle|engine|ac|sensors?|electronics?|transmission|cooling|break\w*|parts?|wear|110)\b/,
 };
 
 const STOP = new Set("a an the is are was were do does did can could would should i you me my your it its to of for on in at and or but so if then that this what how why when where who which about with be have has".split(" "));
@@ -98,7 +104,9 @@ export function retrieve(question: string, k = 2) {
     }
     return { ...f, score };
   });
-  return scored.filter((s) => s.score >= 2).sort((a, b) => b.score - a.score).slice(0, k);
+  return scored
+    .filter((s) => s.score >= 2 && (NEEDS_CAR_CONTEXT[s.id]?.test(norm) ?? true))
+    .sort((a, b) => b.score - a.score).slice(0, k);
 }
 
 const RISKY = ["refund", "transferable", "prorat", "pro-rat", "guarantee", "insurance", "lawsuit", "legal advice"];
