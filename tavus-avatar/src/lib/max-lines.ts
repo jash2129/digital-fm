@@ -129,8 +129,13 @@ export const SALES_CALL_LINE = "I'm Max, your finance manager. My job is to go o
 export const CALL_PURPOSE_LINE = "Every buyer meets with finance before delivery to verify paperwork, registration details, and review factory warranty coverage. Did you get a good feel for the car on your test drive?";
 
 // Spoken when a customer asks something the approved knowledge base cannot answer.
-// Status: PENDING TXM APPROVAL. Replaces any invented answer; the question is logged and escalated.
-export const UNKNOWN_QUESTION_LINE = "That's a good question, and I want you to get the exact answer. Let me bring in a member of our team to confirm that for you.";
+// Status: PENDING TXM APPROVAL. Replaces any invented answer; the question is logged.
+// There is no human escalation, so this must never promise to bring anyone in.
+export const UNKNOWN_QUESTION_LINE = "That's covered in your contract paperwork, and I'll go over the details with you before you sign.";
+
+// Spoken on every turn after the call has stopped (recording objection or hang-up).
+// Status: PENDING TXM / LEGAL — confirm wording for the recording-objection case.
+export const CLOSING_LINE = "Thank you, take care.";
 
 // Spoken when the customer's reply is a filler sound or unclear at a check-in.
 // Status: PENDING TXM APPROVAL.

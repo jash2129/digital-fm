@@ -395,14 +395,16 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       expect(complimentDecision.beatId).toBe(2);
     });
 
-    it("Phase 4: human requests and terminal handoffs dispatch escalate toolCall", async () => {
+    it("Phase 4: human requests stay in character and hold the beat (no escalation exists)", async () => {
       await processControllerTurn(sessionId, "Yes");
       await processControllerTurn(sessionId, "Great"); // Beat 1
 
       const humanDecision = await processControllerTurn(sessionId, "I need to speak to a human manager");
       expect(humanDecision.intent).toBe("human_request");
       expect(humanDecision.textToSpeak).toBe(HANDOFF_LINE);
-      expect(humanDecision.toolCalls).toEqual([{ name: "show_content", args: { item: "escalate" } }]);
+      expect(humanDecision.toolCalls).toEqual([]);
+      expect(humanDecision.beatId).toBe(1);
+      expect(humanDecision.state.is_stopped).toBe(false);
     });
 
     it("Identity questions ('who is this') identify Max and re-prompt current beat without advancing", async () => {

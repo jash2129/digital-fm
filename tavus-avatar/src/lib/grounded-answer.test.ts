@@ -54,7 +54,8 @@ describe("grounded answers", () => {
     expect(d.textToSpeak.toLowerCase()).toContain("glovebox");
   });
 
-  it("two unanswerable questions in a row hand off", async () => {
+  // Human escalation was removed by the client: a second unanswerable question keeps the call going.
+  it("two unanswerable questions in a row never stop the call", async () => {
     nokey();
     const sid = "g2"; resetCallState(sid);
     const st = getOrCreateCallState(sid); st.step0_completed = true; st.current_beat = 9; st.delivered_beats = [1,2,3,4,5,6,7,8,9];
@@ -62,6 +63,8 @@ describe("grounded answers", () => {
     expect(a.state.is_stopped).toBe(false);
     expect(a.textToSpeak).toContain(UNKNOWN_QUESTION_LINE);
     const b = await processControllerTurn(sid, "Does it cover the battery?");
-    expect(b.state.is_stopped).toBe(true);
+    expect(b.state.is_stopped).toBe(false);
+    expect(b.beatId).toBe(9);
+    expect(b.textToSpeak).toContain(UNKNOWN_QUESTION_LINE);
   });
 });

@@ -31,6 +31,7 @@ import {
   SCRIPT_COMPLETE_LINE,
   REPEATED_NO_LINE,
   UNKNOWN_QUESTION_LINE,
+  CLOSING_LINE,
   CLARIFY_LINE,
   ANSWER_CHECK_LINE,
   TIRE_EXCLUSION_LINE,
@@ -405,6 +406,45 @@ export function isAvatarScriptEcho(transcript: string): boolean {
   return echoPhrases.some((phrase) => norm.includes(phrase));
 }
 
+// Daily rate Max is offering at each concession stage: $4.00 -> $3.50 -> $3.25 -> $3.00 hard floor
+const CONCESSION_LADDER: Record<number, number> = { 1: 4.0, 2: 3.5, 3: 3.25, 4: 3.0 };
+
+// Daily price the customer names in a counter-offer ("how about three fifty", "$3.25"), or null
+export function parseNamedDailyPrice(transcript: string): number | null {
+  const t = transcript.toLowerCase().replace(/-/g, " ");
+  const digits = t.match(/\$?\b(\d+(?:\.\d{1,2})?)\b/);
+  if (digits) {
+    const n = Number(digits[1]);
+    if (n > 0 && n < 10) return n;
+  }
+  if (/\bthree (dollars? )?(and )?twenty five\b/.test(t)) return 3.25;
+  if (/\bthree (dollars? )?(and )?fifty\b|\bthree and a half\b/.test(t)) return 3.5;
+  if (/\bthree (dollars?|bucks)\b/.test(t)) return 3.0;
+  if (/\bfour (dollars?|bucks)\b/.test(t)) return 4.0;
+  return null;
+}
+
+// "Say that again" / "what does that mean": a request to hear the current beat again, not a new
+// question. Takes the normalized transcript (lower-case, punctuation replaced by spaces).
+function isReExplainRequest(norm: string): boolean {
+  return (
+    norm.includes("repeat that") ||
+    norm.includes("say that again") ||
+    norm.includes("say again") ||
+    norm.includes("what did you say") ||
+    norm.includes("one more time") ||
+    norm.includes("come again") ||
+    norm.includes("what does that mean") ||
+    norm.includes("what does this mean") ||
+    norm.includes("what do you mean") ||
+    norm.includes("explain that") ||
+    norm.includes("explain this") ||
+    norm.includes("don t understand") ||
+    norm.includes("dont understand") ||
+    norm.includes("do not understand")
+  );
+}
+
 // Deterministic rule-based classification fallback (also used for unit/simulation tests)
 export function classifyCustomerInputRuleBased(
   transcript: string,
@@ -627,15 +667,8 @@ export function classifyCustomerInputRuleBased(
     return { intent: "restart_request", topic_beat_ids: [] };
   }
 
-  // 4. Repeat request
-  if (
-    norm.includes("repeat that") ||
-    norm.includes("say that again") ||
-    norm.includes("say again") ||
-    norm.includes("what did you say") ||
-    norm.includes("one more time") ||
-    norm.includes("come again")
-  ) {
+  // 4. Repeat request, including asking Max to re-explain what he just said
+  if (isReExplainRequest(norm)) {
     return { intent: "repeat_request", topic_beat_ids: [] };
   }
 
@@ -1076,7 +1109,6 @@ export function classifyCustomerInputRuleBased(
     norm === "no" ||
     norm === "nope" ||
     norm === "not really" ||
-    norm === "i don t understand" ||
     norm.startsWith("no ") ||
     norm.endsWith(" no") ||
     norm.includes(" no ") ||
@@ -1449,12 +1481,12 @@ The LLM never writes sales dialogue. Only classify.
 
 Intents:
 - "agree": Customer affirms, agrees, says yes/yeah/ok/sure/makes sense/go on/sounds good, or answers affirmatively.
-- "no": Customer says no, disagrees, or indicates confusion ("no", "not really", "i don't get it").
+- "no": Customer says no or disagrees ("no", "not really").
 - "question_in_script": Customer asks a question answered by vehicle warranty/protection script topics (coverage, wear and tear, repair costs, tires, oil changes).
 - "question_out_of_script": Customer asks a question outside warranty/protection (e.g. APR, loan interest rate, trade-in, dealer doc fee).
 - "price_ask": Customer asks what it costs, the price, or daily/monthly payment.
 - "garbled": Inaudible, empty, or unintelligible words.
-- "repeat_request": Customer explicitly asks Max to repeat what he said ("say that again", "what did you say?").
+- "repeat_request": Customer asks Max to repeat or re-explain what he just said ("say that again", "what did you say?", "what does that mean?", "what do you mean?", "can you explain that?", "I don't understand", "i don't get it").
 - "restart_request": Customer asks to restart from the very beginning.
 - "human_request": Customer asks for a human manager or real person.
 - "ai_question": Customer asks if Max is an AI / robot / real person.
@@ -1897,8 +1929,8 @@ STRICT CONSTRAINTS:
 }
 
 /**
- * Out-of-script turn: answer only from the approved knowledge base, hold the current beat,
- * and hand off after two unanswerable questions in a row. Never advances the script.
+ * Out-of-script turn: answer only from the approved knowledge base and hold the current beat.
+ * Never advances the script and never stops the call (there is no human escalation).
  */
 async function handleGroundedTurn(
   customerTranscript: string,
@@ -1930,15 +1962,10 @@ async function handleGroundedTurn(
     return { text: `${result.text} ${bridge} ${checkIn}`, beatType: "wait", toolCalls: [] };
   }
   state.ungrounded_count = (state.ungrounded_count || 0) + 1;
-  console.warn("[beat-controller] UNANSWERED_QUESTION", JSON.stringify({ beat: currentBeat.id, q: customerTranscript }));
-  if (state.ungrounded_count >= 2) {
-    state.is_stopped = true;
-    return {
-      text: `${UNKNOWN_QUESTION_LINE}`,
-      beatType: "stop",
-      toolCalls: [{ name: "show_content", args: { item: "escalate" } }],
-    };
-  }
+  console.warn(
+    "[beat-controller] UNANSWERED_QUESTION",
+    JSON.stringify({ beat: currentBeat.id, q: customerTranscript, in_a_row: state.ungrounded_count })
+  );
   return { text: `${UNKNOWN_QUESTION_LINE} ${CLARIFY_LINE}`, beatType: "wait", toolCalls: [] };
 }
 
@@ -1954,16 +1981,17 @@ export async function processControllerTurn(
 ): Promise<ControllerDecision> {
   const state = getOrCreateCallState(sessionId, dealConfig);
 
-  // If already stopped after Beat 22 or handoff, speak appropriate terminal line and stop
+  // Once stopped (script complete, recording objection, hang-up), stay closed: one fixed line,
+  // never the handoff line and never back into the script.
   if (state.is_stopped) {
-    const terminalText = state.current_beat >= 25 ? SCRIPT_COMPLETE_LINE : HANDOFF_LINE;
+    const terminalText = state.current_beat >= 25 ? SCRIPT_COMPLETE_LINE : CLOSING_LINE;
     return {
       textToSpeak: terminalText,
       beatId: state.current_beat,
       beatType: "stop",
       toolCalls: [],
       state,
-      intent: "human_request",
+      intent: "hang_up",
       isScriptComplete: true,
     };
   }
@@ -2088,7 +2116,9 @@ export async function processControllerTurn(
       state.delivered_beats.push(nextBeatId);
       const nextBeat = BEATS.find((b) => b.id === nextBeatId)!;
       const baseUtterance = getFullBeatUtterance(nextBeat, state.dealConfig, state);
-      const bridge = BEAT_TRANSITION_BRIDGES[nextBeatId];
+      // Skip the bridge when the beat already opens with a connective ("Now, And the first...")
+      const opensWithConnective = /^\W*(and|now|but|that['’]?s|so|also)\b/i.test(baseUtterance);
+      const bridge = opensWithConnective ? undefined : BEAT_TRANSITION_BRIDGES[nextBeatId];
       textToSpeak = bridge ? `${bridge} ${baseUtterance}` : baseUtterance;
       beatType = nextBeat.type;
       toolCalls = getBeatToolCalls(nextBeatId);
@@ -2295,6 +2325,25 @@ export async function processControllerTurn(
       }
 
       const currentStage = state.concession_stage || 1;
+
+      // Customer names a price at or above what Max is currently offering ("how about three
+      // fifty" right after Max offered $3.50): accept the current offer, never drop again.
+      // Only a lower number or a push ("still too much", "lower") moves down the ladder.
+      const currentOffer = CONCESSION_LADDER[currentStage] ?? 3.0;
+      const namedPrice = parseNamedDailyPrice(customerTranscript);
+      const isPushingLower =
+        /too much|too high|too expensive|still|lower|cheaper|\bless\b|come down|do better|can t|cant|can't|\bno\b/.test(norm);
+      if (namedPrice !== null && namedPrice >= currentOffer && !isPushingLower) {
+        state.no_count_in_a_row = 0;
+        state.current_beat = 24;
+        state.delivered_beats.push(24);
+        const beat24 = BEATS.find((b) => b.id === 24)!;
+        textToSpeak = getFullBeatUtterance(beat24, state.dealConfig, state);
+        beatType = beat24.type;
+        toolCalls = getBeatToolCalls(24);
+        break;
+      }
+
       if (currentStage === 1) {
         state.concession_stage = 2;
         state.dealConfig.per_day_price = "three dollars and fifty cents";
@@ -2357,6 +2406,7 @@ export async function processControllerTurn(
     case "repeat_request": {
       const norm = customerTranscript.toLowerCase();
       const isExplicitRepeat =
+        isReExplainRequest(norm.replace(/[^a-z0-9 ]/g, " ")) ||
         norm.includes("repeat") ||
         norm.includes("again") ||
         norm.includes("what did you say") ||
@@ -2391,17 +2441,18 @@ export async function processControllerTurn(
     }
 
     case "human_request": {
-      // Speak HANDOFF_LINE and stop
-      state.is_stopped = true;
       const norm = customerTranscript.toLowerCase();
+      // Recording objection at Beat 1: the call cannot proceed without consent, so it ends.
       if (state.current_beat === 1 && (norm.includes("recorded") || norm.includes("recording"))) {
         textToSpeak = "I understand. I'll end this session now.";
-      } else {
-        textToSpeak = HANDOFF_LINE;
+        beatType = "stop";
+        onScriptComplete(state);
+        break;
       }
-      beatType = "stop";
-      toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
-      onScriptComplete(state);
+      // There is no human to hand off to: stay in character, hold the current beat, and let the
+      // next turn continue the script normally.
+      textToSpeak = HANDOFF_LINE;
+      beatType = "wait";
       break;
     }
 
@@ -2409,7 +2460,6 @@ export async function processControllerTurn(
       state.is_stopped = true;
       textToSpeak = "I understand. I'll end this session now.";
       beatType = "stop";
-      toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
       onScriptComplete(state);
       break;
     }
