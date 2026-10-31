@@ -36,6 +36,7 @@ import {
   VERIFY_REASK_LINE,
   VERIFY_DEFER_LINE,
   CHOSEN_COVERAGE_CONFIRM_LINE,
+  KEEP_COVERAGES_REASK_LINE,
   CLARIFY_LINE,
   ANSWER_CHECK_LINE,
   TIRE_EXCLUSION_LINE,
@@ -78,6 +79,10 @@ export interface CallState {
   finalize_confirmed?: boolean;
   /** coverages the customer named at Beat 23 ("which two do you see the most value in?") */
   chosen_coverages?: string[];
+  /** coverages the customer asked to drop at Beat 23 (logged only; never repriced) */
+  excluded_coverages?: string[];
+  /** the last question Max asked, so interjections can re-ask what is actually pending */
+  last_question?: string;
   /** consecutive Beat 25 replies that were not a name and address */
   verify_misses?: number;
   /** Beat 25 closed without the details: never claim the paperwork was finalized */
@@ -455,6 +460,26 @@ const NAMES_ALL_COVERAGES = /\b(everything|all of (them|it)|all three|the whole 
 export function namedCoverages(norm: string): string[] {
   return COVERAGES.filter((c) => c.words.test(norm)).map((c) => c.label);
 }
+// "drop the tires and keep the rest", "I don't need the maintenance": a removal, not a choice
+const EXCLUSION = /\b(drop|dropping|without|don t need|dont need|do not need|skip|remove|exclude|except|not the|no tires?|keep the rest|everything but)\b/;
+
+// The last question in an utterance ("" if it asks nothing)
+function lastQuestionOf(text: string): string {
+  const parts = text.match(/[^.!?]+[.!?]*/g) ?? [];
+  return (parts.filter((p) => p.includes("?")).at(-1) ?? "").trim();
+}
+
+// What Max is actually waiting on. At Beat 23 that is the coverage question (or the keep re-ask),
+// not the beat's default "Does that sound fair?" check-in.
+function pendingQuestion(state: CallState): string {
+  const last = state.last_question || lastQuestionOf(state.last_spoken_text);
+  if (state.current_beat === 23) {
+    if (/would you like to keep/i.test(last)) return KEEP_COVERAGES_REASK_LINE;
+    if (/which two|most important to you/i.test(last)) return "Which two of those do you see the most value in?";
+  }
+  return getBeatCheckInQuestion(BEATS.find((b) => b.id === state.current_beat)!);
+}
+
 // "yes" / "ok" / "sure" (with fillers) does not answer "which two?"
 const BARE_ACK = new Set("yes yeah yep yup ya ok okay sure alright fine right uh um mhm mm hm oh well so".split(" "));
 function isBareAck(norm: string): boolean {
@@ -2322,10 +2347,17 @@ async function runControllerTurn(
 
       // Beat 23 (expects "open"): "Which two of those do you see the most value in?". A bare yes is
       // not an answer, so re-ask; named coverages are remembered for Beat 24's confirmation.
-      if (currentBeatObj?.expects === "open" && state.current_beat === 23 && /which two|most important to you/i.test(state.last_spoken_text)) {
+      if (currentBeatObj?.expects === "open" && state.current_beat === 23 && /which two|most important to you|would you like to keep/i.test(state.last_spoken_text)) {
         const reply = customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
         if (isBareAck(reply)) {
           textToSpeak = "Which two of those do you see the most value in?";
+          beatType = "wait";
+          break;
+        }
+        // A removal is not a selection: never confirm it as chosen and never reprice; ask what to keep
+        if (EXCLUSION.test(reply)) {
+          state.excluded_coverages = namedCoverages(reply);
+          textToSpeak = KEEP_COVERAGES_REASK_LINE;
           beatType = "wait";
           break;
         }
@@ -2760,6 +2792,8 @@ async function runControllerTurn(
         norm.includes("listen") ||
         norm.includes("hear me");
       textToSpeak = isInterjection ? LISTENING_LINE : PAUSE_LINE;
+      // At Beat 23 keep the coverage question in front of the customer when they come back
+      if (state.current_beat === 23) textToSpeak = `${textToSpeak} ${pendingQuestion(state)}`;
       beatType = "wait";
       toolCalls = [];
       break;
@@ -2787,8 +2821,7 @@ async function runControllerTurn(
         norm.includes("crack me up");
 
       const leadIn = isLaughterOrHumor ? EQ_EXCITEMENT_LINE : COMPLIMENT_LINE;
-      const currentBeat = BEATS.find((b) => b.id === state.current_beat)!;
-      textToSpeak = `${leadIn} ${getBeatCheckInQuestion(currentBeat)}`;
+      textToSpeak = `${leadIn} ${pendingQuestion(state)}`;
       beatType = "wait";
       break;
     }
@@ -2952,8 +2985,7 @@ async function runControllerTurn(
       // Speak AI_DISCLOSURE_LINE, hold current beat, re-prompt check-in
       const currentBeat = BEATS.find((b) => b.id === state.current_beat);
       if (currentBeat) {
-        const checkIn = getBeatCheckInQuestion(currentBeat);
-        textToSpeak = `${AI_DISCLOSURE_LINE} ${checkIn}`;
+        textToSpeak = `${AI_DISCLOSURE_LINE} ${pendingQuestion(state)}`;
         beatType = "wait";
         toolCalls = [];
       } else {
@@ -3117,6 +3149,8 @@ async function runControllerTurn(
   }
 
   state.last_spoken_text = textToSpeak;
+  const askedNow = lastQuestionOf(textToSpeak);
+  if (askedNow) state.last_question = askedNow;
 
   return {
     textToSpeak,

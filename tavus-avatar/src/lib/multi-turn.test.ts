@@ -33,7 +33,7 @@ import {
   VERIFY_DEFER_LINE,
   COMPLIMENT_LINE as COMPLIMENT,
 } from "./max-lines";
-import { answerFromKnowledgeBase, REMOTE_TIMEOUT_MS } from "./grounded-answer";
+import { answerFromKnowledgeBase, REMOTE_TIMEOUT_MS, FACT_PICKER_TIMEOUT_MS } from "./grounded-answer";
 
 function fresh(beat: number) {
   const sid = `multi_${Math.random().toString(36).slice(2)}`;
@@ -172,7 +172,8 @@ describe("multi-turn regressions", () => {
     for (const beat of [1, 9, 10, 22, 23, 24, 25]) {
       for (const say of ["beautiful car", "love it", "nice ride"]) {
         const [d] = await play(beat, say);
-        const checkIn = getBeatCheckInQuestion(BEATS.find((b) => b.id === beat)!);
+        // At Beat 23 the pending question is "which two" (follow-up 5 N), not the default check-in
+        const checkIn = beat === 23 ? "Which two of those do you see the most value in?" : getBeatCheckInQuestion(BEATS.find((b) => b.id === beat)!);
         expect(d.intent, `B${beat} ${say}`).toBe("compliment");
         expect(d.textToSpeak, `B${beat} ${say}`).toBe(`${COMPLIMENT_LINE} ${checkIn}`);
         expect(d.beatId, `B${beat} ${say}`).toBe(beat);
@@ -406,7 +407,7 @@ describe("multi-turn regressions", () => {
       );
       let t0 = Date.now();
       let r = await answerFromKnowledgeBase("who pays when it breaks down?");
-      expect(Date.now() - t0).toBeLessThan(REMOTE_TIMEOUT_MS + 400);
+      expect(Date.now() - t0).toBeLessThan(FACT_PICKER_TIMEOUT_MS + 400);
       expect(r.kind).toBe("answer");
       expect(r.text).toContain("the manufacturer pays");
 
@@ -441,6 +442,71 @@ describe("multi-turn regressions", () => {
     expect(d.intent).toBe("provided_details");
     expect(d.metrics?.intent).toBe("provided_details");
     expect(d.textToSpeak).toBe(SCRIPT_COMPLETE_LINE);
+  });
+
+  // ---- Follow-up 5
+
+  it("M: dropping a coverage is an exclusion, not a choice: re-ask what to keep, hold Beat 23", async () => {
+    for (const say of ["can I drop the tires and keep the rest", "I don't need the maintenance"]) {
+      const [offer, d] = await play(22, "that's too much", say);
+      expect(d.beatId, say).toBe(23);
+      expect(d.textToSpeak.toLowerCase(), say).toContain("which coverages would you like to keep");
+      expect(d.textToSpeak, say).not.toContain("you said matters most");
+      expect(d.price, say).toBe(offer.price); // never repriced
+      expect(d.state.excluded_coverages?.length, say).toBeGreaterThan(0);
+    }
+  });
+
+  it("M: 'just the warranty and the tires' is still a selection", async () => {
+    const [, d] = await play(22, "that's too much", "just the warranty and the tires");
+    expect(d.beatId).toBe(24);
+    expect(d.textToSpeak).toContain("you said matters most");
+  });
+
+  it("M: after the keep re-ask, naming what to keep is taken as the selection", async () => {
+    const [, , d] = await play(22, "that's too much", "can I drop the tires and keep the rest", "the warranty and the maintenance");
+    expect(d.beatId).toBe(24);
+    expect(d.textToSpeak).toContain("bumper-to-bumper warranty and the maintenance");
+  });
+
+  it("N: a compliment at Beat 23 re-asks the coverage question, not 'does that sound fair'", async () => {
+    const [, d] = await play(22, "that's too much", "wow nice car");
+    expect(d.textToSpeak.trim().endsWith("Which two of those do you see the most value in?")).toBe(true);
+    expect(d.beatId).toBe(23);
+  });
+
+  it("O: the fact picker waits up to FACT_PICKER_TIMEOUT_MS (1200 ms by default)", async () => {
+    expect(FACT_PICKER_TIMEOUT_MS).toBe(1200);
+    const saved = process.env.XAI_API_KEY;
+    process.env.XAI_API_KEY = "test-key";
+    // A picker that answers "driving_habits" after `delay` ms, unless aborted first
+    const pickerAt = (delay: number) => (_u: string, init: { signal: AbortSignal }) =>
+      new Promise((resolve, reject) => {
+        const t = setTimeout(() => resolve(new Response(JSON.stringify({ choices: [{ message: { content: "driving_habits" } }] }))), delay);
+        init.signal.addEventListener("abort", () => { clearTimeout(t); reject(new Error("aborted")); });
+      });
+    try {
+      // No keyword matches this, so only the picker can answer it
+      const q = "what if I drive like a maniac?";
+      vi.stubGlobal("fetch", pickerAt(1000));
+      const used = await answerFromKnowledgeBase(q);
+      expect(used.kind).toBe("answer");
+      expect(used.sources).toEqual(["driving_habits"]);
+
+      vi.stubGlobal("fetch", pickerAt(1500));
+      const t0 = Date.now();
+      const fellBack = await answerFromKnowledgeBase(q);
+      expect(Date.now() - t0).toBeLessThan(FACT_PICKER_TIMEOUT_MS + 400);
+      expect(fellBack.kind).toBe("handoff"); // keywords have nothing for it
+    } finally {
+      vi.unstubAllGlobals();
+      if (saved === undefined) delete process.env.XAI_API_KEY;
+      else process.env.XAI_API_KEY = saved;
+    }
+  });
+
+  it("O: the turn classifier cap is unchanged at 800 ms", () => {
+    expect(LLM_CLASSIFIER_TIMEOUT_MS).toBe(800);
   });
 });
 

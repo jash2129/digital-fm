@@ -33,6 +33,11 @@ export const SCRIPT_COMPLETE_LINE = "Everything on your paperwork is all set and
 // Status: PENDING TXM
 export const CHOSEN_COVERAGE_CONFIRM_LINE = "Great, so to confirm, we're moving forward with your protection, including the {{coverages}} coverage you said matters most, for {{price}} a day on your {{vehicle}}.";
 
+// Beat 23: the customer excluded a coverage ("drop the tires and keep the rest") instead of choosing.
+// Never confirmed as a choice and never repriced; Max re-asks what to keep.
+// Status: PENDING TXM
+export const KEEP_COVERAGES_REASK_LINE = "Just to be sure I have it right, which coverages would you like to keep?";
+
 // Beat 25 verification: re-asked when the reply is not a name and address (a bare yes, a filler).
 // Status: PENDING TXM
 export const VERIFY_REASK_LINE = "I just need your full legal name, spelling, and current mailing address to verify.";

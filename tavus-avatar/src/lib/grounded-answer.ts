@@ -155,9 +155,13 @@ Do not sell or pressure. Plain speech, no markdown.`;
   }
 }
 
-// Remote calls in this module (fact picker, rewrite) give up after this and fall back to keywords
-// and the approved sentences as written. Dead air hurts more than a plainer answer.
+// The rewrite gives up after this and falls back to the approved sentences as written.
+// Dead air hurts more than a plainer answer.
 export const REMOTE_TIMEOUT_MS = 800;
+
+// The fact picker gets longer than the rewrite: the live model answers in ~700-850 ms, and a pick
+// that lands saves an "I don't have that detail" when the answer exists. Override with the env var.
+export const FACT_PICKER_TIMEOUT_MS = Number(process.env.FACT_PICKER_TIMEOUT_MS) || 1200;
 
 /**
  * Lets the model choose which approved fact answers the question. It returns ONLY a fact id or
@@ -174,7 +178,7 @@ async function pickFactWithLLM(
   const model = process.env.GROK_MODEL?.trim() || (isXai ? "grok-4.20-0309-non-reasoning" : "gpt-4o-mini");
   const list = facts.map((f) => `${f.id}: ${f.topic}`).join("\n");
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REMOTE_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), FACT_PICKER_TIMEOUT_MS);
   try {
     const res = await fetch(endpoint, {
       method: "POST",
