@@ -173,3 +173,75 @@ describe("T: Step 0 reacts to what the customer says", () => {
     expect(d.textToSpeak.toLowerCase()).toContain("can you see and hear me");
   });
 });
+
+describe("Follow-up 7 A: a rollback never undoes the customer's progress", () => {
+  const step0 = () => {
+    const sid = `s0_${Math.random().toString(36).slice(2)}`;
+    resetCallState(sid);
+    getOrCreateCallState(sid);
+    return sid;
+  };
+  const OPENER = "great to connect with you";
+
+  it("opener cut at 30%, then 'Who are you?' gets the identity answer and step0_turns is 2", async () => {
+    const sid = step0();
+    const opener = await processClientTurn(sid, "Yeah.", 1);
+    expect(opener.textToSpeak.toLowerCase()).toContain(OPENER);
+    commitTurn(sid, 1, false, 0.3);
+    expect(getOrCreateCallState(sid).step0_turns).toBe(1); // not rolled back
+
+    const who = await processClientTurn(sid, "Who are you?", 2);
+    expect(who.textToSpeak.startsWith("I'm Max")).toBe(true);
+    expect(who.textToSpeak.toLowerCase()).not.toContain(OPENER);
+    expect(getOrCreateCallState(sid).step0_turns).toBe(2);
+  });
+
+  it("four Step 0 turns, every reply cut: the full opener is never repeated and Beat 1 is reached by turn 3", async () => {
+    const sid = step0();
+    const says = ["Yeah.", "Who? Who are you?", "it was fine, thanks", "okay"];
+    const replies: string[] = [];
+    let reachedBeat1At = 0;
+    for (let i = 0; i < says.length; i++) {
+      const d = await processClientTurn(sid, says[i], i + 1);
+      replies.push(d.textToSpeak);
+      if (!reachedBeat1At && d.beatId >= 1) reachedBeat1At = i + 1;
+      commitTurn(sid, i + 1, false, 0.3); // the customer talks over every line, as in the live call
+    }
+    const fullOpeners = replies.filter((r) => r.toLowerCase().includes(OPENER) && r.includes("How has your experience been"));
+    expect(fullOpeners.length).toBeLessThanOrEqual(1);
+    expect(reachedBeat1At).toBeGreaterThan(0);
+    expect(reachedBeat1At).toBeLessThanOrEqual(3);
+  });
+
+  it("a cut Step 0 opener resumes with only its question", async () => {
+    const sid = step0();
+    await processClientTurn(sid, "Yeah.", 1);
+    commitTurn(sid, 1, false, 0.4);
+    const resumed = await processClientTurn(sid, "yeah", 2);
+    expect(resumed.intent).toBe("resume_interrupted");
+    expect(resumed.textToSpeak).toBe("How has your experience been with our team so far?");
+  });
+
+  it("a rollback keeps the negotiated price and only moves the beat pointer", async () => {
+    const sid = fresh(22);
+    await processClientTurn(sid, "that's too much", 1);
+    expect(getOrCreateCallState(sid).dealConfig.per_day_price).toBe("three dollars and fifty cents");
+    commitTurn(sid, 1, false, 0.2);
+    const st = getOrCreateCallState(sid);
+    expect(st.current_beat).toBe(22);
+    expect(st.dealConfig.per_day_price).toBe("three dollars and fifty cents");
+    expect(st.concession_stage).toBe(2);
+  });
+
+  it("a line is restarted from the top at most once", async () => {
+    const sid = fresh(5);
+    const first = await processClientTurn(sid, "yes", 1); // Beat 6
+    commitTurn(sid, 1, false, 0); // cut in its first sentence
+    const again = await processClientTurn(sid, "yeah", 2);
+    expect(again.textToSpeak).toBe(splitIntoSentences(first.textToSpeak).join(" ")); // restart #1
+    commitTurn(sid, 2, false, 0); // cut at the top again
+    const third = await processClientTurn(sid, "okay", 3);
+    expect(third.textToSpeak).not.toBe(again.textToSpeak);
+    expect(third.textToSpeak.trim().endsWith("?")).toBe(true); // just its question
+  });
+});

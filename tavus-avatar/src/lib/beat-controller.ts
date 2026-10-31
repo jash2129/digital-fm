@@ -92,7 +92,9 @@ export interface CallState {
    * Max's last reply was not heard (cut early or dropped as stale): the state was rolled back to
    * before that turn. A bare "yes" resumes this text instead of answering a question nobody heard.
    */
-  interrupted?: { remaining: string; after: CallState; toolCalls: ControllerDecision["toolCalls"] };
+  interrupted?: { remaining: string; after: DeliveryPointer; toolCalls: ControllerDecision["toolCalls"] };
+  /** full text of the last line re-spoken from its first sentence (a line restarts from the top once at most) */
+  restarted_text?: string;
   /** consecutive Beat 25 replies that were not a name and address */
   verify_misses?: number;
   /** Beat 25 closed without the details: never claim the paperwork was finalized */
@@ -245,9 +247,26 @@ if (process.env.NODE_ENV !== "production") globalForCommits.pendingCommits = pen
 export const DELIVERED_FRACTION = 0.8;
 
 const cloneState = (s: CallState): CallState => JSON.parse(JSON.stringify(s));
-function replaceState(target: CallState, source: CallState): void {
-  for (const k of Object.keys(target)) delete (target as unknown as Record<string, unknown>)[k];
-  Object.assign(target, cloneState(source));
+
+/**
+ * What a rollback may undo: where Max is in the script. Never the customer's progress (Step 0
+ * turns, price and concessions, coverages, answers, facts): live call ba0dad23 restored the whole
+ * state on every cut, reset step0_turns each turn and looped the opener six times.
+ */
+export interface DeliveryPointer {
+  current_beat: number;
+  delivered_beats: number[];
+  sentence_index?: number;
+}
+const pointerOf = (s: CallState): DeliveryPointer => ({
+  current_beat: s.current_beat,
+  delivered_beats: [...s.delivered_beats],
+  sentence_index: s.sentence_index,
+});
+function applyPointer(target: CallState, p: DeliveryPointer): void {
+  target.current_beat = p.current_beat;
+  target.delivered_beats = [...p.delivered_beats];
+  target.sentence_index = p.sentence_index;
 }
 
 /**
@@ -274,7 +293,7 @@ export async function processClientTurn(
       const t0 = Date.now();
       const beatBefore = state.current_beat;
       const rolledBackState = cloneState(state);
-      replaceState(state, pending.after);
+      applyPointer(state, pending.after);
       state.last_spoken_text = pending.remaining;
       const beat = BEATS.find((b) => b.id === state.current_beat);
       const decision: ControllerDecision = {
@@ -328,9 +347,21 @@ export function commitTurn(
   const sentences = splitIntoSentences(pending.text);
   // Resume at the sentence that was cut (sentences fully heard are not repeated)
   const cutAt = Math.min(Math.max(0, sentences.length - 1), Math.floor(spokenFraction * sentences.length));
-  const remaining = sentences.slice(cutAt).join(" ") || pending.text;
-  replaceState(state, pending.before);
-  state.interrupted = { remaining, after: pending.after, toolCalls: pending.toolCalls };
+  const closingQuestion = [...sentences].reverse().find((x) => x.includes("?")) ?? sentences[sentences.length - 1] ?? "";
+  let remaining = sentences.slice(cutAt).join(" ") || pending.text;
+  // Step 0 opener cut after its first sentence: just ask its question, never the rest of the speech
+  const inStep0 = !pending.before.step0_completed;
+  if (inStep0 && cutAt >= 1 && closingQuestion) remaining = closingQuestion;
+  // A line restarts from the top at most once; a second restart is only its question
+  if (cutAt === 0) {
+    if (state.restarted_text === pending.text && closingQuestion) remaining = closingQuestion;
+    else state.restarted_text = pending.text;
+  }
+  // Only the delivery pointer goes back. Once Step 0 is done the pointer never returns to Step 0.
+  const back = pointerOf(cloneState(pending.before));
+  if (state.step0_completed && back.current_beat === 0) back.current_beat = state.current_beat;
+  applyPointer(state, back);
+  state.interrupted = { remaining, after: pointerOf(cloneState(pending.after)), toolCalls: pending.toolCalls };
   console.warn("[beat-controller] TURN_ROLLED_BACK", JSON.stringify({ sessionId, turnId, spokenFraction, beat: state.current_beat }));
   return { rolledBack: true };
 }
@@ -348,7 +379,8 @@ export function repromptText(sessionId: string, kind: "resume" | "still_with_me"
   if (!state.step0_completed) return STEP_0_GREETING;
   if (kind === "resume" && state.interrupted) {
     const { remaining, after } = state.interrupted;
-    replaceState(state, after);
+    state.interrupted = undefined;
+    applyPointer(state, after);
     state.last_spoken_text = remaining;
     return remaining;
   }
