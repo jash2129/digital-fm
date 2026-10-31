@@ -10,6 +10,7 @@ import DealSummaryPage from "@/app/content/deal-summary/page";
 import EscalatePage from "@/app/content/escalate/page";
 import { CallSummaryScreen } from "@/components/CallSummaryScreen";
 import type { ControllerTurnMetrics } from "@/lib/heygen-logger";
+import { TurnController, type TurnLogEvent } from "@/lib/turn-taking";
 
 // =============================================================================
 // SPEED & BARGE-IN TUNING CONFIGURATION
@@ -359,19 +360,13 @@ export function LiveAvatarDemo() {
   const lastInterruptedAtRef = useRef<number>(0);
   const isListeningRef = useRef<boolean>(false);
   const lastCustomerTranscriptRef = useRef<string>("");
-  const turnLogsRef = useRef<Array<{
-    ts: string;
-    rawTranscript: string;
-    avatarSpeaking: boolean;
-    intent: string;
-    beatBefore: number;
-    beatAfter: number;
-    reason: string;
-    classifierMs?: number;
-    controllerMs?: number;
-    usedLLM?: boolean;
-    classifierTimedOut?: boolean;
-  }>>([]);
+  const lastCustomerAtRef = useRef<number>(0);
+  // Every processed turn, drop and replay, as one JSON object each. Sent with every log upload.
+  const turnLogsRef = useRef<Array<Record<string, unknown>>>([]);
+  const logTurnEvent = (entry: TurnLogEvent | Record<string, unknown>) => {
+    turnLogsRef.current.push(entry);
+    console.log("[liveavatar turn gate]:", JSON.stringify(entry));
+  };
 
   // LiveKit WebRTC references
   const roomRef = useRef<Room | null>(null);
@@ -494,6 +489,7 @@ export function LiveAvatarDemo() {
           body: JSON.stringify({
             timingLogs: timingLogsRef.current,
             bargeIns: bargeInsRef.current,
+            turnLogs: turnLogsRef.current,
           }),
         }).catch(() => {});
       }
@@ -546,6 +542,7 @@ export function LiveAvatarDemo() {
           isAvatarSpeakingRef.current = false;
           avatarFinishedAtRef.current = Date.now();
           setRemoteAudioMutedLocally(false);
+          turnControllerRef.current?.notifyIdle();
         }
       }, expectedDurationMs);
 
@@ -625,11 +622,7 @@ export function LiveAvatarDemo() {
   const sendToGrok = useCallback(
     async (userInput: string) => {
       if (!userInput.trim()) return;
-
-      if (isGrokProcessingRef.current) {
-        console.log("[sendToGrok] Request already in flight, skipping duplicate call");
-        return;
-      }
+      // Serialized by TurnController: it never calls this while a request is in flight
       isGrokProcessingRef.current = true;
       setIsGrokThinking(true);
 
@@ -703,8 +696,7 @@ export function LiveAvatarDemo() {
           usedLLM: data.metrics?.usedLLM,
           classifierTimedOut: data.metrics?.classifierTimedOut,
         };
-        console.log("[liveavatar turn gate]:", JSON.stringify(turnLog));
-        turnLogsRef.current.push(turnLog);
+        logTurnEvent(turnLog);
 
         // Record controller decision timestamp
         const decisionTime = Date.now();
@@ -791,6 +783,20 @@ export function LiveAvatarDemo() {
     [speakWithAvatar, interruptAvatar]
   );
 
+  // One TurnController for the component's lifetime; it reaches the latest callbacks through refs
+  const sendToGrokRef = useRef(sendToGrok);
+  sendToGrokRef.current = sendToGrok;
+  const turnControllerRef = useRef<TurnController | null>(null);
+  if (!turnControllerRef.current) {
+    turnControllerRef.current = new TurnController({
+      runTurn: (transcript) => sendToGrokRef.current(transcript),
+      isAvatarSpeaking: () => isAvatarSpeakingRef.current,
+      avatarStoppedAt: () => avatarFinishedAtRef.current,
+      isEcho: (t) => isNearExactEcho(t, [lastSpokenByAvatarRef.current, ...recentAvatarTextsRef.current.map((r) => r.text)]),
+      log: (e) => logTurnEvent(e),
+    });
+  }
+
   // ---------------------------------------------------------------------------
   // Speech Recognition (Web Speech API) with Auto-Recovery & Echo Guard
   // ---------------------------------------------------------------------------
@@ -852,6 +858,7 @@ export function LiveAvatarDemo() {
             body: JSON.stringify({
               timingLogs: timingLogsRef.current,
               bargeIns: bargeInsRef.current,
+              turnLogs: turnLogsRef.current,
             }),
           }).catch(() => {});
         }
@@ -901,18 +908,15 @@ export function LiveAvatarDemo() {
 
       silenceEndTimerRef.current = setTimeout(() => {
         const spoken = (finalTranscript || interimText || currentSpoken).trim();
-        if (!spoken || isGrokProcessingRef.current) return;
+        if (!spoken) return;
 
         // Ignore isolated single filler words like 'uh', 'um'
         const pureFillers = new Set(["uh", "um", "ah", "er"]);
         const normWords = spoken.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim().split(/\s+/).filter(Boolean);
         if (normWords.length === 1 && pureFillers.has(normWords[0])) {
-          console.log("[speech-recognition] Discarding isolated filler word:", spoken);
+          logTurnEvent({ ts: new Date().toISOString(), event: "transcript_dropped", reason: "isolated_filler", transcript: spoken });
           return;
         }
-
-        // CRITICAL ACOUSTIC ECHO GUARD:
-        const timeSinceAvatarStop = Date.now() - (avatarFinishedAtRef.current || 0);
 
         // 1. Discard any transcript that matches recent avatar utterances (true echo only)
         if (
@@ -921,57 +925,34 @@ export function LiveAvatarDemo() {
             ...recentAvatarTextsRef.current.map((r) => r.text),
           ])
         ) {
-          console.warn("[liveavatar] Discarded speech in silence timer as avatar echo:", spoken);
+          logTurnEvent({ ts: new Date().toISOString(), event: "transcript_dropped", reason: "avatar_echo", transcript: spoken });
           return;
         }
 
-        // Task 2: Ignore transcripts that arrive while avatar is speaking or within 600 ms after it stops,
-        // unless they contain a stop word (stop, wait, hold on, excuse me, etc.)
-        const stopWords = ["stop", "wait", "hold on", "excuse me", "hang on", "hold up", "pause"];
-        const normSpokenLower = spoken.toLowerCase();
-        const containsStopWord = stopWords.some((sw) => normSpokenLower.includes(sw));
-
-        if ((isAvatarSpeakingRef.current || timeSinceAvatarStop < 600) && !containsStopWord) {
-          const logEntry = {
-            ts: new Date().toISOString(),
-            rawTranscript: spoken,
-            avatarSpeaking: isAvatarSpeakingRef.current,
-            intent: "dropped_speaking_gate",
-            beatBefore: currentBeat.id,
-            beatAfter: currentBeat.id,
-            reason: isAvatarSpeakingRef.current ? "avatar_speaking" : "within_600ms_post_stop",
-          };
-          console.warn("[liveavatar turn gate] Discarded transcript during speaking/600ms buffer:", JSON.stringify(logEntry));
-          turnLogsRef.current.push(logEntry);
-          return;
-        }
-
-        // Task 2: Drop a transcript that equals or is contained in the previous customer turn (e.g. STT trailing chunks)
+        // STT sometimes re-delivers the tail of the previous utterance a moment later. Only treat it as
+        // a duplicate within 2.5 s: a customer repeating "say something" later is a real new turn.
         const prevCustomer = lastCustomerTranscriptRef.current.toLowerCase().trim();
-        const normSpokenTrim = normSpokenLower.trim();
-        if (prevCustomer && (prevCustomer === normSpokenTrim || prevCustomer.includes(normSpokenTrim) || normSpokenTrim.includes(prevCustomer))) {
-          const logEntry = {
-            ts: new Date().toISOString(),
-            rawTranscript: spoken,
-            avatarSpeaking: isAvatarSpeakingRef.current,
-            intent: "dropped_trailing_chunk",
-            beatBefore: currentBeat.id,
-            beatAfter: currentBeat.id,
-            reason: "contained_in_or_equals_previous_customer_turn",
-          };
-          console.warn("[liveavatar turn gate] Discarded duplicate/trailing customer transcript chunk:", JSON.stringify(logEntry));
-          turnLogsRef.current.push(logEntry);
+        const normSpokenTrim = spoken.toLowerCase().trim();
+        const sincePrevMs = Date.now() - lastCustomerAtRef.current;
+        if (
+          prevCustomer &&
+          sincePrevMs < 2500 &&
+          (prevCustomer === normSpokenTrim || prevCustomer.includes(normSpokenTrim) || normSpokenTrim.includes(prevCustomer))
+        ) {
+          logTurnEvent({ ts: new Date().toISOString(), event: "transcript_dropped", reason: "stt_trailing_chunk", transcript: spoken, ageMs: sincePrevMs });
           return;
         }
 
         lastCustomerTranscriptRef.current = spoken;
+        lastCustomerAtRef.current = Date.now();
 
         console.log(
           `[speech-recognition] Speech silence timeout (${delayMs}ms) fired turn dispatch:`,
           spoken
         );
         setUserSpeaking(false);
-        void sendToGrok(spoken);
+        // The speaking gate and in-flight lock live in TurnController: it parks rather than drops
+        turnControllerRef.current?.onTranscript(spoken);
       }, delayMs);
     };
 
@@ -1370,6 +1351,7 @@ export function LiveAvatarDemo() {
               clearTimeout(avatarWatchdogTimerRef.current);
               avatarWatchdogTimerRef.current = null;
             }
+            turnControllerRef.current?.notifyIdle();
 
             // Put avatar in attentive listening / head-nod state while waiting for user response
             try {
@@ -1392,7 +1374,7 @@ export function LiveAvatarDemo() {
               continuePauseTimerRef.current = setTimeout(() => {
                 if (isConnectedRef.current && !isUserSpeakingRef.current && !isGrokProcessingRef.current) {
                   console.log("[beat-controller] 3500ms pause elapsed without user speech. Advancing to next beat!");
-                  void sendToGrok("proceed");
+                  turnControllerRef.current?.onTranscript("proceed");
                 }
               }, 3500);
             }
@@ -1528,6 +1510,9 @@ export function LiveAvatarDemo() {
               text: m.content,
               timestamp: new Date().toISOString(),
             })),
+            timingLogs: timingLogsRef.current,
+            bargeIns: bargeInsRef.current,
+            turnLogs: turnLogsRef.current,
           }),
         });
         console.log(`[heygen-logger] Transcript saved to logs-heygen/${currentSessionId}.json (${allMessages.length} entries)`);
@@ -1740,7 +1725,7 @@ export function LiveAvatarDemo() {
     if (isAvatarSpeakingRef.current) {
       void interruptAvatar();
     }
-    void sendToGrok(txt);
+    turnControllerRef.current?.onTranscript(txt);
   };
 
   if (callFinished) {
