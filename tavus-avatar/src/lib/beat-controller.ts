@@ -40,6 +40,8 @@ import {
   STILL_WITH_ME_LINE,
   PRESENCE_LINE,
   TECH_CHECK_ACK_LINE,
+  VEHICLE_NOTED_LINE,
+  VEHICLE_CONFIRM_LINE,
   CLARIFY_LINE,
   ANSWER_CHECK_LINE,
   TIRE_EXCLUSION_LINE,
@@ -95,6 +97,10 @@ export interface CallState {
   interrupted?: { remaining: string; after: DeliveryPointer; toolCalls: ControllerDecision["toolCalls"] };
   /** full text of the last line re-spoken from its first sentence (a line restarts from the top once at most) */
   restarted_text?: string;
+  /** the customer said the vehicle on file is wrong: every line says "your new vehicle" instead */
+  vehicle_disputed?: boolean;
+  /** how many times the customer has corrected the vehicle (each reply differs) */
+  vehicle_corrections?: number;
   /** consecutive Beat 25 replies that were not a name and address */
   verify_misses?: number;
   /** Beat 25 closed without the details: never claim the paperwork was finalized */
@@ -294,10 +300,11 @@ export async function processClientTurn(
       const beatBefore = state.current_beat;
       const rolledBackState = cloneState(state);
       applyPointer(state, pending.after);
-      state.last_spoken_text = pending.remaining;
+      const resumeText = scrubDisputedVehicle(pending.remaining, state);
+      state.last_spoken_text = resumeText;
       const beat = BEATS.find((b) => b.id === state.current_beat);
       const decision: ControllerDecision = {
-        textToSpeak: pending.remaining,
+        textToSpeak: resumeText,
         beatId: state.current_beat,
         beatType: beat?.type ?? "wait",
         toolCalls: pending.toolCalls,
@@ -381,12 +388,12 @@ export function repromptText(sessionId: string, kind: "resume" | "still_with_me"
     const { remaining, after } = state.interrupted;
     state.interrupted = undefined;
     applyPointer(state, after);
-    state.last_spoken_text = remaining;
-    return remaining;
+    state.last_spoken_text = scrubDisputedVehicle(remaining, state);
+    return state.last_spoken_text;
   }
   const text = kind === "clarify" ? CLARIFY_LINE : kind === "still_with_me" ? `${STILL_WITH_ME_LINE} ${pendingQuestion(state)}` : pendingQuestion(state);
-  state.last_spoken_text = text;
-  return text;
+  state.last_spoken_text = scrubDisputedVehicle(text, state);
+  return state.last_spoken_text;
 }
 
 export function getOrCreateCallState(sessionId: string, dealConfig = DEFAULT_DEAL_CONFIG): CallState {
@@ -762,6 +769,60 @@ function isOtherLanguage(norm: string): boolean {
   );
 }
 
+// -----------------------------------------------------------------------------
+// VEHICLE CORRECTION (live call ba0dad23: "I agreed to buy an Audi, not the Mazda", ignored 4 times).
+// The demo is wired to the deal's vehicle; the customer is always right about their own car.
+// -----------------------------------------------------------------------------
+const MAKES =
+  "audi|bmw|mercedes|benz|maybach|porsche|lexus|toyota|honda|ford|kia|hyundai|nissan|chevy|chevrolet|tesla|subaru|volkswagen|vw|jeep|dodge|ram|gmc|cadillac|acura|infiniti|volvo|genesis|lincoln|buick|mitsubishi|mazda";
+
+/** "not a Mazda", "I agreed to buy an Audi", "wrong car", "I didn't buy a Mazda". Takes the normalized transcript. */
+export function isVehicleCorrection(norm: string, dealConfig: DealConfig = DEFAULT_DEAL_CONFIG): boolean {
+  const n = ` ${norm.replace(/\b(uh|um|er|ah|like)\b/g, " ").replace(/\s+/g, " ").trim()} `;
+  const onFile = dealConfig.vehicle_make.toLowerCase();
+  const otherMake = new RegExp(`\\b(${MAKES})\\b`, "g");
+  const namesOtherMake = [...n.matchAll(otherMake)].some((m) => m[1] !== onFile);
+  return (
+    /\b(wrong (car|vehicle)|not my (car|vehicle)|that s not my car|different (car|vehicle))\b/.test(n) ||
+    new RegExp(`\\bnot (the |a |an )?${onFile}\\b`).test(n) ||
+    new RegExp(`\\b(didn t|did not|never|not going to|am not|i m not) (buy|buying|bought|get|getting) (a |an |the )?${onFile}\\b`).test(n) ||
+    (namesOtherMake && /\b(bought|buying|agreed to buy|purchased|purchasing|getting|picked|chose|it s an?|it is an?)\b/.test(n))
+  );
+}
+
+/** Max's reply to a vehicle correction: acknowledge once, never argue, never the same reply twice. */
+function vehicleCorrectionReply(state: CallState): string {
+  state.vehicle_disputed = true;
+  state.vehicle_corrections = (state.vehicle_corrections || 0) + 1;
+  const question = state.step0_completed
+    ? pendingQuestion(state)
+    : lastQuestionOf(state.last_spoken_text) || STEP_0_GREETING;
+  if (state.vehicle_corrections === 1) return `${VEHICLE_NOTED_LINE} ${question}`;
+  if (state.vehicle_corrections === 2) return `${VEHICLE_CONFIRM_LINE} ${question}`;
+  return question;
+}
+
+/** After a vehicle correction, every line says "your new vehicle" instead of the make and model on file. */
+export function scrubDisputedVehicle(text: string, state: CallState): string {
+  if (!state.vehicle_disputed || !text) return text;
+  const esc = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const { vehicle_year: year, vehicle_make: make, vehicle_model: model } = state.dealConfig;
+  const models = [...new Set([model, formatSpeechText(model)].filter(Boolean))].map(esc).join("|");
+  let out = text;
+  if (make) {
+    const full = new RegExp(`(${esc(year)}\\s+)?${esc(make)}(\\s+(${models}))?`, "gi");
+    out = out.replace(full, (m, _y, withModel) => (withModel ? "new vehicle" : m));
+  }
+  if (models) out = out.replace(new RegExp(`(${esc(year)}\\s+)?\\b(${models})\\b`, "gi"), "new vehicle");
+  out = out.replace(/\bnew new vehicle\b/gi, "new vehicle");
+  if (make) {
+    // A bare make ("Mazda is like any other manufacturer") becomes the manufacturer
+    out = out.replace(new RegExp(`(^|[.!?]\\s+|"\\s*)${esc(make)}\\b`, "g"), "$1Your manufacturer");
+    out = out.replace(new RegExp(`\\b${esc(make)}\\b`, "gi"), "your manufacturer");
+  }
+  return out;
+}
+
 // Deterministic rule-based classification fallback (also used for unit/simulation tests)
 export function classifyCustomerInputRuleBased(
   transcript: string,
@@ -858,6 +919,7 @@ export function classifyCustomerInputRuleBased(
   // 1.3. Vehicle Mismatch / Car Discrepancy (e.g. "buying a Maybach", "I was buying Maybach", "that's not my car", "confirm which car", "how can you ask me that")
   // MUST be checked before generic negation 'no' or generic greetings!
   const isVehicleDiscrepancy =
+    isVehicleCorrection(norm) ||
     norm.includes("maybach") ||
     norm.includes("mercedes") ||
     norm.includes("bmw") ||
@@ -2400,6 +2462,10 @@ export async function processControllerTurn(
   const beatBefore = getOrCreateCallState(sessionId, dealConfig).current_beat;
   const metrics: TurnMetrics = { classifierMs: 0, usedLLM: false, classifierTimedOut: false };
   const decision = await runControllerTurn(sessionId, customerTranscript, dealConfig, mockClassification, metrics);
+  if (decision.state.vehicle_disputed) {
+    decision.textToSpeak = scrubDisputedVehicle(decision.textToSpeak, decision.state);
+    decision.state.last_spoken_text = decision.textToSpeak;
+  }
   decision.metrics = {
     ...metrics,
     controllerMs: Date.now() - t0,
@@ -2439,6 +2505,12 @@ async function runControllerTurn(
   // ===========================================================================
   if (!state.step0_completed) {
     state.step0_turns++;
+    const step0Norm = customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+    if (isVehicleCorrection(step0Norm, state.dealConfig)) {
+      const text = vehicleCorrectionReply(state);
+      state.last_spoken_text = text;
+      return { textToSpeak: text, beatId: 0, beatType: "wait", toolCalls: [], state, intent: "vehicle_discrepancy" };
+    }
     const step0Result = await generateStep0Turn(customerTranscript, state.step0_turns, state.dealConfig);
 
     if (step0Result.moveToBeat1) {
@@ -3239,42 +3311,9 @@ async function runControllerTurn(
     }
 
     case "vehicle_discrepancy": {
-      // Customer stated they are buying a different vehicle or that the car model is incorrect
-      const norm = customerTranscript.toLowerCase();
-      let extractedModel = "";
-      if (norm.includes("maybach")) extractedModel = "Maybach";
-      else if (norm.includes("mercedes")) extractedModel = "Mercedes";
-      else if (norm.includes("bmw")) extractedModel = "BMW";
-      else if (norm.includes("audi")) extractedModel = "Audi";
-      else if (norm.includes("porsche")) extractedModel = "Porsche";
-      else if (norm.includes("lexus")) extractedModel = "Lexus";
-      else if (norm.includes("ford")) extractedModel = "Ford";
-      else if (norm.includes("toyota")) extractedModel = "Toyota";
-      else if (norm.includes("honda")) extractedModel = "Honda";
-      else if (norm.includes("kia")) extractedModel = "Kia";
-      else if (norm.includes("hyundai")) extractedModel = "Hyundai";
-      if (!extractedModel) {
-        // "It's a CX-30, not a CX-5": take the CX model that is not the one on file
-        const onFile = state.dealConfig.vehicle_model.toLowerCase();
-        const named = [...norm.matchAll(/\bcx\s*-?\s*(\d+)/g)].map((m) => `CX-${m[1]}`);
-        extractedModel = named.find((m) => m.toLowerCase() !== onFile) ?? "";
-      }
-
-      if (extractedModel) {
-        state.dealConfig.vehicle_model = extractedModel;
-        state.dealConfig.vehicle_make = extractedModel === "Maybach" ? "Mercedes-Maybach" : state.dealConfig.vehicle_make;
-      }
-
-      const vehicleName = extractedModel || "correct vehicle";
-      const discrepancyLine = VEHICLE_DISCREPANCY_LINE.replace(/\{\{vehicle_model\}\}/g, vehicleName);
-      if (state.current_beat === 2) {
-        // The line ends by re-asking Beat 2's test-drive question
-        textToSpeak = discrepancyLine;
-      } else {
-        // Any other beat: keep the acknowledgement, drop the test-drive question, re-ask where we are
-        const ack = discrepancyLine.split(" — ")[0];
-        textToSpeak = `${ack}. ${getBeatCheckInQuestion(BEATS.find((b) => b.id === state.current_beat)!)}`;
-      }
+      // Customer says the vehicle on file is wrong: acknowledge once, never argue, re-ask what is
+      // pending; from now on every line says "your new vehicle" (vehicle_disputed)
+      textToSpeak = vehicleCorrectionReply(state);
       beatType = "wait";
       toolCalls = [];
       break;

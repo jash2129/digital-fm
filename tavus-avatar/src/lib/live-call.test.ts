@@ -245,3 +245,63 @@ describe("Follow-up 7 A: a rollback never undoes the customer's progress", () =>
     expect(third.textToSpeak.trim().endsWith("?")).toBe(true); // just its question
   });
 });
+
+describe("Follow-up 7 B: the customer says the vehicle is wrong", () => {
+  const step0 = () => {
+    const sid = `s0_${Math.random().toString(36).slice(2)}`;
+    resetCallState(sid);
+    getOrCreateCallState(sid);
+    return sid;
+  };
+  const SAY = "I'm buying an Audi, not a Mazda";
+
+  it("at Step 0: acknowledged, last question re-asked, and no 'Mazda' in any later line", async () => {
+    const sid = step0();
+    await processClientTurn(sid, "Yeah.", 1); // opener (asks about their experience)
+    const fix = await processClientTurn(sid, SAY, 2);
+    expect(fix.textToSpeak).toBe("Thanks for catching that, I'll make a note of your vehicle. How has your experience been with our team so far?");
+    const later: string[] = [];
+    for (const [i, say] of ["it was great", "okay", "yeah I drove it", "yes he did"].entries()) {
+      later.push((await processClientTurn(sid, say, i + 3)).textToSpeak);
+    }
+    for (const t of later) expect(t).not.toMatch(/mazda|cx.?five|cx-5/i);
+    expect(later.join(" ")).toContain("new vehicle");
+  });
+
+  it("at Beat 3: acknowledged, the walkaround question re-asked, later beats scrubbed", async () => {
+    const sid = fresh(3);
+    const fix = await processClientTurn(sid, SAY, 1);
+    expect(fix.textToSpeak.startsWith("Thanks for catching that")).toBe(true);
+    expect(fix.textToSpeak.endsWith("Did the salesperson do the walkaround with you?")).toBe(true);
+    expect(fix.beatId).toBe(3);
+    const st = getOrCreateCallState(sid);
+    st.current_beat = 5; // the next reply is Beat 6, which opens "Mazda is like any other manufacturer"
+    const beat6 = await processClientTurn(sid, "yes", 2);
+    expect(beat6.beatId).toBe(6);
+    expect(beat6.textToSpeak).not.toMatch(/mazda/i);
+    expect(beat6.textToSpeak).toContain("Your manufacturer is like any other manufacturer");
+  });
+
+  it("repeating the correction gets a different reply each time, never the same twice", async () => {
+    const sid = fresh(9);
+    const a = await processClientTurn(sid, SAY, 1);
+    const b = await processClientTurn(sid, "brother, I agreed to buy uh Audi, not the Mazda", 2);
+    const c = await processClientTurn(sid, "I didn't buy a Mazda", 3);
+    expect(b.textToSpeak.startsWith("Understood, I've noted it, and I'll have the sales team confirm the vehicle details.")).toBe(true);
+    expect(new Set([a.textToSpeak, b.textToSpeak, c.textToSpeak]).size).toBe(3);
+    for (const d of [a, b, c]) expect(d.beatId).toBe(9);
+  });
+
+  it("the live call's phrasings are all recognized", () => {
+    for (const say of [
+      "uh wait wait a minute i was uh agreed to buy uh audi",
+      "Brother, what I'm saying is I was agreed to buy, uh, Audi, not the Mazda.",
+      "what i'm saying is i am not going to buy mazda",
+      "that's not my car",
+      "wrong car",
+    ]) {
+      expect(classifyCustomerInputRuleBased(say, 5).intent, say).toBe("vehicle_discrepancy");
+    }
+    expect(classifyCustomerInputRuleBased("I love this Mazda", 5).intent).not.toBe("vehicle_discrepancy");
+  });
+});

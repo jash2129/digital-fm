@@ -157,9 +157,10 @@ describe("multi-turn regressions", () => {
     expect(cx.intent).toBe("vehicle_discrepancy");
     expect(cx.beatId).toBe(9);
     expect(cx.stopped).toBe(false);
-    expect(cx.textToSpeak).toContain("CX-30");
+    // Follow-up 7 B: acknowledge once, never argue or echo a make; later lines say "your new vehicle"
+    expect(cx.textToSpeak).toContain("Thanks for catching that");
     expect(cx.textToSpeak).not.toContain(UNKNOWN_QUESTION_LINE);
-    expect(cx.state.dealConfig.vehicle_model).toBe("CX-30");
+    expect(cx.state.vehicle_disputed).toBe(true);
 
     for (const say of ["that's not my car", "wrong car"]) {
       const [d] = await play(12, say);

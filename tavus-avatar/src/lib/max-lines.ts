@@ -50,6 +50,15 @@ export const PRESENCE_LINE = "I'm right here with you!";
 // STEP_0_GREETING. Status: PENDING TXM
 export const TECH_CHECK_ACK_LINE = "Yes, I can hear you.";
 
+// Customer says the vehicle on file is wrong ("I'm buying an Audi, not a Mazda"). First time.
+// Never argue; from here on Max says "your new vehicle" instead of the make and model.
+// Status: PENDING TXM
+export const VEHICLE_NOTED_LINE = "Thanks for catching that, I'll make a note of your vehicle.";
+
+// The customer repeats the vehicle correction. Said once, then the script continues.
+// Status: PENDING TXM
+export const VEHICLE_CONFIRM_LINE = "Understood, I've noted it, and I'll have the sales team confirm the vehicle details.";
+
 // Beat 25 verification: re-asked when the reply is not a name and address (a bare yes, a filler).
 // Status: PENDING TXM
 export const VERIFY_REASK_LINE = "I just need your full legal name, spelling, and current mailing address to verify.";

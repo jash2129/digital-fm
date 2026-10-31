@@ -643,10 +643,10 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       // Customer interrupts with car correction ("No, uh, I was buying, uh, Maybach.")
       const turn = await processControllerTurn(sessionId, "No, uh, I was buying, uh, Maybach.");
       expect(turn.intent).toBe("vehicle_discrepancy");
-      expect(turn.textToSpeak).toContain("Maybach");
-      expect(turn.textToSpeak).toContain("thank you for catching that");
-      expect(turn.textToSpeak).not.toContain("Mazda CX five");
-      expect(turn.state.dealConfig.vehicle_model).toBe("Maybach");
+      // Follow-up 7 B: acknowledge once, never argue or echo a make; later lines say "your new vehicle"
+      expect(turn.textToSpeak).toContain("Thanks for catching that");
+      expect(turn.textToSpeak).not.toContain("Mazda");
+      expect(turn.state.vehicle_disputed).toBe(true);
       expect(turn.beatId).toBe(1); // Holds the beat it was raised on (Beat 1 consent still pending)
       expect(turn.beatType).toBe("wait");
     });

@@ -32,7 +32,9 @@ describe("Client Scenarios Human Experience Validation", () => {
 
     // Turn 6: Vehicle Discrepancy Curveball
     const t6 = await processControllerTurn(sessionId, "Wait a minute, I was not buying the Mazda, I was buying the Mercedes Maybach.", DEFAULT_DEAL_CONFIG);
-    expect(t6.textToSpeak).toContain("Maybach");
+    // Follow-up 7 B: acknowledge once, never argue or echo a make; later lines say "your new vehicle"
+    expect(t6.textToSpeak).toContain("Thanks for catching that");
+    expect(t6.textToSpeak).not.toContain("Mazda");
     expect(t6.beatId).toBe(2);
 
     // Turn 7: Customer confirms driving the vehicle
@@ -49,7 +51,7 @@ describe("Client Scenarios Human Experience Validation", () => {
     const t9 = await processControllerTurn(sessionId, "No, he didn't tell me anything about the warranty.", DEFAULT_DEAL_CONFIG);
     expect(t9.textToSpeak).not.toContain("bring in my colleague");
     expect(t9.textToSpeak).toContain("Allow me to go over it really quick to make sure that you understand everything");
-    expect(t9.textToSpeak).toContain("Mazda is like any other manufacturer");
+    expect(t9.textToSpeak).toContain("Your manufacturer is like any other manufacturer") // vehicle disputed earlier in this call (follow-up 7 B);
     expect(t9.beatId).toBe(6);
 
     // Turn 10: Check-in
