@@ -172,6 +172,6 @@
     "type": "wait",
     "text": "\"Now that we've confirmed your paperwork, let me quickly verify your full legal name, spelling, and current mailing address before final signature.\"",
     "check_in": null,
-    "expects": "statement"
+    "expects": "open"
   }
 ]

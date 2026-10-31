@@ -37,6 +37,14 @@ How the customer talks:
 
 End the call when you see `[call ended]`, when Max has closed the deal and finished, at the turn cap (`--turns N`, default 40), or when Max gives the same reply three times in a row (a loop: record it as a finding).
 
+To re-test an earlier call after a code change, replay it instead of playing it again:
+
+```bash
+npx --yes tsx scripts/sim-call.ts replay <new id> --from <old id> [--offline] 2>/dev/null
+```
+
+Each old customer line is matched to what Max just asked, not to its turn number, so the replay stays sensible when the script changes. The output labels each line `match` or `no match, next in order` and lists the old lines Max never prompted. If it prints `[replay stopped: ...]`, Max said something new that the old call never answered: continue that call by hand with `say`, in persona.
+
 ## 3. Judge the call
 
 Now drop the customer role and read everything:

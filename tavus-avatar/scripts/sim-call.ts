@@ -8,6 +8,8 @@
  *   npx --yes tsx scripts/sim-call.ts say   <id> "<customer line>"
  *   npx --yes tsx scripts/sim-call.ts show  <id>
  *   npx --yes tsx scripts/sim-call.ts audio <id>   (voices the call for the Inspector)
+ *   npx --yes tsx scripts/sim-call.ts replay <new id> --from <old id> [--offline]
+ *     (re-runs an old call's customer lines against today's Max, each matched to what Max asked)
  *
  * `say` prints only what a real customer would hear (Max's words, and whether the call ended).
  * Beat, intent and tool calls are recorded in the session file for the judge, not printed, so the
@@ -90,7 +92,7 @@ function flag(args: string[], name: string): string | undefined {
 async function main() {
   const [cmd, id, ...rest] = process.argv.slice(2);
   if (!cmd || !id || !/^[\w.-]+$/.test(id)) {
-    fail('usage: sim-call.ts start|say|show <id> ["customer line"] [--persona <name>] [--offline]');
+    fail('usage: sim-call.ts start|say|show|audio <id> ["customer line"] [--persona <name>] [--offline] | replay <new id> --from <old id>');
   }
 
   if (cmd === "start") {
@@ -123,37 +125,16 @@ async function main() {
       process.stdout.write("[call already ended]\n");
       return;
     }
-    if (!session.offline) loadEnvLocal();
-    else {
-      delete process.env.XAI_API_KEY;
-      delete process.env.OPENAI_API_KEY;
-    }
+    const t = await takeTurn(session, line);
+    process.stdout.write(`MAX: ${t.max}\n`);
+    if (t.stopped) process.stdout.write("[call ended]\n");
+    return;
+  }
 
-    const { processControllerTurn, getOrCreateCallState, resetCallState } = await import("../src/lib/beat-controller");
-    resetCallState(id);
-    const state = getOrCreateCallState(id);
-    if (session.state) Object.assign(state, session.state);
-
-    const t0 = Date.now();
-    const d = await processControllerTurn(id, line);
-    session.turns.push({
-      n: session.turns.length + 1,
-      customer: line,
-      max: d.textToSpeak,
-      beat: d.beatId,
-      intent: d.intent,
-      beatType: d.beatType,
-      toolCalls: d.toolCalls,
-      stopped: d.state.is_stopped,
-      price: d.state.dealConfig.per_day_price,
-      ms: Date.now() - t0,
-      metrics: d.metrics,
-    });
-    session.state = JSON.parse(JSON.stringify(d.state));
-    writeSession(session);
-
-    process.stdout.write(`MAX: ${d.textToSpeak}\n`);
-    if (d.state.is_stopped) process.stdout.write("[call ended]\n");
+  if (cmd === "replay") {
+    const from = flag(rest, "--from");
+    if (!from) fail("replay needs --from <old session id>");
+    await replay(id, readSession(from), rest.includes("--offline"));
     return;
   }
 
@@ -163,6 +144,135 @@ async function main() {
   }
 
   fail(`unknown command "${cmd}"`);
+}
+
+// Runs one customer line through the real controller and records it in the session file
+async function takeTurn(session: Session, line: string): Promise<Turn> {
+  if (!session.offline) loadEnvLocal();
+  else {
+    delete process.env.XAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+  }
+  const { processControllerTurn, getOrCreateCallState, resetCallState } = await import("../src/lib/beat-controller");
+  resetCallState(session.id);
+  const state = getOrCreateCallState(session.id);
+  if (session.state) Object.assign(state, session.state);
+
+  const t0 = Date.now();
+  const d = await processControllerTurn(session.id, line);
+  const turn: Turn = {
+    n: session.turns.length + 1,
+    customer: line,
+    max: d.textToSpeak,
+    beat: d.beatId,
+    intent: d.intent,
+    beatType: d.beatType,
+    toolCalls: d.toolCalls,
+    stopped: d.state.is_stopped,
+    price: d.state.dealConfig.per_day_price,
+    ms: Date.now() - t0,
+    metrics: d.metrics,
+  };
+  session.turns.push(turn);
+  session.state = JSON.parse(JSON.stringify(d.state));
+  writeSession(session);
+  return turn;
+}
+
+// -----------------------------------------------------------------------------
+// replay: re-run an old call's customer lines against today's Max. Each reply is chosen by what
+// Max just asked, not by turn number: the old line whose prompting Max line best matches the
+// current one (mostly its last question). So when the script changes, a name-and-address request
+// still gets the name and address, and replies to questions Max no longer asks are skipped.
+// If Max says something the old call never answered, the replay stops and says so.
+// -----------------------------------------------------------------------------
+const REPLAY_STOP = new Set("a an the and or but so to of in on at for with is are was were be do does did you your i me my it this that we our".split(" "));
+const REPLAY_MIN_SCORE = 0.35;
+
+function replayWords(t: string): Set<string> {
+  return new Set(t.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter((w) => w && !REPLAY_STOP.has(w)));
+}
+
+// The last question in an utterance, or its last sentence if it asks nothing
+function lastAsk(t: string): string {
+  const parts = t.match(/[^.!?]+[.!?]*/g) ?? [t];
+  return parts.filter((p) => p.includes("?")).at(-1) ?? parts.at(-1) ?? t;
+}
+
+function jaccard(a: Set<string>, b: Set<string>): number {
+  if (a.size === 0 && b.size === 0) return 1;
+  let inter = 0;
+  for (const w of a) if (b.has(w)) inter++;
+  return inter / (a.size + b.size - inter);
+}
+
+async function replay(newId: string, old: Session, offline: boolean) {
+  const session: Session = {
+    id: newId,
+    persona: old.persona,
+    offline,
+    started_at: new Date().toISOString(),
+    opening: old.opening,
+    turns: [],
+    state: null,
+  };
+  writeSession(session);
+
+  // What Max said right before each old customer line
+  const pairs = old.turns.map((t, k) => ({ k, prompt: k === 0 ? old.opening : old.turns[k - 1].max, reply: t.customer }));
+  const used = new Set<number>();
+  let maxLine = session.opening;
+  let lastUsed = -1;
+  let fallbacks = 0;
+  process.stdout.write(`MAX: ${maxLine}\n`);
+
+  for (;;) {
+    let best: { k: number; score: number } | null = null;
+    for (const p of pairs) {
+      if (used.has(p.k)) continue;
+      const score =
+        0.6 * jaccard(replayWords(lastAsk(maxLine)), replayWords(lastAsk(p.prompt))) +
+        0.4 * jaccard(replayWords(maxLine), replayWords(p.prompt)) +
+        (p.k === lastUsed + 1 ? 0.05 : 0); // tie-break toward the original order
+      if (!best || score > best.score) best = { k: p.k, score };
+    }
+    if (!best) {
+      process.stdout.write("[replay finished: every original line was used]\n");
+      break;
+    }
+    // Nothing the old call answered looks like this (Max now says something new, e.g. a re-asked
+    // check-in): fall back to the next unused line in the original order, at most 3 times in a row.
+    let how = `match ${best.score.toFixed(2)}`;
+    if (best.score < REPLAY_MIN_SCORE) {
+      const next = pairs.find((p) => !used.has(p.k) && p.k > lastUsed);
+      if (!next || fallbacks >= 3) {
+        process.stdout.write(`[replay stopped: no line in ${old.id} answers Max's last line. Continue by hand with: say ${newId} "..."]\n`);
+        break;
+      }
+      fallbacks++;
+      best = { k: next.k, score: best.score };
+      how = "no match, next in order";
+    } else {
+      fallbacks = 0;
+    }
+    used.add(best.k);
+    lastUsed = best.k;
+    const line = pairs[best.k].reply;
+    process.stdout.write(`CUSTOMER (orig T${best.k + 1}, ${how}): ${line}\n`);
+    const t = await takeTurn(session, line);
+    maxLine = t.max;
+    process.stdout.write(`MAX: ${t.max}\n`);
+    if (t.stopped) {
+      process.stdout.write("[call ended]\n");
+      break;
+    }
+  }
+
+  const skipped = pairs.filter((p) => !used.has(p.k));
+  if (skipped.length > 0) {
+    const list = skipped.map((p) => `T${p.k + 1} "${p.reply}"`).join(", ");
+    process.stdout.write(`skipped ${skipped.length} original line(s) Max never prompted: ${list}\n`);
+  }
 }
 
 // -----------------------------------------------------------------------------

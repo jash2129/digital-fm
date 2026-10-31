@@ -27,6 +27,14 @@ export const HANDOFF_LINE = "I'm Max, your finance manager, and I'll go through 
 // Spoken when all beats and paperwork review are complete
 export const SCRIPT_COMPLETE_LINE = "Everything on your paperwork is all set and finalized. Congratulations on your new vehicle, and enjoy the ride!";
 
+// Beat 25 verification: re-asked when the reply is not a name and address (a bare yes, a filler).
+// Status: PENDING TXM
+export const VERIFY_REASK_LINE = "I just need your full legal name, spelling, and current mailing address to verify.";
+
+// Beat 25 verification: second non-answer in a row. Closes without claiming anything was finalized.
+// Status: PENDING TXM
+export const VERIFY_DEFER_LINE = "No problem, you can confirm those details on your paperwork before you sign. Thank you.";
+
 // Spoken when customer gives repeated consecutive No answers
 export const REPEATED_NO_LINE = "I completely understand and respect your decision. Let's move forward to review and finalize your standard purchase paperwork.";
 

@@ -33,6 +33,8 @@ import {
   UNKNOWN_QUESTION_LINE,
   CLOSING_LINE,
   LANGUAGE_LINE,
+  VERIFY_REASK_LINE,
+  VERIFY_DEFER_LINE,
   CLARIFY_LINE,
   ANSWER_CHECK_LINE,
   TIRE_EXCLUSION_LINE,
@@ -73,6 +75,10 @@ export interface CallState {
   ungrounded_count?: number;
   /** customer already said yes to a finalize question, so Beat 24 must not ask again */
   finalize_confirmed?: boolean;
+  /** consecutive Beat 25 replies that were not a name and address */
+  verify_misses?: number;
+  /** Beat 25 closed without the details: never claim the paperwork was finalized */
+  verification_deferred?: boolean;
   last_check_in_tag?: string;
   is_impatient_flow?: boolean;
   sentence_index?: number;
@@ -424,6 +430,17 @@ export function isAvatarScriptEcho(transcript: string): boolean {
   ];
 
   return echoPhrases.some((phrase) => norm.includes(phrase));
+}
+
+// Beat 25 asks for full legal name, spelling and mailing address. A real answer has digits (street
+// number, zip) or at least 4 content words; "yes", "sure" or "I just said yes. yes" is not one.
+const VERIFY_FILLER = new Set(
+  "yes yeah yep yup ok okay sure alright fine uh um hmm oh well so i just said already told you it its that is the a right correct good great sounds".split(" ")
+);
+export function isVerificationAnswer(transcript: string): boolean {
+  if (/\d/.test(transcript)) return true;
+  const words = transcript.toLowerCase().replace(/[^a-z ]/g, " ").split(/\s+/).filter(Boolean);
+  return words.filter((w) => !VERIFY_FILLER.has(w)).length >= 4;
 }
 
 // Daily rate Max is offering at each concession stage: $4.00 -> $3.50 -> $3.25 -> $3.00 hard floor
@@ -2130,7 +2147,7 @@ async function runControllerTurn(
   // Once stopped (script complete, recording objection, hang-up), stay closed: one fixed line,
   // never the handoff line and never back into the script.
   if (state.is_stopped) {
-    const terminalText = state.current_beat >= 25 ? SCRIPT_COMPLETE_LINE : CLOSING_LINE;
+    const terminalText = state.current_beat >= 25 && !state.verification_deferred ? SCRIPT_COMPLETE_LINE : CLOSING_LINE;
     return {
       textToSpeak: terminalText,
       beatId: state.current_beat,
@@ -2234,6 +2251,25 @@ async function runControllerTurn(
             break;
           }
         }
+      }
+
+      // Beat 25 (expects "open"): only a real name and address finishes the call
+      if (currentBeatObj?.expects === "open" && state.current_beat === BEATS.length) {
+        if (!isVerificationAnswer(customerTranscript)) {
+          state.verify_misses = (state.verify_misses || 0) + 1;
+          if (state.verify_misses >= 2) {
+            // Two non-answers: defer to the paperwork and close, without saying anything was finalized
+            state.verification_deferred = true;
+            textToSpeak = VERIFY_DEFER_LINE;
+            beatType = "stop";
+            onScriptComplete(state);
+          } else {
+            textToSpeak = VERIFY_REASK_LINE;
+            beatType = "wait";
+          }
+          break;
+        }
+        state.verify_misses = 0;
       }
 
       state.no_count_in_a_row = 0;

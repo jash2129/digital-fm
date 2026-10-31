@@ -28,6 +28,9 @@ import {
   COMPLIMENT_LINE,
   LANGUAGE_LINE,
   REPEATED_NO_LINE,
+  SCRIPT_COMPLETE_LINE,
+  VERIFY_REASK_LINE,
+  VERIFY_DEFER_LINE,
 } from "./max-lines";
 
 function fresh(beat: number) {
@@ -317,6 +320,37 @@ describe("multi-turn regressions", () => {
       if (saved.xai === undefined) delete process.env.XAI_API_KEY;
       if (saved.openai !== undefined) process.env.OPENAI_API_KEY = saved.openai;
     }
+  });
+
+  // ---- Follow-up 4b: Beat 25 must actually collect the name and address
+
+  it("H: a bare yes at Beat 25 is not a name and address, so Max re-asks", async () => {
+    for (const say of ["yes", "I just said yes. yes", "okay sure"]) {
+      const [d] = await play(25, say);
+      expect(d.textToSpeak, say).toBe(VERIFY_REASK_LINE);
+      expect(d.beatId, say).toBe(25);
+      expect(d.stopped, say).toBe(false);
+    }
+  });
+
+  it("H: a real name and address finishes with SCRIPT_COMPLETE_LINE", async () => {
+    const [d] = await play(25, "sure, it's daniel reyes, r e y e s, 4410 maple ridge drive, plano texas");
+    expect(d.textToSpeak).toBe(SCRIPT_COMPLETE_LINE);
+    expect(d.stopped).toBe(true);
+  });
+
+  it("H: two non-answers close via the paperwork, never claiming anything was finalized", async () => {
+    const [first, second, after] = await play(25, "yes", "yeah", "hello?");
+    expect(first.textToSpeak).toBe(VERIFY_REASK_LINE);
+    expect(second.textToSpeak).toBe(VERIFY_DEFER_LINE);
+    expect(second.stopped).toBe(true);
+    for (const d of [second, after]) expect(d.textToSpeak.toLowerCase()).not.toContain("finalized");
+    expect(after.textToSpeak).toBe(CLOSING_LINE);
+  });
+
+  it("H: a re-ask then a real answer still completes", async () => {
+    const [, d] = await play(25, "yes", "my name is maria lopez and I live on elm street in dallas");
+    expect(d.textToSpeak).toBe(SCRIPT_COMPLETE_LINE);
   });
 });
 
