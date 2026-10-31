@@ -27,6 +27,12 @@ export const HANDOFF_LINE = "I'm Max, your finance manager, and I'll go through 
 // Spoken when all beats and paperwork review are complete
 export const SCRIPT_COMPLETE_LINE = "Everything on your paperwork is all set and finalized. Congratulations on your new vehicle, and enjoy the ride!";
 
+// Beat 24 confirmation when the customer named only some coverages at Beat 23 ("which two do you
+// see the most value in?"). Repeats back their choice without claiming full protection and without
+// changing the price (price changes are TXM's rule). {{coverages}} {{price}} {{vehicle}}
+// Status: PENDING TXM
+export const CHOSEN_COVERAGE_CONFIRM_LINE = "Great, so to confirm, we're moving forward with your protection, including the {{coverages}} coverage you said matters most, for {{price}} a day on your {{vehicle}}.";
+
 // Beat 25 verification: re-asked when the reply is not a name and address (a bare yes, a filler).
 // Status: PENDING TXM
 export const VERIFY_REASK_LINE = "I just need your full legal name, spelling, and current mailing address to verify.";

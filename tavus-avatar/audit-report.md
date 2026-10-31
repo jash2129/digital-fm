@@ -45,7 +45,7 @@
 | PASS | P1 | B22 "I can only do about 20 dollars a month." | Below the floor must reach the floor or a handoff | [negotiate_price -> B22] Three dollars a day is our absolute hard floor for full vehicle protection — at less than the cost of a cup of coffee, it's t |
 | PASS | P2 | B19 "That's not funny." | Not 'I love that energy' | [other -> B19] I understand. Let's focus on the protection options for your vehicle. |
 | PASS | P0 | NEG accept 3.50 | Customer accepted $3.50; price must stay $3.50 | price now three dollars and fifty cents: Great, so to confirm, we're moving forward with full vehicle protection for three dollars and fifty cents a d |
-| PASS | P0 | NEG confirm price | Beat 24 must quote the price the customer agreed to | Great, so to confirm, we're moving forward with full vehicle protection for three dollars and fifty cents a day on your 2026 Mazda CX five.... Are you |
+| PASS | P0 | NEG confirm price | Beat 24 must quote the price the customer agreed to | Great, so to confirm, we're moving forward with your protection, including the bumper-to-bumper warranty and the tire and wheel coverage you said matt |
 | PASS | P1 | END after Beat 25 | After verification the call must close, not ask 'How can I help you?' | I just need your full legal name, spelling, and current mailing address to verify. |
 | PASS | P1 | STEP0 "I can't see you" | A tech problem must not get 'great to connect' | I'm sorry about that! Let me check the connection on my end. Can you see and hear me clearly now? |
 | PASS | P1 | STEP0 "Is this a sales call?" | Step 0 must answer the question honestly | I'm Max, your finance manager. My job is to go over your paperwork and the coverage options with you before you sign. |

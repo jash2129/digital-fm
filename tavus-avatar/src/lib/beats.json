@@ -158,7 +158,7 @@
     "type": "wait",
     "text": "\"Which two of those do you see the most value in? We want to make sure you get the exact coverage that makes the most sense for your driving habits.\"",
     "check_in": "Does that sound fair?",
-    "expects": "statement"
+    "expects": "open"
   },
   {
     "id": 24,

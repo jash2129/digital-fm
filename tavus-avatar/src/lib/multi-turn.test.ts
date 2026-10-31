@@ -31,7 +31,9 @@ import {
   SCRIPT_COMPLETE_LINE,
   VERIFY_REASK_LINE,
   VERIFY_DEFER_LINE,
+  COMPLIMENT_LINE as COMPLIMENT,
 } from "./max-lines";
+import { answerFromKnowledgeBase, REMOTE_TIMEOUT_MS } from "./grounded-answer";
 
 function fresh(beat: number) {
   const sid = `multi_${Math.random().toString(36).slice(2)}`;
@@ -289,7 +291,8 @@ describe("multi-turn regressions", () => {
   });
 
   it("B: Beat 23's own coverage 'sound fair?' names no price, so Beat 24 still asks to finalize", async () => {
-    const [d] = await play(23, "yes");
+    // A bare "yes" no longer answers Beat 23 (follow-up 4 B), so name a coverage
+    const [d] = await play(23, "the tires and maintenance");
     expect(d.beatId).toBe(24);
     expect(d.textToSpeak.trim()).toMatch(/Are you ready to finalize\?$/);
   });
@@ -350,6 +353,93 @@ describe("multi-turn regressions", () => {
 
   it("H: a re-ask then a real answer still completes", async () => {
     const [, d] = await play(25, "yes", "my name is maria lopez and I live on elm street in dallas");
+    expect(d.textToSpeak).toBe(SCRIPT_COMPLETE_LINE);
+  });
+
+  // ---- Follow-up 4
+
+  it("A: 'wow this car is beautiful' is a compliment at any beat, never the unknown line", async () => {
+    for (const beat of [23, 10, 2]) {
+      const [d] = await play(beat, "wow this car is beautiful");
+      expect(d.beatId, `B${beat}`).toBe(beat);
+      expect(d.textToSpeak, `B${beat}`).toContain(COMPLIMENT);
+      expect(d.textToSpeak, `B${beat}`).not.toContain("I don't have that detail");
+    }
+  });
+
+  it("B: a bare yes does not answer 'which two', so Max re-asks", async () => {
+    const [d] = await play(23, "yes");
+    expect(d.beatId).toBe(23);
+    expect(d.textToSpeak).toBe("Which two of those do you see the most value in?");
+  });
+
+  it("B: named coverages are repeated back at Beat 24 without claiming full protection or changing the price", async () => {
+    const [d] = await play(23, "the tires and maintenance");
+    const t = d.textToSpeak.toLowerCase();
+    expect(d.beatId).toBe(24);
+    expect(t).toContain("tire");
+    expect(t).toContain("maintenance");
+    expect(t).not.toContain("full vehicle protection");
+    expect(t).toContain("four dollars a day");
+  });
+
+  it("B: naming everything keeps the full-protection confirmation", async () => {
+    const [d] = await play(23, "honestly all three");
+    expect(d.beatId).toBe(24);
+    expect(d.textToSpeak).toContain("full vehicle protection");
+  });
+
+  it("C: 'you mean the manufacturer pays?' is answered from breakdown_process", async () => {
+    const [d] = await play(12, "you mean the manufacturer pays?");
+    expect(d.beatId).toBe(12);
+    expect(d.textToSpeak).not.toContain("I don't have that detail");
+    expect(d.textToSpeak).toContain("the manufacturer pays");
+  });
+
+  it("D: a slow remote model falls back to the approved sentences within the cap", async () => {
+    const saved = process.env.XAI_API_KEY;
+    process.env.XAI_API_KEY = "test-key";
+    try {
+      // Picker hangs until aborted: keyword answer, no second remote call
+      vi.stubGlobal("fetch", (_u: string, init: { signal: AbortSignal }) =>
+        new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new Error("aborted"))))
+      );
+      let t0 = Date.now();
+      let r = await answerFromKnowledgeBase("who pays when it breaks down?");
+      expect(Date.now() - t0).toBeLessThan(REMOTE_TIMEOUT_MS + 400);
+      expect(r.kind).toBe("answer");
+      expect(r.text).toContain("the manufacturer pays");
+
+      // Picker answers NONE fast, then the rewrite hangs: approved sentences after one cap
+      let calls = 0;
+      vi.stubGlobal("fetch", (_u: string, init: { signal: AbortSignal }) => {
+        calls++;
+        if (calls === 1) return Promise.resolve(new Response(JSON.stringify({ choices: [{ message: { content: "NONE" } }] })));
+        return new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new Error("aborted"))));
+      });
+      t0 = Date.now();
+      r = await answerFromKnowledgeBase("who pays when it breaks down?");
+      expect(Date.now() - t0).toBeLessThan(REMOTE_TIMEOUT_MS + 400);
+      expect(calls).toBe(2);
+      expect(r.text).toContain("the manufacturer pays");
+    } finally {
+      vi.unstubAllGlobals();
+      if (saved === undefined) delete process.env.XAI_API_KEY;
+      else process.env.XAI_API_KEY = saved;
+    }
+  });
+
+  it("E: a bare number word is not a number clarification; amounts and digits are", () => {
+    expect(classifyCustomerInputRuleBased("you mean the tire package covers all four?", 17).intent).not.toBe("number_clarification");
+    for (const say of ["you mean seven thousand?", "did you say 350?", "so that's ten dollars?", "you mean seventy hundred?"]) {
+      expect(classifyCustomerInputRuleBased(say, 15).intent, say).toBe("number_clarification");
+    }
+  });
+
+  it("L: a real name and address is logged as provided_details", async () => {
+    const [d] = await play(25, "sure, it's daniel reyes, r e y e s, 4410 maple ridge drive, plano texas");
+    expect(d.intent).toBe("provided_details");
+    expect(d.metrics?.intent).toBe("provided_details");
     expect(d.textToSpeak).toBe(SCRIPT_COMPLETE_LINE);
   });
 });

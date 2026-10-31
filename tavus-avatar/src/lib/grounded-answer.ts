@@ -37,22 +37,22 @@ export interface GroundedResult {
 // Recall keywords per fact. Deliberately conservative: a question must hit a real
 // keyword, and anything TXM has not answered (mechanic, refund, battery, hail) is absent on purpose.
 const KEYWORDS: Record<string, string[]> = {
-  disclosure: ["recorded", "recording", "required by law", "why do you need"],
-  manufacturer_warranty: ["powertrain", "power train", "base limited", "factory warranty", "manufacturer warranty", "two warranties"],
-  warranty_fine_print: ["manual", "glovebox", "glove box", "page 4", "page four", "mis built", "misbuilt", "defect"],
-  wear_and_tear: ["wear and tear", "ware and tear", "95", "ninety five", "three reasons", "main reasons"],
-  climate: ["climate", "heat", "hot", "110", "cold", "weather"],
-  road: ["road", "pothole", "construction"],
-  driving_habits: ["driving habit", "how i drive", "my driving"],
-  breakdown_process: ["who pays", "who will pay", "diagnose", "breaks down", "break down", "broke down", "manufacturer decide", "who decides"],
-  repair_costs: ["how much does an engine", "engine cost", "transmission cost", "repair cost", "cost to repair", "cost to fix"],
-  screen_sensor: ["screen", "sensor", "dashboard", "electronics cost"],
-  labor: ["labor", "labour", "per hour", "hourly", "how many hours"],
-  bumper_to_bumper: ["bumper", "deductible", "what does it cover", "what is covered", "what's covered", "blanket", "full coverage"],
+  disclosure: ["recorded", "recording", "required by law", "why do you need", "being recorded", "why record"],
+  manufacturer_warranty: ["powertrain", "power train", "base limited", "factory warranty", "manufacturer warranty", "two warranties", "comes with the car", "already have a warranty", "factory coverage"],
+  warranty_fine_print: ["manual", "glovebox", "glove box", "page 4", "page four", "mis built", "misbuilt", "defect", "defects only", "only defects", "what does the factory cover"],
+  wear_and_tear: ["wear and tear", "ware and tear", "95", "ninety five", "three reasons", "main reasons", "why do cars break", "what causes", "normal use"],
+  climate: ["climate", "heat", "hot", "110", "cold", "weather", "texas summer"],
+  road: ["road", "pothole", "construction", "bad roads"],
+  driving_habits: ["driving habit", "how i drive", "my driving", "the way i drive", "drive hard"],
+  breakdown_process: ["who pays", "who will pay", "diagnose", "breaks down", "break down", "broke down", "manufacturer decide", "who decides", "manufacturer pays", "who covers", "who is responsible", "my fault", "wear and tear", "who pays for repairs"],
+  repair_costs: ["how much does an engine", "engine cost", "transmission cost", "repair cost", "cost to repair", "cost to fix", "how expensive", "expensive to fix", "cost of repairs"],
+  screen_sensor: ["screen", "sensor", "dashboard", "electronics cost", "infotainment"],
+  labor: ["labor", "labour", "per hour", "hourly", "how many hours", "labor rate", "mechanic charge"],
+  bumper_to_bumper: ["bumper", "deductible", "what does it cover", "what is covered", "what's covered", "blanket", "full coverage", "whats included", "what's included", "covers everything"],
   service_location: ["come here", "service location", "service center", "metroplex", "where do i get service", "where do i service"],
-  tire_wheel: ["tire", "tires", "wheel", "wheels", "rim"],
-  maintenance: ["oil change", "maintenance", "filter", "rotation"],
-  gas_only: ["gas", "fuel"],
+  tire_wheel: ["tire", "tires", "wheel", "wheels", "rim", "flat tire", "blowout"],
+  maintenance: ["oil change", "maintenance", "filter", "rotation", "oil changes", "service visits"],
+  gas_only: ["gas", "fuel", "what else do i pay", "anything else to pay", "out of pocket"],
   price_framing: ["coffee", "starbucks"],
   two_most_valuable: ["which two", "most value"],
   confirm: ["confirm"],
@@ -73,15 +73,15 @@ function cleanAnswer(a: string): string {
   return a.replace(/\{\{[A-Z_]+\}\}/g, "").replace(/\s+/g, " ").trim();
 }
 
-function approvedFacts(): Array<{ id: string; answer: string; keywords: string[] }> {
-  const out: Array<{ id: string; answer: string; keywords: string[] }> = [];
+function approvedFacts(): Array<{ id: string; topic: string; answer: string; keywords: string[] }> {
+  const out: Array<{ id: string; topic: string; answer: string; keywords: string[] }> = [];
   for (const f of (kbData as { facts: Fact[] }).facts) {
     if (f.status !== "script" && f.status !== "approved") continue;
-    out.push({ id: f.id, answer: cleanAnswer(f.answer), keywords: [...(KEYWORDS[f.id] ?? []), ...(f.keywords ?? [])] });
+    out.push({ id: f.id, topic: f.topic, answer: cleanAnswer(f.answer), keywords: [...(KEYWORDS[f.id] ?? []), ...(f.keywords ?? [])] });
   }
   for (const n of (kbData as { needs_txm: NeedsEntry[] }).needs_txm) {
     if (n.status === "approved" && n.answer) {
-      out.push({ id: `txm:${n.question}`, answer: n.answer.trim(), keywords: tokens(n.question) });
+      out.push({ id: `txm:${n.question}`, topic: n.question, answer: n.answer.trim(), keywords: tokens(n.question) });
     }
   }
   return out;
@@ -127,9 +127,12 @@ async function rewriteWithLLM(question: string, passages: string[]): Promise<str
   const system = `You are Max, a calm finance manager. Answer the customer's question in at most two short spoken sentences using ONLY the PASSAGES.
 Rules: do not add any fact, number, price, promise or guarantee that is not in the passages. If the passages do not answer the question, output exactly: NO_ANSWER.
 Do not sell or pressure. Plain speech, no markdown.`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REMOTE_TIMEOUT_MS);
   try {
     const res = await fetch(endpoint, {
       method: "POST",
+      signal: controller.signal,
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
         model,
@@ -145,16 +148,84 @@ Do not sell or pressure. Plain speech, no markdown.`;
     const data = await res.json();
     return (data.choices?.[0]?.message?.content || "").trim();
   } catch {
+    // Timeout or network error: the caller falls back to the approved sentences as written
     return "";
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Remote calls in this module (fact picker, rewrite) give up after this and fall back to keywords
+// and the approved sentences as written. Dead air hurts more than a plainer answer.
+export const REMOTE_TIMEOUT_MS = 800;
+
+/**
+ * Lets the model choose which approved fact answers the question. It returns ONLY a fact id or
+ * NONE, never text, so nothing it says is spoken. Catches everyday phrasing that keywords miss.
+ */
+async function pickFactWithLLM(
+  question: string,
+  facts: Array<{ id: string; topic: string }>
+): Promise<{ id: string | null; timedOut: boolean }> {
+  const apiKey = process.env.XAI_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim();
+  if (!apiKey) return { id: null, timedOut: false };
+  const isXai = Boolean(process.env.XAI_API_KEY);
+  const endpoint = isXai ? "https://api.x.ai/v1/chat/completions" : "https://api.openai.com/v1/chat/completions";
+  const model = process.env.GROK_MODEL?.trim() || (isXai ? "grok-4.20-0309-non-reasoning" : "gpt-4o-mini");
+  const list = facts.map((f) => `${f.id}: ${f.topic}`).join("\n");
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REMOTE_TIMEOUT_MS);
+  try {
+    const res = await fetch(endpoint, {
+      method: "POST",
+      signal: controller.signal,
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model,
+        temperature: 0,
+        max_tokens: 12,
+        messages: [
+          {
+            role: "system",
+            content: `Pick the ONE fact id below that answers the customer's question. Reply with only the id, or NONE if none answers it. No other words.\n\nFACTS:\n${list}`,
+          },
+          { role: "user", content: question },
+        ],
+      }),
+    });
+    if (!res.ok) return { id: null, timedOut: false };
+    const data = await res.json();
+    const answer = (data.choices?.[0]?.message?.content || "").trim().replace(/[^\w:.-]/g, "");
+    return { id: facts.some((f) => f.id === answer) ? answer : null, timedOut: false };
+  } catch {
+    return { id: null, timedOut: controller.signal.aborted };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
 export async function answerFromKnowledgeBase(question: string): Promise<GroundedResult> {
+  const usedLLM = Boolean(process.env.XAI_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim());
+
+  // 1. With a key, the model picks the fact id and Max speaks that fact's approved sentences.
+  if (usedLLM) {
+    const facts = approvedFacts();
+    const pick = await pickFactWithLLM(question, facts);
+    const fact = pick.id ? facts.find((f) => f.id === pick.id) : undefined;
+    if (fact) return { kind: "answer", text: firstSentences(fact.answer, 2), sources: [fact.id], usedLLM };
+    if (pick.timedOut) {
+      // The remote model is slow right now: keywords plus approved sentences, no second remote call
+      const quick = retrieve(question);
+      if (quick.length === 0) return { kind: "handoff", text: UNKNOWN_QUESTION_LINE, sources: [], usedLLM };
+      return { kind: "answer", text: firstSentences(quick[0].answer, 2), sources: [quick[0].id], usedLLM };
+    }
+  }
+
+  // 2. No key, or the model said NONE: keywords as before (the rewrite can still say NO_ANSWER)
   const hits = retrieve(question);
-  if (hits.length === 0) return { kind: "handoff", text: UNKNOWN_QUESTION_LINE, sources: [] };
+  if (hits.length === 0) return { kind: "handoff", text: UNKNOWN_QUESTION_LINE, sources: [], usedLLM };
   const passages = hits.map((h) => h.answer);
 
-  const usedLLM = Boolean(process.env.XAI_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim());
   const llm = await rewriteWithLLM(question, passages);
   if (llm && llm !== "NO_ANSWER" && isSupported(llm, passages)) {
     return { kind: "answer", text: llm, sources: hits.map((h) => h.id), usedLLM };

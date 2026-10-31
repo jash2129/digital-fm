@@ -35,6 +35,7 @@ import {
   LANGUAGE_LINE,
   VERIFY_REASK_LINE,
   VERIFY_DEFER_LINE,
+  CHOSEN_COVERAGE_CONFIRM_LINE,
   CLARIFY_LINE,
   ANSWER_CHECK_LINE,
   TIRE_EXCLUSION_LINE,
@@ -75,6 +76,8 @@ export interface CallState {
   ungrounded_count?: number;
   /** customer already said yes to a finalize question, so Beat 24 must not ask again */
   finalize_confirmed?: boolean;
+  /** coverages the customer named at Beat 23 ("which two do you see the most value in?") */
+  chosen_coverages?: string[];
   /** consecutive Beat 25 replies that were not a name and address */
   verify_misses?: number;
   /** Beat 25 closed without the details: never claim the paperwork was finalized */
@@ -166,6 +169,7 @@ export type ClassifierIntent =
   | "why_asking"
   | "number_clarification"
   | "classifier_timeout"
+  | "provided_details"
   | "other";
 
 export interface ClassificationResult {
@@ -232,11 +236,19 @@ export function resetCallState(sessionId: string): void {
 }
 
 // Render raw beat text with placeholders replaced by deal variables
-export function renderBeatText(beat: Beat, dealConfig: DealConfig): string {
+export function renderBeatText(beat: Beat, dealConfig: DealConfig, state?: CallState): string {
   let rendered = beat.text;
   if (beat.id === 24) {
     const yearMakeModel = `${dealConfig.vehicle_year} ${dealConfig.vehicle_make} ${dealConfig.vehicle_model}`.trim();
-    rendered = `"Great, so to confirm, we're moving forward with full vehicle protection for ${dealConfig.per_day_price} a day on your ${yearMakeModel}."`;
+    const chosen = state?.chosen_coverages ?? [];
+    if (chosen.length > 0 && chosen.length < COVERAGES.length) {
+      // Customer named only some coverages: repeat back their choice, never claim "full", same price
+      rendered = CHOSEN_COVERAGE_CONFIRM_LINE.replace("{{coverages}}", chosen.join(" and the "))
+        .replace("{{price}}", dealConfig.per_day_price)
+        .replace("{{vehicle}}", yearMakeModel);
+    } else {
+      rendered = `"Great, so to confirm, we're moving forward with full vehicle protection for ${dealConfig.per_day_price} a day on your ${yearMakeModel}."`;
+    }
   } else {
     rendered = rendered.replace(/\{\{vehicle_year\}\}/g, dealConfig.vehicle_year);
     rendered = rendered.replace(/\{\{vehicle_make\}\}/g, dealConfig.vehicle_make);
@@ -314,7 +326,7 @@ export function formatSpeechText(text: string): string {
 
 // Formats full utterance for a beat: beat text + check-in line with natural conversational pause
 export function getFullBeatUtterance(beat: Beat, dealConfig: DealConfig, state?: CallState): string {
-  const rendered = renderBeatText(beat, dealConfig);
+  const rendered = renderBeatText(beat, dealConfig, state);
   const cleanBody = formatSpeechText(rendered);
   if (beat.check_in) {
     // If customer is in an impatient flow, suppress interrogation tags
@@ -432,6 +444,24 @@ export function isAvatarScriptEcho(transcript: string): boolean {
   return echoPhrases.some((phrase) => norm.includes(phrase));
 }
 
+// Beat 23 asks "Which two of those do you see the most value in?" about the three coverages Max
+// presented. These map what the customer names to how Max repeats it back at Beat 24.
+const COVERAGES: Array<{ label: string; words: RegExp }> = [
+  { label: "bumper-to-bumper warranty", words: /\b(bumper|warranty|engine|transmission|mechanical|electronics?)\b/ },
+  { label: "tire and wheel", words: /\b(tires?|wheels?|rims?)\b/ },
+  { label: "maintenance", words: /\b(maintenance|oil|filters?|rotations?)\b/ },
+];
+const NAMES_ALL_COVERAGES = /\b(everything|all of (them|it)|all three|the whole (thing|package))\b/;
+export function namedCoverages(norm: string): string[] {
+  return COVERAGES.filter((c) => c.words.test(norm)).map((c) => c.label);
+}
+// "yes" / "ok" / "sure" (with fillers) does not answer "which two?"
+const BARE_ACK = new Set("yes yeah yep yup ya ok okay sure alright fine right uh um mhm mm hm oh well so".split(" "));
+function isBareAck(norm: string): boolean {
+  const words = norm.split(/\s+/).filter(Boolean);
+  return words.length > 0 && words.every((w) => BARE_ACK.has(w));
+}
+
 // Beat 25 asks for full legal name, spelling and mailing address. A real answer has digits (street
 // number, zip) or at least 4 content words; "yes", "sure" or "I just said yes. yes" is not one.
 const VERIFY_FILLER = new Set(
@@ -484,14 +514,27 @@ function isReExplainRequest(norm: string): boolean {
 
 // Checking a number Max just said: "you mean seven thousand?", "so that's ten hours?",
 // "did you say seventy hundred?". Takes the normalized transcript.
-const NUMBER_WORD = /\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fourty|fifty|sixty|seventy|eighty|ninety|hundred|thousand|dollars?|percent)\b/;
+// Only an amount counts: digits, "hundred"/"thousand", or a number word next to a money or
+// mileage word. A bare "four" ("covers all four?") is not a number being checked.
+const NUMBER_WORD = /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|fifteen|twenty|thirty|forty|fourty|fifty|sixty|seventy|eighty|ninety)\b/;
+function mentionsAmount(norm: string): boolean {
+  return (
+    /\d/.test(norm) ||
+    /\b(hundred|thousand|grand)\b/.test(norm) ||
+    (NUMBER_WORD.test(norm) && /\b(dollars?|bucks|cents|miles?|percent)\b/.test(norm))
+  );
+}
 function isNumberClarification(norm: string): boolean {
-  return /\b(you mean|so that s|so thats|did you say)\b/.test(norm) && NUMBER_WORD.test(norm);
+  return /\b(you mean|so that s|so thats|did you say)\b/.test(norm) && mentionsAmount(norm);
 }
 
 // Customer praising the vehicle ("beautiful car", "love it", "nice ride"). Takes the normalized transcript.
 function isVehicleCompliment(norm: string): boolean {
   return (
+    /\b(beautiful|gorgeous)\b/.test(norm) ||
+    norm.includes("looks great") ||
+    norm.includes("sweet car") ||
+    norm.includes("awesome car") ||
     norm.includes("love this car") ||
     norm.includes("love the car") ||
     norm.includes("love it") ||
@@ -921,7 +964,9 @@ export function classifyCustomerInputRuleBased(
         norm.includes("yes") ||
         norm.includes("sounds good") ||
         norm.includes("works for me") ||
-        norm.includes("both")
+        norm.includes("both") ||
+        namedCoverages(norm).length > 0 ||
+        NAMES_ALL_COVERAGES.test(norm)
       ) {
         return { intent: "agree", topic_beat_ids: [] };
       }
@@ -2204,6 +2249,8 @@ async function runControllerTurn(
   if (classification.usedLLM) metrics.usedLLM = true;
   if (classification.timedOut) metrics.classifierTimedOut = true;
   const { intent, topic_beat_ids } = classification;
+  // What the turn log records; differs from `intent` only where the reply's role is clearer
+  let reportedIntent: ControllerDecision["intent"] = intent;
 
   console.log(`[beat-controller] Turn Intent: "${intent}", Current Beat: ${state.current_beat}`);
 
@@ -2270,6 +2317,19 @@ async function runControllerTurn(
           break;
         }
         state.verify_misses = 0;
+        reportedIntent = "provided_details";
+      }
+
+      // Beat 23 (expects "open"): "Which two of those do you see the most value in?". A bare yes is
+      // not an answer, so re-ask; named coverages are remembered for Beat 24's confirmation.
+      if (currentBeatObj?.expects === "open" && state.current_beat === 23 && /which two|most important to you/i.test(state.last_spoken_text)) {
+        const reply = customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+        if (isBareAck(reply)) {
+          textToSpeak = "Which two of those do you see the most value in?";
+          beatType = "wait";
+          break;
+        }
+        state.chosen_coverages = NAMES_ALL_COVERAGES.test(reply) ? COVERAGES.map((c) => c.label) : namedCoverages(reply);
       }
 
       state.no_count_in_a_row = 0;
@@ -2298,7 +2358,7 @@ async function runControllerTurn(
         const beat25 = BEATS.find((b) => b.id === 25)!;
         state.delivered_beats.push(24, 25);
         state.current_beat = 25;
-        const confirmation = formatSpeechText(renderBeatText(beat24, state.dealConfig));
+        const confirmation = formatSpeechText(renderBeatText(beat24, state.dealConfig, state));
         textToSpeak = `${confirmation} ${getFullBeatUtterance(beat25, state.dealConfig, state)}`;
         beatType = beat25.type;
         toolCalls = getBeatToolCalls(24);
@@ -3064,7 +3124,7 @@ async function runControllerTurn(
     beatType,
     toolCalls,
     state,
-    intent,
+    intent: reportedIntent,
     isScriptComplete: state.is_stopped,
   };
 }

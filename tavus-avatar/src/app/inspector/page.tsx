@@ -518,6 +518,12 @@ export default function CallInspectorPage() {
                   Total = from the END of the customer&apos;s speech to Max&apos;s first audio. The timeline&apos;s &quot;User
                   spoke&quot; marker is the START of speech, so a long sentence there is not latency. Click a row to jump to it.
                 </p>
+                {selectedSessionId.startsWith("sim-") && (
+                  <p className="text-xs text-amber-400 mt-1">
+                    Simulated call: every Total includes a fixed ~700 ms audio allowance added by the simulator, not real
+                    speech or HeyGen rendering. Compare the Controller column; real-world totals come only from live calls.
+                  </p>
+                )}
               </div>
 
               {turnTimings.length === 0 ? (
@@ -534,7 +540,9 @@ export default function CallInspectorPage() {
                         <th className="p-3 text-right">Classifier</th>
                         <th className="p-3 text-right">Controller</th>
                         <th className="p-3">LLM</th>
-                        <th className="p-3 text-right">Total</th>
+                        <th className="p-3 text-right">
+                          {selectedSessionId.startsWith("sim-") ? "Total (incl. simulated 700 ms audio allowance)" : "Total"}
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/60 font-mono">

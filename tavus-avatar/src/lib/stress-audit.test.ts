@@ -126,7 +126,9 @@ describe("Max stress audit", () => {
   it("scenario: confirmation beat quotes the negotiated price and the real vehicle", async () => {
     const sid = fresh(22);
     await processControllerTurn(sid, "That's too much");
-    const d = await processControllerTurn(sid, "Yes");
+    // Max's $3.50 offer asks "Which two coverages are most important to you?". A bare "Yes" no
+    // longer answers that (it is re-asked), so the customer names their coverages to move on.
+    const d = await processControllerTurn(sid, "The warranty and the tires");
     const t = d.textToSpeak.toLowerCase();
     const ok = !t.includes("four dollars a day") && t.includes("fifty");
     record("NEG confirm price", "P0", "Beat 24 must quote the price the customer agreed to", ok, d.textToSpeak);
