@@ -3,7 +3,33 @@
  * controller exactly as the browser would: speech recognizer -> controller -> request -> speech.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { TurnController, isLoneFiller, type TurnLogEvent } from "./turn-taking";
+import {
+  TurnController,
+  AvatarVoice,
+  SPEAK_START_TIMEOUT_MS,
+  isLoneFiller,
+  type AvatarCommand,
+  type TurnLogEvent,
+} from "./turn-taking";
+
+/** A LiveKit publish stand-in that records commands; optionally slow or failing per command type. */
+function recorder(opts: { delayMs?: number; failOn?: AvatarCommand["type"] } = {}) {
+  const published: string[] = [];
+  const publish = async (cmd: AvatarCommand) => {
+    if (opts.delayMs) await new Promise((r) => setTimeout(r, opts.delayMs));
+    if (opts.failOn === cmd.type) throw new Error(`publishData failed for ${cmd.type}`);
+    published.push(cmd.type === "speak_text" ? `speak_text:${cmd.text}` : cmd.type);
+  };
+  return { published, publish };
+}
+
+function voice(opts: { delayMs?: number; failOn?: AvatarCommand["type"] } = {}) {
+  const rec = recorder(opts);
+  const changes: Array<[boolean, string]> = [];
+  const logs: TurnLogEvent[] = [];
+  const v = new AvatarVoice(rec.publish, (s, r) => changes.push([s, r]), (e) => logs.push(e));
+  return { v, rec, changes, logs };
+}
 
 function harness(opts: { requestMs?: number } = {}) {
   const requestMs = opts.requestMs ?? 1500;
@@ -95,5 +121,61 @@ describe("P2: customer speech is never silently dropped", () => {
   it("isLoneFiller recognizes backchannels but not answers", () => {
     for (const t of ["yeah", "mm-hm", "uh huh", "okay okay", "I see", "got it"]) expect(isLoneFiller(t), t).toBe(true);
     for (const t of ["yes I drove it", "what was the question", "no"]) expect(isLoneFiller(t), t).toBe(false);
+  });
+});
+
+describe("Q2: the speaking flag is truthful", () => {
+  it("(a) interruptAvatar with a throwing publishData leaves isAvatarSpeaking false", async () => {
+    const { v, changes, logs } = voice({ failOn: "interrupt" });
+    void v.speak("First I see that you agreed to buy a new car.");
+    await vi.advanceTimersByTimeAsync(0);
+    v.tracker.onStarted();
+    expect(v.tracker.speaking).toBe(true);
+
+    await v.interrupt();
+    expect(v.tracker.speaking).toBe(false);
+    expect(changes.at(-1)).toEqual([false, "interrupted"]);
+    expect(logs.some((e) => e.event === "interrupt_failed")).toBe(true);
+  });
+
+  it("no start event within 3 s resets the flag and logs it", async () => {
+    const { v, logs } = voice();
+    void v.speak("Can you hear and see me alright?");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(v.tracker.speaking).toBe(true);
+    await vi.advanceTimersByTimeAsync(SPEAK_START_TIMEOUT_MS + 10);
+    expect(v.tracker.speaking).toBe(false);
+    expect(logs.at(-1)).toMatchObject({ event: "speaking_flag_reset", reason: "speak_start_timeout" });
+  });
+
+  it("the watchdog runs from real first audio, so a long line is not cut short at 10 s", async () => {
+    const { v } = voice();
+    const longLine = Array.from({ length: 70 }, () => "word").join(" "); // ~25 s of speech
+    void v.speak(longLine);
+    await vi.advanceTimersByTimeAsync(1500);
+    v.tracker.onStarted();
+    await vi.advanceTimersByTimeAsync(12000);
+    expect(v.tracker.speaking).toBe(true);
+    v.tracker.onStopped();
+    expect(v.tracker.speaking).toBe(false);
+  });
+
+  it("(e) speak_text is never published after a newer interrupt", async () => {
+    const { v, rec } = voice({ delayMs: 50 });
+    void v.speak("A"); // starts publishing
+    void v.speak("B"); // queued behind A, issued before the barge-in
+    const interrupted = v.interrupt(); // barge-in
+    void v.speak("C"); // issued after the barge-in
+    await vi.advanceTimersByTimeAsync(1000); // let the slow publishes run
+    await interrupted;
+
+    const firstInterrupt = rec.published.indexOf("interrupt");
+    expect(firstInterrupt).toBeGreaterThan(-1);
+    // Nothing issued before the interrupt is published after it
+    const afterInterrupt = rec.published.slice(firstInterrupt + 1);
+    expect(afterInterrupt).not.toContain("speak_text:A");
+    expect(afterInterrupt).not.toContain("speak_text:B");
+    expect(rec.published).not.toContain("speak_text:B");
+    expect(afterInterrupt).toContain("speak_text:C");
   });
 });

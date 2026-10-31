@@ -10,7 +10,7 @@ import DealSummaryPage from "@/app/content/deal-summary/page";
 import EscalatePage from "@/app/content/escalate/page";
 import { CallSummaryScreen } from "@/components/CallSummaryScreen";
 import type { ControllerTurnMetrics } from "@/lib/heygen-logger";
-import { TurnController, type TurnLogEvent } from "@/lib/turn-taking";
+import { TurnController, AvatarVoice, type AvatarCommand, type TurnLogEvent } from "@/lib/turn-taking";
 
 // =============================================================================
 // SPEED & BARGE-IN TUNING CONFIGURATION
@@ -296,7 +296,6 @@ export function LiveAvatarDemo() {
   const remoteAudioTrackRef = useRef<RemoteTrack | null>(null);
   const attachedAudioElsRef = useRef<HTMLMediaElement[]>([]);
   const isGrokProcessingRef = useRef(false);
-  const avatarWatchdogTimerRef = useRef<any>(null);
   const silenceEndTimerRef = useRef<any>(null);
   const muteSafeguardTimerRef = useRef<any>(null);
   const audioActivityCtxRef = useRef<AudioContext | null>(null);
@@ -381,8 +380,8 @@ export function LiveAvatarDemo() {
   const isMicMutedRef = useRef(isMicMuted);
   isMicMutedRef.current = isMicMuted;
 
-  const isAvatarSpeakingRef = useRef(isAvatarSpeaking);
-  isAvatarSpeakingRef.current = isAvatarSpeaking;
+  // Written only by AvatarVoice's onSpeakingChange; never re-synced from (possibly stale) React state
+  const isAvatarSpeakingRef = useRef(false);
 
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
@@ -497,6 +496,46 @@ export function LiveAvatarDemo() {
   }, []);
 
   // ---------------------------------------------------------------------------
+  // Max's voice: every avatar command goes through one serialized queue (AvatarVoice), and the
+  // speaking flag is owned by its SpeakingTracker (stop event, interrupt, 3 s speak-start timeout,
+  // watchdog from first audio). Dual-compatible payloads for all LiveAvatar schema revisions.
+  // ---------------------------------------------------------------------------
+  const turnControllerRef = useRef<TurnController | null>(null);
+  const publishAvatarCommand = async (cmd: AvatarCommand) => {
+    const room = roomRef.current;
+    if (!room) throw new Error("no LiveKit room");
+    const name = `avatar.${cmd.type}`;
+    const body =
+      cmd.type === "speak_text"
+        ? { event_type: name, event: name, text: cmd.text, data: { text: cmd.text }, payload: { text: cmd.text } }
+        : { event_type: name, event: name, type: name, action: cmd.type };
+    await room.localParticipant.publishData(new TextEncoder().encode(JSON.stringify(body)), { reliable: true, topic: "agent-control" });
+    if (cmd.type === "stop_listening") isListeningRef.current = false;
+    if (cmd.type === "start_listening") isListeningRef.current = true;
+  };
+  const voiceRef = useRef<AvatarVoice | null>(null);
+  if (!voiceRef.current) {
+    voiceRef.current = new AvatarVoice(
+      publishAvatarCommand,
+      (speaking, reason) => {
+        setIsAvatarSpeaking(speaking);
+        isAvatarSpeakingRef.current = speaking;
+        if (!speaking) {
+          avatarFinishedAtRef.current = Date.now();
+          // After a barge-in keep Max muted until his next line; otherwise restore volume
+          if (reason !== "interrupted") setRemoteAudioMutedLocally(false);
+          turnControllerRef.current?.notifyIdle();
+        }
+      },
+      (e) => {
+        if (e.event === "interrupt_failed") console.error("[liveavatar] Failed to interrupt avatar:", e.reason);
+        if (e.event === "speaking_flag_reset") console.warn(`[liveavatar] Watchdog: speaking flag reset (${e.reason})`);
+        logTurnEvent(e);
+      }
+    );
+  }
+
+  // ---------------------------------------------------------------------------
   // Send speech command to LiveAvatar
   // ---------------------------------------------------------------------------
   const speakWithAvatar = useCallback(async (text: string) => {
@@ -515,51 +554,11 @@ export function LiveAvatarDemo() {
       // Restore volume before Max's next utterance starts
       setRemoteAudioMutedLocally(false);
 
-      // Transition avatar from listening posture to speaking
-      try {
-        const stopListeningPayload = new TextEncoder().encode(
-          JSON.stringify({
-            event_type: "avatar.stop_listening",
-            event: "avatar.stop_listening",
-          })
-        );
-        await room.localParticipant.publishData(stopListeningPayload, { reliable: true, topic: "agent-control" });
-        isListeningRef.current = false;
-      } catch (err) {}
-
-      // Immediately set speaking flag to prevent race condition before speak_started event
-      setIsAvatarSpeaking(true);
-      isAvatarSpeakingRef.current = true;
-
-      // Start safety watchdog: in case stop event is delayed, auto-reset based on speech rate (~2.8 words/sec)
-      const wordCount = clean.split(/\s+/).length;
-      const expectedDurationMs = Math.min(10000, Math.max(1800, (wordCount / 2.8) * 1000 + 1200));
-      if (avatarWatchdogTimerRef.current) clearTimeout(avatarWatchdogTimerRef.current);
-      avatarWatchdogTimerRef.current = setTimeout(() => {
-        if (isAvatarSpeakingRef.current) {
-          console.warn("[liveavatar] Watchdog timer fired: auto-resetting isAvatarSpeaking");
-          setIsAvatarSpeaking(false);
-          isAvatarSpeakingRef.current = false;
-          avatarFinishedAtRef.current = Date.now();
-          setRemoteAudioMutedLocally(false);
-          turnControllerRef.current?.notifyIdle();
-        }
-      }, expectedDurationMs);
-
-      // Dual-compatible payload to support all LiveAvatar API schema revisions
-      const payload = new TextEncoder().encode(
-        JSON.stringify({
-          event_type: "avatar.speak_text",
-          event: "avatar.speak_text",
-          text: clean,
-          data: { text: clean },
-          payload: { text: clean },
-        })
-      );
-      await room.localParticipant.publishData(payload, { reliable: true, topic: "agent-control" });
+      // Serialized with interrupts; skipped if a barge-in happened after it was issued
+      const published = await voiceRef.current!.speak(clean);
 
       // Record speak_sent timestamp for latency calculation
-      if (currentTurnTimingRef.current) {
+      if (published && currentTurnTimingRef.current) {
         currentTurnTimingRef.current.speak_sent = Date.now();
       }
     } catch (err) {
@@ -571,48 +570,20 @@ export function LiveAvatarDemo() {
   // Interrupt Avatar (Barge-in / Cut-off)
   // ---------------------------------------------------------------------------
   const interruptAvatar = useCallback(async () => {
-    const room = roomRef.current;
-    if (!room) return;
-
-    if (avatarWatchdogTimerRef.current) {
-      clearTimeout(avatarWatchdogTimerRef.current);
-    }
-
+    if (!roomRef.current) return;
+    console.log("[liveavatar] Sending avatar.interrupt and switching to avatar.start_listening (barge-in)");
+    // Instant local mute on barge-in
+    setRemoteAudioMutedLocally(true);
     try {
-      console.log("[liveavatar] Sending avatar.interrupt and switching to avatar.start_listening (barge-in)");
-      // Instant local mute on barge-in
-      setRemoteAudioMutedLocally(true);
-
-      const interruptPayload = new TextEncoder().encode(
-        JSON.stringify({
-          event_type: "avatar.interrupt",
-          event: "avatar.interrupt",
-          type: "avatar.interrupt",
-          action: "interrupt",
-        })
-      );
-      await room.localParticipant.publishData(interruptPayload, { reliable: true, topic: "agent-control" });
-
-      // Switch avatar into interactive listening / head-nod state
-      const startListeningPayload = new TextEncoder().encode(
-        JSON.stringify({
-          event_type: "avatar.start_listening",
-          event: "avatar.start_listening",
-          type: "avatar.start_listening",
-          action: "start_listening",
-        })
-      );
-      await room.localParticipant.publishData(startListeningPayload, { reliable: true, topic: "agent-control" });
-
-      setIsAvatarSpeaking(false);
-      isAvatarSpeakingRef.current = false;
+      // Bumps the command generation synchronously, so a speak issued before this is skipped.
+      // The speaking flag is reset in AvatarVoice's finally, even if publishing throws.
+      await voiceRef.current!.interrupt();
+    } finally {
       isListeningRef.current = true;
       setUserSpeaking(true);
       lastInterruptedAtRef.current = Date.now();
       avatarFinishedAtRef.current = Date.now();
       setCurrentReplicaText((prev) => (prev ? `${prev} — [Listening...]` : ""));
-    } catch (err) {
-      console.error("[liveavatar] Failed to interrupt avatar:", err);
     }
   }, [setRemoteAudioMutedLocally, setUserSpeaking]);
 
@@ -786,7 +757,6 @@ export function LiveAvatarDemo() {
   // One TurnController for the component's lifetime; it reaches the latest callbacks through refs
   const sendToGrokRef = useRef(sendToGrok);
   sendToGrokRef.current = sendToGrok;
-  const turnControllerRef = useRef<TurnController | null>(null);
   if (!turnControllerRef.current) {
     turnControllerRef.current = new TurnController({
       runTurn: (transcript) => sendToGrokRef.current(transcript),
@@ -1334,8 +1304,7 @@ export function LiveAvatarDemo() {
             ev.includes("speak_started")
           ) {
             recordAvatarAudioStarted();
-            setIsAvatarSpeaking(true);
-            isAvatarSpeakingRef.current = true;
+            voiceRef.current?.tracker.onStarted();
           } else if (
             ev.includes("stop_talking") ||
             ev.includes("stopped_speaking") ||
@@ -1343,29 +1312,11 @@ export function LiveAvatarDemo() {
             ev.includes("speak_ended") ||
             ev.includes("talking_stop")
           ) {
-            setIsAvatarSpeaking(false);
-            isAvatarSpeakingRef.current = false;
-            avatarFinishedAtRef.current = Date.now();
-            setRemoteAudioMutedLocally(false);
-            if (avatarWatchdogTimerRef.current) {
-              clearTimeout(avatarWatchdogTimerRef.current);
-              avatarWatchdogTimerRef.current = null;
-            }
-            turnControllerRef.current?.notifyIdle();
+            // Flag, timers, unmute and the pending-transcript replay all follow from this
+            voiceRef.current?.tracker.onStopped();
 
             // Put avatar in attentive listening / head-nod state while waiting for user response
-            try {
-              const startListeningPayload = new TextEncoder().encode(
-                JSON.stringify({
-                  event_type: "avatar.start_listening",
-                  event: "avatar.start_listening",
-                  type: "avatar.start_listening",
-                  action: "start_listening",
-                })
-              );
-              void room.localParticipant.publishData(startListeningPayload, { reliable: true, topic: "agent-control" });
-              isListeningRef.current = true;
-            } catch (listenErr) {}
+            void voiceRef.current?.queue.startListening().catch(() => {});
 
             // Section 3.3: continue beats pause 3500ms. If user does not speak, send next beat.
             if (lastBeatTypeRef.current === "continue" && isConnectedRef.current && !isUserSpeakingRef.current) {
@@ -1410,17 +1361,8 @@ export function LiveAvatarDemo() {
 
       // Put avatar in active listening and attentive expression posture
       try {
-        const startListeningPayload = new TextEncoder().encode(
-          JSON.stringify({
-            event_type: "avatar.start_listening",
-            event: "avatar.start_listening",
-            type: "avatar.start_listening",
-            action: "start_listening",
-          })
-        );
-        await room.localParticipant.publishData(startListeningPayload, { reliable: true, topic: "agent-control" });
+        await voiceRef.current!.queue.startListening();
         console.log("[liveavatar] Published avatar.start_listening to agent-control");
-        isListeningRef.current = true;
       } catch (listenErr) {
         console.warn("[liveavatar] Failed to publish start_listening on connection:", listenErr);
       }

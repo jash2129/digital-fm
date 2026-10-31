@@ -34,6 +34,190 @@ export function isLoneFiller(transcript: string): boolean {
   return n.split(" ").every((w) => BACKCHANNEL.has(w));
 }
 
+// -----------------------------------------------------------------------------
+// Avatar commands: one serialized queue, so an interrupt can never be published after a newer
+// speak_text, and a speak issued before a barge-in is skipped instead of talking over the customer.
+// -----------------------------------------------------------------------------
+export type AvatarCommand =
+  | { type: "speak_text"; text: string }
+  | { type: "interrupt" }
+  | { type: "start_listening" }
+  | { type: "stop_listening" };
+
+export class AvatarCommandQueue {
+  private tail: Promise<unknown> = Promise.resolve();
+  private gen = 0;
+
+  constructor(
+    private publish: (cmd: AvatarCommand) => Promise<void>,
+    private log: (event: TurnLogEvent) => void = () => {}
+  ) {}
+
+  get generation(): number {
+    return this.gen;
+  }
+
+  private enqueue<T>(task: () => Promise<T>): Promise<T> {
+    const run = this.tail.then(task);
+    this.tail = run.catch(() => {}); // one failed command must not jam the queue
+    return run;
+  }
+
+  /** Resolves true if published, false if a newer interrupt made it stale. */
+  speak(text: string): Promise<boolean> {
+    const issuedGen = this.gen;
+    const stale = () => {
+      this.log({ ts: new Date().toISOString(), event: "speak_skipped", reason: "superseded_by_interrupt", transcript: text });
+      return false;
+    };
+    return this.enqueue(async () => {
+      if (issuedGen !== this.gen) return stale();
+      try {
+        await this.publish({ type: "stop_listening" });
+      } catch {
+        // posture only; never blocks speech
+      }
+      if (issuedGen !== this.gen) return stale();
+      await this.publish({ type: "speak_text", text });
+      return true;
+    });
+  }
+
+  /** Bumps the generation immediately (before anything queued runs), then interrupts. */
+  interrupt(): Promise<void> {
+    this.gen++;
+    return this.enqueue(async () => {
+      await this.publish({ type: "interrupt" });
+      await this.publish({ type: "start_listening" });
+    });
+  }
+
+  startListening(): Promise<void> {
+    return this.enqueue(() => this.publish({ type: "start_listening" }));
+  }
+}
+
+// -----------------------------------------------------------------------------
+// Speaking state: the single source of truth for "is Max talking". Every way out (stop event,
+// interrupt, speak-start timeout, watchdog) goes through reset(), which clears all timers together.
+// -----------------------------------------------------------------------------
+export const SPEAK_START_TIMEOUT_MS = 3000;
+const WORDS_PER_SECOND = 2.8;
+
+export function expectedSpeechMs(text: string): number {
+  return Math.max(1200, (text.trim().split(/\s+/).length / WORDS_PER_SECOND) * 1000);
+}
+
+export class SpeakingTracker {
+  speaking = false;
+  /** epoch ms of the current line's first audio (0 until HeyGen confirms) */
+  startedAt = 0;
+  stoppedAt = 0;
+  private expectedMs = 0;
+  private startTimer: ReturnType<typeof setTimeout> | null = null;
+  private watchdog: ReturnType<typeof setTimeout> | null = null;
+
+  constructor(
+    private onChange: (speaking: boolean, reason: string) => void,
+    private log: (event: TurnLogEvent) => void = () => {}
+  ) {}
+
+  /** speak_text is about to be published. If HeyGen never confirms, reset after SPEAK_START_TIMEOUT_MS. */
+  beginSpeak(text: string): void {
+    this.clearTimers();
+    this.expectedMs = expectedSpeechMs(text);
+    this.startedAt = 0;
+    this.set(true, "speak_issued");
+    this.startTimer = setTimeout(() => {
+      if (this.speaking && !this.startedAt) this.reset("speak_start_timeout");
+    }, SPEAK_START_TIMEOUT_MS);
+  }
+
+  /** HeyGen start_talking / speak_started. The watchdog runs from real first audio. */
+  onStarted(): void {
+    if (this.startTimer) clearTimeout(this.startTimer);
+    this.startTimer = null;
+    this.startedAt = Date.now();
+    if (!this.expectedMs) this.expectedMs = 8000;
+    if (this.watchdog) clearTimeout(this.watchdog);
+    this.watchdog = setTimeout(() => this.reset("watchdog"), this.expectedMs + 3000);
+    if (!this.speaking) this.set(true, "speak_started");
+  }
+
+  onStopped(): void {
+    this.reset("stop_event");
+  }
+
+  reset(reason: string): void {
+    this.clearTimers();
+    const was = this.speaking;
+    this.stoppedAt = Date.now();
+    if (reason !== "stop_event" && reason !== "interrupted") {
+      this.log({ ts: new Date().toISOString(), event: "speaking_flag_reset", reason, wasSpeaking: was });
+    }
+    this.set(false, reason);
+  }
+
+  msIntoLine(): number {
+    return this.speaking && this.startedAt ? Date.now() - this.startedAt : 0;
+  }
+
+  /** How much of the current line has been heard, 0..1 (0 if audio never started). */
+  spokenFraction(): number {
+    if (!this.startedAt || !this.expectedMs) return 0;
+    const end = this.speaking ? Date.now() : this.stoppedAt;
+    return Math.min(1, Math.max(0, (end - this.startedAt) / this.expectedMs));
+  }
+
+  private set(value: boolean, reason: string): void {
+    this.speaking = value;
+    this.onChange(value, reason);
+  }
+
+  private clearTimers(): void {
+    if (this.startTimer) clearTimeout(this.startTimer);
+    if (this.watchdog) clearTimeout(this.watchdog);
+    this.startTimer = null;
+    this.watchdog = null;
+  }
+}
+
+/** Max's voice: queue + speaking state, so an interrupt always leaves the flag false. */
+export class AvatarVoice {
+  readonly queue: AvatarCommandQueue;
+  readonly tracker: SpeakingTracker;
+
+  constructor(
+    publish: (cmd: AvatarCommand) => Promise<void>,
+    onSpeakingChange: (speaking: boolean, reason: string) => void,
+    private log: (event: TurnLogEvent) => void = () => {}
+  ) {
+    this.queue = new AvatarCommandQueue(publish, log);
+    this.tracker = new SpeakingTracker(onSpeakingChange, log);
+  }
+
+  async speak(text: string): Promise<boolean> {
+    this.tracker.beginSpeak(text);
+    const published = await this.queue.speak(text).catch((err) => {
+      this.log({ ts: new Date().toISOString(), event: "speak_failed", reason: String(err), transcript: text });
+      return false;
+    });
+    if (!published && this.tracker.speaking && !this.tracker.startedAt) this.tracker.reset("speak_not_published");
+    return published;
+  }
+
+  /** Never leaves the speaking flag stuck: reset happens in finally, even if publishing throws. */
+  async interrupt(): Promise<void> {
+    try {
+      await this.queue.interrupt();
+    } catch (err) {
+      this.log({ ts: new Date().toISOString(), event: "interrupt_failed", reason: String(err) });
+    } finally {
+      this.tracker.reset("interrupted");
+    }
+  }
+}
+
 export const PENDING_MAX_AGE_MS = 8000;
 // Transcripts this soon after Max stops are usually the tail of his own audio
 export const POST_SPEECH_GUARD_MS = 600;
