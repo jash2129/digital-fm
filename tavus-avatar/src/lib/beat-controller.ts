@@ -2106,11 +2106,12 @@ export async function generateStep0Turn(
     norm.includes("selling something") ||
     norm.includes("selling");
 
+  // Every Step 0 answer ends by asking the Step 0 question again: the opener (with its check-in) if
+  // the customer has not heard it yet, else the check-in alone
+  const step0Question = step0Turns <= 1 ? STEP_0_OPENING.replace(/^Awesome, great/, "Great") : STEP_0_CHECKIN_LINE;
+
   if (isSalesAsk) {
-    return {
-      text: SALES_CALL_LINE,
-      moveToBeat1: false,
-    };
+    return { text: `${SALES_CALL_LINE} ${step0Question}`, moveToBeat1: false };
   }
 
   // Turn 1, live call 1ee5181b: "Who's this?" got the congratulations script with no identification.
@@ -2159,25 +2160,12 @@ export async function generateStep0Turn(
   if (isIdentityAsk) {
     if (isWaitingOrRushed) {
       return {
-        text: "I'm Max, your digital finance manager today. I completely apologize for the long wait—that is way too long, so I'm going to make this fast, crisp, and direct so you can get on the road. Did you get a chance to test drive your new vehicle today?",
+        text: `I'm Max, your digital finance manager today. I completely apologize for the long wait—that is way too long, so I'm going to make this fast, crisp, and direct so you can get on the road. ${step0Question}`,
         moveToBeat1: false,
       };
     }
     return {
-      text: "I'm Max, your digital finance manager today! I handle all your paperwork, title details, and warranty options before you drive off in your new car. How was your test drive out there today?",
-      moveToBeat1: false,
-    };
-  }
-
-  if (isSalesAsk) {
-    if (isWaitingOrRushed) {
-      return {
-        text: "I completely respect your time! This is strictly your required paperwork and warranty review before you sign—zero sales pressure. Did our sales team treat you well today?",
-        moveToBeat1: false,
-      };
-    }
-    return {
-      text: "Not at all! This isn't a sales call—my job is simply to review your paperwork and factory warranty before you sign anything. Did our sales team treat you well today?",
+      text: `I'm Max, your digital finance manager today! I handle all your paperwork, title details, and warranty options before you drive off in your new car. ${step0Question}`,
       moveToBeat1: false,
     };
   }
@@ -2195,7 +2183,7 @@ export async function generateStep0Turn(
 
   if (isCallPurposeAsk) {
     return {
-      text: "Every buyer meets with finance before delivery to verify paperwork, registration details, and review factory warranty coverage. Did you get a good feel for the car on your test drive?",
+      text: `Every buyer meets with finance before delivery to verify paperwork, registration details, and review factory warranty coverage. ${step0Question}`,
       moveToBeat1: false,
     };
   }
@@ -2209,7 +2197,7 @@ export async function generateStep0Turn(
 
   if (isAiAsk) {
     return {
-      text: "I'm an AI digital finance manager, built to make your paperwork fast, clear, and transparent! How was your test drive out there today?",
+      text: `I'm an AI digital finance manager, built to make your paperwork fast, clear, and transparent! ${step0Question}`,
       moveToBeat1: false,
     };
   }

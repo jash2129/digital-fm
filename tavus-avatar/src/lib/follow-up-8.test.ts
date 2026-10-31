@@ -142,3 +142,19 @@ describe("4: two 'no's at the recording disclosure never end the call", () => {
     expect(bye.beatType).toBe("stop");
   });
 });
+
+describe("5: Step 0 answers re-ask the Step 0 question", () => {
+  it.each(["Is this a sales call?", "Who are you?", "Are you a robot?", "What is this call for?"])("after the opener: '%s' ends with the check-in", async (ask) => {
+    const sid = await atCheckIn();
+    const t = await say(sid, ask);
+    expect(t.beatId).toBe(0);
+    expect(t.textToSpeak.endsWith(STEP_0_CHECKIN_LINE)).toBe(true);
+    expect(t.textToSpeak).not.toMatch(/test drive/i);
+  });
+
+  it("before the opener: 'Is this a sales call?' answers, then asks the opener's check-in", async () => {
+    const t = await say(newCall(), "Is this a sales call?");
+    expect(t.textToSpeak.startsWith("I'm Max, your finance manager.")).toBe(true);
+    expect(t.textToSpeak.endsWith(STEP_0_CHECKIN_LINE)).toBe(true);
+  });
+});
