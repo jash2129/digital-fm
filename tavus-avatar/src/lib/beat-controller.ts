@@ -2106,9 +2106,8 @@ export async function generateStep0Turn(
     norm.includes("selling something") ||
     norm.includes("selling");
 
-  // Every Step 0 answer ends by asking the Step 0 question again: the opener (with its check-in) if
-  // the customer has not heard it yet, else the check-in alone
-  const step0Question = step0Turns <= 1 ? STEP_0_OPENING.replace(/^Awesome, great/, "Great") : STEP_0_CHECKIN_LINE;
+  // Every Step 0 answer ends by asking the Step 0 question again (the check-in, never the whole opener)
+  const step0Question = STEP_0_CHECKIN_LINE;
 
   if (isSalesAsk) {
     return { text: `${SALES_CALL_LINE} ${step0Question}`, moveToBeat1: false };

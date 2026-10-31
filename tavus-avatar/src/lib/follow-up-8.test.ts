@@ -178,3 +178,67 @@ describe("6: a 'yeah' to the clarify line re-asks the unanswered question", () =
     expect(t.beatId).toBeGreaterThan(7);
   });
 });
+
+// The five simulated weird-customer calls, rebuilt from the lines quoted in the follow-up 8 brief.
+// Each turn: what the customer says, the beat Max must be on afterwards, and what his reply must
+// (or must not) contain.
+type Turn = { say: string; beat: number; has?: string | RegExp; not?: string | RegExp };
+const SCRIPTS: Record<string, Turn[]> = {
+  "S1 distrustful buyer": [
+    { say: "Yeah.", beat: 0, has: STEP_0_CHECKIN_LINE },
+    { say: "I don't trust any of this, you people always upsell.", beat: 1, has: STEP_0_SORRY_LINE, not: GLAD },
+    { say: "okay", beat: 2 },
+    { say: "I'm not paying for anything extra.", beat: 2, has: NO_PRESSURE_LINE, not: UNKNOWN_QUESTION_LINE },
+    { say: "yes I drove it", beat: 3 },
+    { say: "yes", beat: 4 },
+    { say: "you always upsell", beat: 4, has: NO_PRESSURE_LINE },
+  ],
+  "S2 wrong vehicle, three times": [
+    { say: "Yes", beat: 0, has: STEP_0_CHECKIN_LINE },
+    { say: "I'm buying an Audi, not a Mazda", beat: 0, has: "make a note of your vehicle" },
+    { say: "I said Audi, not Mazda", beat: 0, has: "sales team confirm" },
+    { say: "Are you listening? Audi!", beat: 0, has: STEP_0_CHECKIN_LINE, not: GLAD },
+    { say: "it was okay", beat: 1, has: GLAD },
+    { say: "okay", beat: 2, has: "new vehicle", not: /mazda/i },
+  ],
+  "S3 hesitant buyer": [
+    { say: "yes", beat: 0, has: STEP_0_CHECKIN_LINE },
+    { say: "Hmm.", beat: 0, has: STEP_0_CHECKIN_LINE, not: GLAD },
+    { say: "it was fine", beat: 1, has: GLAD },
+    { say: "okay", beat: 2 },
+    { say: "I guess", beat: 2, has: CLARIFY_LINE },
+    { say: "Yeah", beat: 2, has: /test drive\?$/ },
+    { say: "yes", beat: 3 },
+  ],
+  "S4 off-topic questions": [
+    { say: "yes", beat: 0, has: STEP_0_CHECKIN_LINE },
+    { say: "Is this a sales call?", beat: 0, has: STEP_0_CHECKIN_LINE },
+    { say: "Who are you?", beat: 0, has: STEP_0_CHECKIN_LINE, not: /test drive/i },
+    { say: "good", beat: 1, not: "I'm Max" },
+    { say: "okay", beat: 2 },
+    { say: "What's the weather like today?", beat: 2, has: UNKNOWN_QUESTION_LINE, not: "110 degrees" },
+  ],
+  "S5 two no's at the disclosure": [
+    { say: "yes", beat: 0, has: STEP_0_CHECKIN_LINE },
+    { say: "fine", beat: 1, has: "recorded audio and video" },
+    { say: "No.", beat: 1, has: LEAD_IN_NO },
+    { say: "No.", beat: 1, has: TAKE_TIME_LINE, not: "end this session" },
+    { say: "okay", beat: 2 },
+  ],
+};
+
+describe("Follow-up 8 regression: the five simulated weird-customer calls", () => {
+  it.each(Object.entries(SCRIPTS))("%s", async (_name, turns) => {
+    const sid = newCall();
+    for (const turn of turns) {
+      const d = await say(sid, turn.say);
+      const where = `after "${turn.say}": ${d.textToSpeak}`;
+      expect(d.beatId, where).toBe(turn.beat);
+      expect(d.isScriptComplete, where).toBeFalsy();
+      if (typeof turn.has === "string") expect(d.textToSpeak, where).toContain(turn.has);
+      else if (turn.has) expect(d.textToSpeak, where).toMatch(turn.has);
+      if (typeof turn.not === "string") expect(d.textToSpeak, where).not.toContain(turn.not);
+      else if (turn.not) expect(d.textToSpeak, where).not.toMatch(turn.not);
+    }
+  });
+});
