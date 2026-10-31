@@ -210,7 +210,13 @@ export function LiveAvatarDemo() {
     speak_sent: number;
     avatar_audio_start: number;
     controller?: ControllerTurnMetrics;
+    stt_final: number;
+    chat_request_sent: number;
+    chat_route_start?: number;
+    chat_route_end?: number;
   } | null>(null);
+  // When the speech recognizer last delivered a final result (STT finalization time)
+  const lastSttFinalAtRef = useRef<number>(0);
   const turnCounterRef = useRef<number>(0);
   const timingLogsRef = useRef<any[]>([]);
   const bargeInsRef = useRef<any[]>([]);
@@ -342,11 +348,36 @@ export function LiveAvatarDemo() {
       const avatarRenderGapMs = Math.max(0, timing.avatar_audio_start - timing.speak_sent);
       const totalLatencyMs = Math.max(0, timing.avatar_audio_start - timing.user_speech_end);
 
+      // Durations never mix clocks: route is server-measured, the rest browser-measured
+      const requestMs = Math.max(0, timing.controller_decision - timing.chat_request_sent);
+      const routeMs = timing.chat_route_start && timing.chat_route_end ? Math.max(0, timing.chat_route_end - timing.chat_route_start) : undefined;
+      const stageMs: Record<string, number> = {
+        stt: Math.max(0, timing.stt_final - timing.user_speech_end),
+        endpointing: Math.max(0, timing.final_transcript - timing.stt_final),
+        request: requestMs,
+        ...(routeMs !== undefined ? { route: routeMs, network: Math.max(0, requestMs - routeMs) } : {}),
+        ...(timing.speak_sent
+          ? { speakQueue: Math.max(0, timing.speak_sent - timing.controller_decision), heygen: Math.max(0, timing.avatar_audio_start - timing.speak_sent) }
+          : {}),
+        total: totalLatencyMs,
+      };
       const completedTurnLog = {
         turnId: timing.turnId,
         userInput: timing.userInput,
         avatarText: timing.avatarText,
         controller: timing.controller,
+        stages: {
+          speechEnd: timing.user_speech_end,
+          sttFinal: timing.stt_final,
+          turnDispatched: timing.final_transcript,
+          chatRequestSent: timing.chat_request_sent,
+          chatRouteStart: timing.chat_route_start,
+          chatRouteEnd: timing.chat_route_end,
+          chatResponseReceived: timing.controller_decision,
+          heygenSpeakSent: timing.speak_sent,
+          firstAudio: timing.avatar_audio_start,
+        },
+        stageMs,
         timestamps: {
           user_speech_end: timing.user_speech_end,
           final_transcript: timing.final_transcript,
@@ -373,7 +404,8 @@ export function LiveAvatarDemo() {
           `• speak_sent:           +${speakSentGapMs}ms (WebRTC publish)\n` +
           `• avatar_audio_start:   +${avatarRenderGapMs}ms (HeyGen render & WebRTC play)\n` +
           `-------------------------------------------------\n` +
-          `TOTAL TURN LATENCY:     ${totalLatencyMs}ms (${(totalLatencyMs / 1000).toFixed(2)}s)`,
+          `TOTAL TURN LATENCY:     ${totalLatencyMs}ms (${(totalLatencyMs / 1000).toFixed(2)}s)\n` +
+          `stages ms: ${JSON.stringify(stageMs)}`,
         "color: #38bdf8; font-weight: bold;"
       );
 
@@ -535,6 +567,7 @@ export function LiveAvatarDemo() {
       // Initialize turn timing instrumentation
       const speechEndTime = userSpeechEndTimestampRef.current || Date.now();
       const finalTranscriptTime = Date.now();
+      const sttFinal = lastSttFinalAtRef.current >= speechEndTime ? lastSttFinalAtRef.current : finalTranscriptTime;
       const turnId = ++turnCounterRef.current;
       currentTurnTimingRef.current = {
         turnId,
@@ -545,12 +578,15 @@ export function LiveAvatarDemo() {
         controller_decision: 0,
         speak_sent: 0,
         avatar_audio_start: 0,
+        stt_final: Math.min(sttFinal, finalTranscriptTime),
+        chat_request_sent: 0,
       };
 
       try {
         const beatBefore = currentBeat.id;
         // A rollback for the line just interrupted must land before this turn is processed
         await commitInFlightRef.current;
+        if (currentTurnTimingRef.current) currentTurnTimingRef.current.chat_request_sent = Date.now();
         const res = await fetch("/api/chat/grok", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -602,6 +638,8 @@ export function LiveAvatarDemo() {
           currentTurnTimingRef.current.controller_decision = decisionTime;
           currentTurnTimingRef.current.avatarText = assistantText;
           currentTurnTimingRef.current.controller = data.metrics;
+          currentTurnTimingRef.current.chat_route_start = data.timing?.routeStart;
+          currentTurnTimingRef.current.chat_route_end = data.timing?.routeEnd;
         }
         if (data.beatType) {
           lastBeatTypeRef.current = data.beatType;
@@ -764,6 +802,7 @@ export function LiveAvatarDemo() {
       const currentSpoken = (interimText || finalTranscript).trim();
       if (!currentSpoken) return;
       turnControllerRef.current?.onCustomerActivity();
+      if (finalTranscript.trim()) lastSttFinalAtRef.current = Date.now();
 
       // End-of-speech = the last moment NEW words were heard. The final result usually repeats the
       // last interim words ~0.5-1s after the customer stopped, so it must not move the timestamp,
@@ -1321,6 +1360,15 @@ export function LiveAvatarDemo() {
       });
 
       await room.connect(session.livekitUrl, session.livekitClientToken);
+      // Warm the chat route so the first real turn is not a cold start (live call: 3.1 s first turn)
+      void fetch("/api/chat/grok", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "warmup" }),
+      })
+        .then((r) => r.json())
+        .then((w) => logTurnEvent({ ts: new Date().toISOString(), event: "chat_route_warmed", routeMs: w?.routeMs }))
+        .catch(() => {});
       setIsConnected(true);
       isConnectedRef.current = true;
       setIsConnecting(false);

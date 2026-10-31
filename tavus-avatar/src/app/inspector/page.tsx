@@ -16,6 +16,21 @@ type SessionSummary = {
   status: string;
 };
 
+// Per-turn stage durations (from stageMs, live calls only); "-" when a call predates stage logging
+function sumStages(t: TurnTimingLog, keys: string[]): number | undefined {
+  if (!t.stageMs) return undefined;
+  const vals = keys.map((k) => t.stageMs![k]).filter((v): v is number => typeof v === "number");
+  return vals.length ? vals.reduce((a, b) => a + b, 0) : undefined;
+}
+function stageCell(t: TurnTimingLog, keys: string[]): string {
+  const v = sumStages(t, keys);
+  return v === undefined ? "-" : `${v} ms`;
+}
+function avgStage(rows: TurnTimingLog[], pick: (t: TurnTimingLog) => number | undefined): string {
+  const vals = rows.map(pick).filter((v): v is number => typeof v === "number");
+  return vals.length ? `${Math.round(vals.reduce((a, b) => a + b, 0) / vals.length)} ms` : "-";
+}
+
 export default function CallInspectorPage() {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string>("");
@@ -540,6 +555,10 @@ export default function CallInspectorPage() {
                         <th className="p-3 text-right">Classifier</th>
                         <th className="p-3 text-right">Controller</th>
                         <th className="p-3">LLM</th>
+                        <th className="p-3 text-right" title="Speech end to STT final, plus the end-of-speech wait before the turn is sent">STT + endpoint</th>
+                        <th className="p-3 text-right" title="Server time inside /api/chat/grok">Route</th>
+                        <th className="p-3 text-right" title="Request round trip minus route time">Network</th>
+                        <th className="p-3 text-right" title="speak_text sent to first audio">HeyGen</th>
                         <th className="p-3 text-right">
                           {selectedSessionId.startsWith("sim-") ? "Total (incl. simulated 700 ms audio allowance)" : "Total"}
                         </th>
@@ -570,6 +589,10 @@ export default function CallInspectorPage() {
                                 <span className="text-slate-500">no</span>
                               )}
                             </td>
+                            <td className="p-3 text-right text-slate-300">{stageCell(t, ["stt", "endpointing"])}</td>
+                            <td className="p-3 text-right text-slate-300">{stageCell(t, ["route"])}</td>
+                            <td className="p-3 text-right text-slate-300">{stageCell(t, ["network"])}</td>
+                            <td className="p-3 text-right text-slate-300">{stageCell(t, ["heygen"])}</td>
                             <td className={`p-3 text-right font-bold ${total > 1500 ? "text-rose-400" : total > 800 ? "text-amber-400" : "text-emerald-400"}`}>
                               {total} ms
                             </td>
@@ -577,6 +600,23 @@ export default function CallInspectorPage() {
                         );
                       })}
                     </tbody>
+                    {/* Real-world averages come only from live calls, never from simulated ones */}
+                    {!selectedSessionId.startsWith("sim-") && turnTimings.some((t) => t.stageMs) && (
+                      <tfoot className="bg-slate-950 text-slate-300 font-mono border-t border-slate-700">
+                        <tr>
+                          <td className="p-3 font-bold" colSpan={5}>
+                            Average over {turnTimings.filter((t) => t.stageMs).length} turns
+                          </td>
+                          <td className="p-3 text-right">{avgStage(turnTimings, (t) => t.controller?.controllerMs)}</td>
+                          <td className="p-3" />
+                          <td className="p-3 text-right">{avgStage(turnTimings, (t) => sumStages(t, ["stt", "endpointing"]))}</td>
+                          <td className="p-3 text-right">{avgStage(turnTimings, (t) => t.stageMs?.route)}</td>
+                          <td className="p-3 text-right">{avgStage(turnTimings, (t) => t.stageMs?.network)}</td>
+                          <td className="p-3 text-right">{avgStage(turnTimings, (t) => t.stageMs?.heygen)}</td>
+                          <td className="p-3 text-right font-bold">{avgStage(turnTimings, (t) => t.gaps?.total_latency_ms)}</td>
+                        </tr>
+                      </tfoot>
+                    )}
                   </table>
                 </div>
               )}

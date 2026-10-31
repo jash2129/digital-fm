@@ -25,6 +25,23 @@ export type TurnTimingLog = {
   avatarText: string;
   /** controller breakdown; total_latency_ms (end of customer speech -> avatar audio) is in `gaps` */
   controller?: ControllerTurnMetrics;
+  /**
+   * Live-call stage timestamps (epoch ms). chatRouteStart/End are on the server clock; the rest on
+   * the browser clock. Use stageMs for comparisons, which never mixes the two clocks.
+   */
+  stages?: {
+    speechEnd: number;
+    sttFinal: number;
+    turnDispatched: number;
+    chatRequestSent: number;
+    chatRouteStart?: number;
+    chatRouteEnd?: number;
+    chatResponseReceived: number;
+    heygenSpeakSent: number;
+    firstAudio: number;
+  };
+  /** Per-stage durations in ms: stt, endpointing, route, network, speakQueue, heygen, total */
+  stageMs?: Record<string, number>;
   timestamps: {
     user_speech_end: number;
     final_transcript: number;

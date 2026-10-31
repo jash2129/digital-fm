@@ -3,8 +3,15 @@ import { processClientTurn, commitTurn, repromptText } from "@/lib/beat-controll
 import { DEFAULT_DEAL_CONFIG } from "@/lib/deal-config";
 
 export async function POST(request: Request) {
+  // Server-clock stage timing; the client measures network and HeyGen on its own clock
+  const routeStart = Date.now();
   try {
     const body = await request.json();
+
+    // Called once at session start so the first real turn does not pay for a cold route/module load
+    if (body.action === "warmup") {
+      return NextResponse.json({ ok: true, routeMs: Date.now() - routeStart });
+    }
     const { messages = [], sessionId = "live_session", dealConfig = DEFAULT_DEAL_CONFIG, clientBeatId, turnId = 0 } = body;
 
     // Two-phase turns: the client reports whether Max's reply for turnId was actually heard
@@ -42,6 +49,7 @@ export async function POST(request: Request) {
       clientBeatId,
       // classifierMs, controllerMs, usedLLM, classifierTimedOut, intent, beatBefore, beatAfter
       metrics: decision.metrics,
+      timing: { routeStart, routeEnd: Date.now() },
     });
   } catch (error: any) {
     console.error("[api/chat/grok error, returning safe fallback]:", error);
