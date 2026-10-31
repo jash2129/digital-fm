@@ -113,3 +113,33 @@ describe("W (server): reprompts and presence checks", () => {
     }
   });
 });
+
+describe("S: greetings re-ask the pending question", () => {
+  it("B2 'Are you there?' re-asks the Beat 2 question; then 'yeah' answers it", async () => {
+    const sid = fresh(2);
+    const hello = await processClientTurn(sid, "Are you there?", 1);
+    expect(hello.textToSpeak.endsWith("Did you get a chance to take it for a test drive?")).toBe(true);
+    expect(hello.textToSpeak).not.toContain("please go ahead");
+    expect(hello.beatId).toBe(2);
+    const yeah = await processClientTurn(sid, "yeah", 2);
+    expect(yeah.beatId).toBe(3);
+  });
+
+  it("'Hello' and 'can you hear me' at other beats re-ask that beat's pending question", async () => {
+    for (const [beat, say] of [[10, "Hello."], [7, "can you hear me"]] as const) {
+      const sid = fresh(beat);
+      const d = await processClientTurn(sid, say, 1);
+      expect(d.textToSpeak.trim().endsWith("?"), `${beat} ${say}`).toBe(true);
+      expect(d.beatId, `${beat} ${say}`).toBe(beat);
+    }
+  });
+
+  it("a question asked at an earlier beat is never re-asked as if it were pending", async () => {
+    const sid = fresh(5);
+    await processClientTurn(sid, "yes", 1); // Beat 6, asks "right?"
+    const st = getOrCreateCallState(sid);
+    st.current_beat = 9; // a continue beat with no question of its own
+    const d = await processClientTurn(sid, "are you there", 2);
+    expect(d.textToSpeak).not.toContain("right?");
+  });
+});

@@ -85,6 +85,8 @@ export interface CallState {
   excluded_coverages?: string[];
   /** the last question Max asked, so interjections can re-ask what is actually pending */
   last_question?: string;
+  /** the beat that question was asked at (a question from an earlier beat is no longer pending) */
+  last_question_beat?: number;
   /**
    * Max's last reply was not heard (cut early or dropped as stale): the state was rolled back to
    * before that turn. A bare "yes" resumes this text instead of answering a question nobody heard.
@@ -608,14 +610,16 @@ function lastQuestionOf(text: string): string {
   return (parts.filter((p) => p.includes("?")).at(-1) ?? "").trim();
 }
 
-// What Max is actually waiting on. At Beat 23 that is the coverage question (or the keep re-ask),
-// not the beat's default "Does that sound fair?" check-in.
+// What Max is actually waiting on: the last question he asked at the current beat, else the beat's
+// check-in. At Beat 23 the coverage question (or the keep re-ask) is re-asked in its canonical form.
 function pendingQuestion(state: CallState): string {
-  const last = state.last_question || lastQuestionOf(state.last_spoken_text);
+  const askedHere = state.last_question_beat === state.current_beat ? state.last_question ?? "" : "";
+  const last = askedHere || lastQuestionOf(state.last_spoken_text);
   if (state.current_beat === 23) {
     if (/would you like to keep/i.test(last)) return KEEP_COVERAGES_REASK_LINE;
     if (/which two|most important to you/i.test(last)) return "Which two of those do you see the most value in?";
   }
+  if (askedHere) return askedHere;
   return getBeatCheckInQuestion(BEATS.find((b) => b.id === state.current_beat)!);
 }
 
@@ -3291,7 +3295,10 @@ async function runControllerTurn(
 
   state.last_spoken_text = textToSpeak;
   const askedNow = lastQuestionOf(textToSpeak);
-  if (askedNow) state.last_question = askedNow;
+  if (askedNow) {
+    state.last_question = askedNow;
+    state.last_question_beat = state.current_beat;
+  }
 
   return {
     textToSpeak,
