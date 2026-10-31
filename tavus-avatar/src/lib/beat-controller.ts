@@ -39,6 +39,7 @@ import {
   KEEP_COVERAGES_REASK_LINE,
   STILL_WITH_ME_LINE,
   PRESENCE_LINE,
+  TECH_CHECK_ACK_LINE,
   CLARIFY_LINE,
   ANSWER_CHECK_LINE,
   TIRE_EXCLUSION_LINE,
@@ -1984,6 +1985,31 @@ export async function generateStep0Turn(
       text: SALES_CALL_LINE,
       moveToBeat1: false,
     };
+  }
+
+  // Turn 1, live call 1ee5181b: "Who's this?" got the congratulations script with no identification.
+  // Answer who Max is first, then continue with the Step 0 line (without its own "I'm Max" sentence).
+  if (step0Turns <= 1) {
+    const asksWho =
+      /\b(who s this|whos this|who is this|who are you|who am i talking to|who is speaking)\b/.test(norm) ||
+      norm === "what is this" ||
+      norm === "what s this" ||
+      norm === "whats this" ||
+      norm === "who";
+    if (asksWho) {
+      const rapport = formatSpeechText(
+        STEP_0_RAPPORT_LINE.replace(/\{\{vehicle_year\}\}/g, dealConfig.vehicle_year)
+          .replace(/\{\{vehicle_make\}\}/g, dealConfig.vehicle_make)
+          .replace(/\{\{vehicle_model\}\}/g, dealConfig.vehicle_model)
+          .replace(/^Awesome, great/, "Great")
+          .replace(/ I'm Max, your finance manager, and I'll be handling your paperwork today\./, "")
+      );
+      return { text: `${IDENTITY_LINE} ${rapport}`, moveToBeat1: false };
+    }
+    // "Can you hear me?" before answering: acknowledge, then repeat the tech check
+    if (/\bcan you (hear|see) me\b/.test(norm)) {
+      return { text: `${TECH_CHECK_ACK_LINE} ${STEP_0_GREETING}`, moveToBeat1: false };
+    }
   }
 
   // Turn 1: customer confirmed audio/video ("i can see you", "yes", etc.)

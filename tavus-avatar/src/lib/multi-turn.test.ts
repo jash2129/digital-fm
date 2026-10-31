@@ -309,17 +309,22 @@ describe("multi-turn regressions", () => {
       const sid = fresh(9);
       const line = "my neighbor bought one of these last spring and liked it";
       expect(classifyCustomerInputRuleBased(line, 9).intent).toBe("other");
-      const t0 = Date.now();
-      const c = await classifyWithLLM(line, getOrCreateCallState(sid));
-      expect(Date.now() - t0).toBeLessThan(LLM_CLASSIFIER_TIMEOUT_MS + 400);
+      // Fake timers: the cap is asserted exactly, independent of machine load
+      vi.useFakeTimers();
+      const pending = classifyWithLLM(line, getOrCreateCallState(sid));
+      await vi.advanceTimersByTimeAsync(LLM_CLASSIFIER_TIMEOUT_MS + 10);
+      const c = await pending;
       expect(c).toMatchObject({ intent: "classifier_timeout", timedOut: true, usedLLM: true });
 
-      const d = await processControllerTurn(sid, line);
+      const turn = processControllerTurn(sid, line);
+      await vi.advanceTimersByTimeAsync(LLM_CLASSIFIER_TIMEOUT_MS + 10);
+      const d = await turn;
       expect(d.textToSpeak).toBe(CLARIFY_LINE);
       expect(d.beatId).toBe(9);
       expect(d.metrics).toMatchObject({ usedLLM: true, classifierTimedOut: true });
     } finally {
       vi.unstubAllGlobals();
+      vi.useRealTimers();
       process.env.XAI_API_KEY = saved.xai ?? "";
       if (saved.xai === undefined) delete process.env.XAI_API_KEY;
       if (saved.openai !== undefined) process.env.OPENAI_API_KEY = saved.openai;
@@ -398,33 +403,45 @@ describe("multi-turn regressions", () => {
   });
 
   it("D: a slow remote model falls back to the approved sentences within the cap", async () => {
+    // Fake timers: the caps are asserted exactly, independent of machine load
+    vi.useFakeTimers();
     const saved = process.env.XAI_API_KEY;
     process.env.XAI_API_KEY = "test-key";
+    const settle = <T,>(p: Promise<T>) => {
+      const s = { done: false, value: undefined as T | undefined };
+      p.then((v) => Object.assign(s, { done: true, value: v }));
+      return s;
+    };
     try {
-      // Picker hangs until aborted: keyword answer, no second remote call
+      // Picker hangs until aborted: keyword answer at the picker cap, no second remote call
       vi.stubGlobal("fetch", (_u: string, init: { signal: AbortSignal }) =>
         new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new Error("aborted"))))
       );
-      let t0 = Date.now();
-      let r = await answerFromKnowledgeBase("who pays when it breaks down?");
-      expect(Date.now() - t0).toBeLessThan(FACT_PICKER_TIMEOUT_MS + 400);
-      expect(r.kind).toBe("answer");
-      expect(r.text).toContain("the manufacturer pays");
+      let r = settle(answerFromKnowledgeBase("who pays when it breaks down?"));
+      await vi.advanceTimersByTimeAsync(FACT_PICKER_TIMEOUT_MS - 50);
+      expect(r.done).toBe(false);
+      await vi.advanceTimersByTimeAsync(100);
+      expect(r.done).toBe(true);
+      expect(r.value?.kind).toBe("answer");
+      expect(r.value?.text).toContain("the manufacturer pays");
 
-      // Picker answers NONE fast, then the rewrite hangs: approved sentences after one cap
+      // Picker answers NONE fast, then the rewrite hangs: approved sentences after one rewrite cap
       let calls = 0;
       vi.stubGlobal("fetch", (_u: string, init: { signal: AbortSignal }) => {
         calls++;
         if (calls === 1) return Promise.resolve(new Response(JSON.stringify({ choices: [{ message: { content: "NONE" } }] })));
         return new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new Error("aborted"))));
       });
-      t0 = Date.now();
-      r = await answerFromKnowledgeBase("who pays when it breaks down?");
-      expect(Date.now() - t0).toBeLessThan(REMOTE_TIMEOUT_MS + 400);
+      r = settle(answerFromKnowledgeBase("who pays when it breaks down?"));
+      await vi.advanceTimersByTimeAsync(REMOTE_TIMEOUT_MS - 50);
+      expect(r.done).toBe(false);
+      await vi.advanceTimersByTimeAsync(100);
+      expect(r.done).toBe(true);
       expect(calls).toBe(2);
-      expect(r.text).toContain("the manufacturer pays");
+      expect(r.value?.text).toContain("the manufacturer pays");
     } finally {
       vi.unstubAllGlobals();
+      vi.useRealTimers();
       if (saved === undefined) delete process.env.XAI_API_KEY;
       else process.env.XAI_API_KEY = saved;
     }

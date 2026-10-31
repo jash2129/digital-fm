@@ -46,6 +46,10 @@ export const STILL_WITH_ME_LINE = "Are you still with me?";
 // Status: PENDING TXM
 export const PRESENCE_LINE = "I'm right here with you!";
 
+// Step 0: the customer asks "can you hear me?" before answering the tech check. Spoken before
+// STEP_0_GREETING. Status: PENDING TXM
+export const TECH_CHECK_ACK_LINE = "Yes, I can hear you.";
+
 // Beat 25 verification: re-asked when the reply is not a name and address (a bare yes, a filler).
 // Status: PENDING TXM
 export const VERIFY_REASK_LINE = "I just need your full legal name, spelling, and current mailing address to verify.";

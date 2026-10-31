@@ -143,3 +143,33 @@ describe("S: greetings re-ask the pending question", () => {
     expect(d.textToSpeak).not.toContain("right?");
   });
 });
+
+describe("T: Step 0 reacts to what the customer says", () => {
+  const step0 = () => {
+    const sid = `s0_${Math.random().toString(36).slice(2)}`;
+    resetCallState(sid);
+    getOrCreateCallState(sid);
+    return sid;
+  };
+
+  it("'Who's this?' first identifies Max, then continues with the Step 0 line", async () => {
+    for (const say of ["Who's this?", "who is this", "who are you", "what is this"]) {
+      const d = await processClientTurn(step0(), say, 1);
+      expect(d.textToSpeak.startsWith("I'm Max, your digital finance manager today."), say).toBe(true);
+      expect(d.textToSpeak, say).toContain("congratulations");
+      expect(d.textToSpeak.match(/I'm Max/g)?.length, say).toBe(1); // not introduced twice
+    }
+  });
+
+  it("'Can you hear me?' gets a short acknowledgment and the tech check again", async () => {
+    const d = await processClientTurn(step0(), "can you hear me?", 1);
+    expect(d.textToSpeak).toBe("Yes, I can hear you. Can you hear and see me alright?");
+    expect(d.beatId).toBe(0);
+  });
+
+  it("'I can't see you' still gets the tech-issue line, never 'great to connect'", async () => {
+    const d = await processClientTurn(step0(), "I can't see you", 1);
+    expect(d.textToSpeak.toLowerCase()).not.toContain("great to connect");
+    expect(d.textToSpeak.toLowerCase()).toContain("can you see and hear me");
+  });
+});
