@@ -11,12 +11,21 @@ import {
   processControllerTurn,
   getOrCreateCallState,
   resetCallState,
+  getBeatCheckInQuestion,
   renderBeatText,
   formatSpeechText,
   BEATS,
   type ControllerDecision,
 } from "./beat-controller";
-import { HANDOFF_LINE, CLARIFY_LINE, CLOSING_LINE, UNKNOWN_QUESTION_LINE } from "./max-lines";
+import {
+  HANDOFF_LINE,
+  CLARIFY_LINE,
+  CLOSING_LINE,
+  UNKNOWN_QUESTION_LINE,
+  COMPLIMENT_LINE,
+  LANGUAGE_LINE,
+  REPEATED_NO_LINE,
+} from "./max-lines";
 
 function fresh(beat: number) {
   const sid = `multi_${Math.random().toString(36).slice(2)}`;
@@ -131,5 +140,79 @@ describe("multi-turn regressions", () => {
     expect(ask.beatId).toBe(12);
     expect(ask.stopped).toBe(false);
     expect(next.beatId).toBe(13);
+  });
+
+  // ---- Follow-up 2: unrelated turns must not fall through to the unknown-question line
+
+  it("A: a vehicle correction is handled as a discrepancy and holds the beat", async () => {
+    const [cx] = await play(9, "It's a CX-30, not a CX-5");
+    expect(cx.intent).toBe("vehicle_discrepancy");
+    expect(cx.beatId).toBe(9);
+    expect(cx.stopped).toBe(false);
+    expect(cx.textToSpeak).toContain("CX-30");
+    expect(cx.textToSpeak).not.toContain(UNKNOWN_QUESTION_LINE);
+    expect(cx.state.dealConfig.vehicle_model).toBe("CX-30");
+
+    for (const say of ["that's not my car", "wrong car"]) {
+      const [d] = await play(12, say);
+      expect(d.intent, say).toBe("vehicle_discrepancy");
+      expect(d.beatId, say).toBe(12);
+    }
+  });
+
+  it("A: a compliment at any beat gets COMPLIMENT_LINE plus the current check-in, never ends the call", async () => {
+    for (const beat of [1, 9, 10, 22, 23, 24, 25]) {
+      for (const say of ["beautiful car", "love it", "nice ride"]) {
+        const [d] = await play(beat, say);
+        const checkIn = getBeatCheckInQuestion(BEATS.find((b) => b.id === beat)!);
+        expect(d.intent, `B${beat} ${say}`).toBe("compliment");
+        expect(d.textToSpeak, `B${beat} ${say}`).toBe(`${COMPLIMENT_LINE} ${checkIn}`);
+        expect(d.beatId, `B${beat} ${say}`).toBe(beat);
+        expect(d.stopped, `B${beat} ${say}`).toBe(false);
+        expect(showsEscalation(d), `B${beat} ${say}`).toBe(false);
+      }
+    }
+  });
+
+  it("A: 'why do you keep asking me that' repeats only the current check-in", async () => {
+    for (const say of ["why do you keep asking me that", "why are you asking"]) {
+      const [d] = await play(10, say);
+      expect(d.textToSpeak, say).toBe("Are you with me?");
+      expect(d.beatId, say).toBe(10);
+    }
+  });
+
+  it("A: another language gets LANGUAGE_LINE and holds the beat", async () => {
+    for (const say of ["Puedo hablar en español?", "habla español?", "Can we do this in Spanish?"]) {
+      const [d] = await play(9, say);
+      expect(d.textToSpeak, say).toBe(LANGUAGE_LINE);
+      expect(d.beatId, say).toBe(9);
+      expect(d.stopped, say).toBe(false);
+    }
+  });
+
+  it("B: the unknown-question line never implies coverage", async () => {
+    const [d] = await play(8, "what about hail?");
+    expect(d.textToSpeak).toContain(UNKNOWN_QUESTION_LINE);
+    expect(d.textToSpeak).toContain(CLARIFY_LINE);
+    expect(d.textToSpeak.toLowerCase()).not.toContain("covered");
+  });
+
+  it("C: two Nos in a row move on with REPEATED_NO_LINE, never a handoff", async () => {
+    const [first, second] = await play(9, "no", "no");
+    expect(first.stopped).toBe(false);
+    expect(second.stopped).toBe(false);
+    expect(second.textToSpeak.startsWith(REPEATED_NO_LINE)).toBe(true);
+    expect(second.textToSpeak).not.toContain(HANDOFF_LINE);
+    expect(second.beatId).toBe(10);
+    expect([first, second].some(showsEscalation)).toBe(false);
+  });
+
+  it("C: two Nos to the Beat 1 recording disclosure withhold consent and end the session", async () => {
+    const [, second, after] = await play(1, "no", "no", "okay go on");
+    expect(second.stopped).toBe(true);
+    expect(second.textToSpeak).not.toContain(HANDOFF_LINE);
+    expect(showsEscalation(second)).toBe(false);
+    expect(after.textToSpeak).toBe(CLOSING_LINE);
   });
 });

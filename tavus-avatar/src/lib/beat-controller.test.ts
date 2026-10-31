@@ -15,6 +15,7 @@ import {
   DEFER_LINE,
   OUT_OF_SCRIPT_LINE,
   HANDOFF_LINE,
+  REPEATED_NO_LINE,
   SCRIPT_COMPLETE_LINE,
   AI_DISCLOSURE_LINE,
   STEP_0_GREETING,
@@ -266,7 +267,8 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       }
     });
 
-    it("two 'No's in a row triggers handoff", async () => {
+    // Human escalation was removed by the client: a second No moves on instead of handing off
+    it("two 'No's in a row moves on with REPEATED_NO_LINE, never a handoff", async () => {
       await processControllerTurn(sessionId, "Yes");
       await processControllerTurn(sessionId, "Great"); // Beat 1
       await processControllerTurn(sessionId, "Yes", DEFAULT_DEAL_CONFIG, { intent: "agree", topic_beat_ids: [] }); // Beat 2
@@ -279,10 +281,12 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
 
       // Second No in a row
       const dec2 = await processControllerTurn(sessionId, "Still no", DEFAULT_DEAL_CONFIG, { intent: "no", topic_beat_ids: [] });
-      expect(dec2.textToSpeak).toBe(HANDOFF_LINE);
-      expect(dec2.state.no_count_in_a_row).toBe(2);
-      expect(dec2.state.is_stopped).toBe(true);
-      expect(dec2.beatType).toBe("stop");
+      expect(dec2.textToSpeak.startsWith(REPEATED_NO_LINE)).toBe(true);
+      expect(dec2.textToSpeak).not.toContain(HANDOFF_LINE);
+      expect(dec2.beatId).toBe(3);
+      expect(dec2.state.no_count_in_a_row).toBe(0);
+      expect(dec2.state.is_stopped).toBe(false);
+      expect(dec2.toolCalls.some((t) => t.args.item === "escalate")).toBe(false);
     });
 
     it("completes script after Beat 25 with HANDOFF_LINE and onScriptComplete", async () => {
@@ -385,14 +389,16 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       expect(slowDecision.state.current_beat).toBe(1);
     });
 
-    it("Phase 4: vehicle compliments share customer excitement and advance naturally", async () => {
+    it("Phase 4: vehicle compliments share customer excitement and hold the beat", async () => {
       await processControllerTurn(sessionId, "Yes");
       await processControllerTurn(sessionId, "Great"); // Beat 1
 
       const complimentDecision = await processControllerTurn(sessionId, "I really love this car, it drove like a dream");
       expect(complimentDecision.intent).toBe("compliment");
       expect(complimentDecision.textToSpeak).toContain(COMPLIMENT_LINE);
-      expect(complimentDecision.beatId).toBe(2);
+      // A compliment is not consent to recording: hold Beat 1 and re-ask its check-in
+      expect(complimentDecision.textToSpeak).toContain("Is that okay with you?");
+      expect(complimentDecision.beatId).toBe(1);
     });
 
     it("Phase 4: human requests stay in character and hold the beat (no escalation exists)", async () => {
@@ -611,14 +617,14 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       expect(anxiousTurn.beatId).toBe(2); // Provides psychological safety without pressure
     });
 
-    it("EQ Adaptation: Excited/humor customer triggers EQ_EXCITEMENT_LINE and advances naturally", async () => {
+    it("EQ Adaptation: Excited/humor customer triggers EQ_EXCITEMENT_LINE and holds the beat", async () => {
       await processControllerTurn(sessionId, "Yes");
       await processControllerTurn(sessionId, "It was great"); // Beat 1
 
       const excitedTurn = await processControllerTurn(sessionId, "Haha that's hilarious Max, you're funny!");
       expect(excitedTurn.intent).toBe("compliment");
       expect(excitedTurn.textToSpeak).toContain("I love that energy! That new car is an absolute head-turner");
-      expect(excitedTurn.beatId).toBe(2); // Advances with shared excitement
+      expect(excitedTurn.beatId).toBe(1); // Shares the excitement, still needs the Beat 1 answer
     });
 
     it("isIncompleteUtterance detects trailing hesitation and incomplete dangling clauses", () => {
@@ -641,7 +647,7 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       expect(turn.textToSpeak).toContain("thank you for catching that");
       expect(turn.textToSpeak).not.toContain("Mazda CX five");
       expect(turn.state.dealConfig.vehicle_model).toBe("Maybach");
-      expect(turn.beatId).toBe(2);
+      expect(turn.beatId).toBe(1); // Holds the beat it was raised on (Beat 1 consent still pending)
       expect(turn.beatType).toBe("wait");
     });
 

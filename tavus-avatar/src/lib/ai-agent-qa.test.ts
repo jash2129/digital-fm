@@ -143,14 +143,16 @@ describe("Two-Agent Automated Call Testing (Agent 1 Max vs Agent 2 Customer Simu
     expect(honoredAll).toBe(true);
   });
 
-  it("Persona 4: Objection Heavy executes LEAD_IN_NO on 1st No and HANDOFF_LINE on 2nd consecutive No", async () => {
+  it("Persona 4: Objection Heavy executes LEAD_IN_NO on 1st No and never hands off", async () => {
     const result = await runSimulatedCall("objection_heavy", 5);
     // 1st No -> LEAD_IN_NO
     const firstNoTurn = result.timingLogs.find((t) => t.userInput.toLowerCase().includes("no"));
     expect(firstNoTurn?.avatarText).toContain(LEAD_IN_NO);
-    // 2nd consecutive No -> HANDOFF_LINE
+    // This persona's Nos land on Beat 1 (recording disclosure): a second No withholds consent and
+    // ends the session. Human escalation was removed, so no turn may ever offer a handoff.
     const lastTurn = result.timingLogs[result.timingLogs.length - 1];
-    expect(lastTurn.avatarText).toBe(HANDOFF_LINE);
+    expect(lastTurn.avatarText).toBe("I understand. I'll end this session now.");
+    expect(result.timingLogs.some((t) => t.avatarText.includes(HANDOFF_LINE))).toBe(false);
   });
 
   it("Persona 5: Off-Script intercepts financial questions and defers without quoting rates", async () => {

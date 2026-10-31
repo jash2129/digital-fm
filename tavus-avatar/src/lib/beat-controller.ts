@@ -32,6 +32,7 @@ import {
   REPEATED_NO_LINE,
   UNKNOWN_QUESTION_LINE,
   CLOSING_LINE,
+  LANGUAGE_LINE,
   CLARIFY_LINE,
   ANSWER_CHECK_LINE,
   TIRE_EXCLUSION_LINE,
@@ -153,6 +154,8 @@ export type ClassifierIntent =
   | "manufacturer_vs_dealer"
   | "sales_question"
   | "call_purpose"
+  | "language_request"
+  | "why_asking"
   | "other";
 
 export interface ClassificationResult {
@@ -445,6 +448,35 @@ function isReExplainRequest(norm: string): boolean {
   );
 }
 
+// Customer praising the vehicle ("beautiful car", "love it", "nice ride"). Takes the normalized transcript.
+function isVehicleCompliment(norm: string): boolean {
+  return (
+    norm.includes("love this car") ||
+    norm.includes("love the car") ||
+    norm.includes("love it") ||
+    norm.includes("beautiful car") ||
+    norm.includes("great car") ||
+    norm.includes("nice car") ||
+    norm.includes("nice ride") ||
+    norm.includes("sweet ride") ||
+    norm.includes("drove like a dream") ||
+    norm.includes("love the color") ||
+    norm.includes("gorgeous car") ||
+    norm.includes("amazing car") ||
+    norm.includes("amazing vehicle") ||
+    norm.includes("dream car")
+  );
+}
+
+// Customer speaking, or asking to speak, a language other than English. Takes the normalized
+// transcript, where accented letters have become spaces ("español" -> "espa ol").
+function isOtherLanguage(norm: string): boolean {
+  return (
+    /\b(habla|hablar|hablas|puedo|espa ol|espanol|por favor|no entiendo|parlez|fran ais)\b/.test(norm) ||
+    /\b(in|speak|talk|use) (spanish|french|vietnamese|chinese|mandarin|hindi|korean|portuguese|arabic|another language|a different language)\b/.test(norm)
+  );
+}
+
 // Deterministic rule-based classification fallback (also used for unit/simulation tests)
 export function classifyCustomerInputRuleBased(
   transcript: string,
@@ -489,6 +521,11 @@ export function classifyCustomerInputRuleBased(
     norm.includes("going to hang up")
   ) {
     return { intent: "hang_up", topic_beat_ids: [] };
+  }
+
+  // 0.7. Another language: the script is English-only
+  if (isOtherLanguage(norm)) {
+    return { intent: "language_request", topic_beat_ids: [] };
   }
 
   // 1. AI Question (check before human request so questions like "are you an AI avatar or a real person?" are handled as AI disclosure)
@@ -557,7 +594,10 @@ export function classifyCustomerInputRuleBased(
     norm.includes("confirm which car") ||
     norm.includes("what car") ||
     norm.includes("which vehicle") ||
-    norm.includes("how can you ask me that");
+    norm.includes("how can you ask me that") ||
+    // "It's a CX-30, not a CX-5" (hyphens are spaces here)
+    /\b(it s|its|it is|i m buying|i bought|getting|got) (a |the )?(mazda )?cx \d+/.test(norm) ||
+    /\bnot (a |the )?(mazda )?cx \d+/.test(norm);
 
   if (isVehicleDiscrepancy) {
     return { intent: "vehicle_discrepancy", topic_beat_ids: [] };
@@ -667,6 +707,17 @@ export function classifyCustomerInputRuleBased(
     return { intent: "restart_request", topic_beat_ids: [] };
   }
 
+  // 3.5. "Why do you keep asking me that": re-ask only the current check-in
+  if (
+    norm.includes("why do you keep asking") ||
+    norm.includes("why are you asking") ||
+    norm.includes("why do you ask") ||
+    norm.includes("you already asked") ||
+    norm.includes("why you keep asking")
+  ) {
+    return { intent: "why_asking", topic_beat_ids: [] };
+  }
+
   // 4. Repeat request, including asking Max to re-explain what he just said
   if (isReExplainRequest(norm)) {
     return { intent: "repeat_request", topic_beat_ids: [] };
@@ -768,6 +819,11 @@ export function classifyCustomerInputRuleBased(
 
     if (isCounterOfferOrFloorPush) {
       return { intent: "negotiate_price", topic_beat_ids: [] };
+    }
+
+    // A compliment with no yes in it is not an answer to the offer or confirmation
+    if (isVehicleCompliment(norm) && !/\b(yes|yeah|yep)\b/.test(norm)) {
+      return { intent: "compliment", topic_beat_ids: [] };
     }
 
     if (currentBeatId === 22) {
@@ -1268,21 +1324,12 @@ export function classifyCustomerInputRuleBased(
 
   // 8.8. Vehicle compliment, excitement, or humor appreciation (e.g. "I love this car", "beautiful vehicle", "haha that's funny")
   if (
-    norm.includes("love this car") ||
-    norm.includes("love the car") ||
-    norm.includes("beautiful car") ||
-    norm.includes("great car") ||
-    norm.includes("drove like a dream") ||
-    norm.includes("love the color") ||
-    norm.includes("gorgeous car") ||
-    norm.includes("amazing car") ||
-    norm.includes("amazing vehicle") ||
+    isVehicleCompliment(norm) ||
     norm.includes("so excited") ||
     norm.includes("can't wait to drive") ||
     norm.includes("cant wait to drive") ||
     norm.includes("pumped") ||
     norm.includes("stoked") ||
-    norm.includes("dream car") ||
     norm.includes("so happy") ||
     norm.includes("thrilled") ||
     norm.includes("haha") ||
@@ -1498,6 +1545,8 @@ Intents:
 - "identity_question": Customer asks who Max is, what his name is, or who they are speaking with.
 - "vehicle_discrepancy": Customer states they are buying a different car (e.g. Maybach, BMW) or that the Mazda CX-5 is the wrong vehicle.
 - "manufacturer_vs_dealer": Customer asks whether this protection is from the manufacturer or dealer, or whether they should buy a new warranty from the manufacturer.
+- "language_request": Customer speaks, or asks to continue in, a language other than English ("puedo hablar en español?").
+- "why_asking": Customer asks why Max keeps asking the same question ("why do you keep asking me that?").
 - "other": Off-topic greeting or comment.
 
 Topic Beat IDs:
@@ -2207,12 +2256,30 @@ export async function processControllerTurn(
 
       state.no_count_in_a_row++;
       if (state.no_count_in_a_row >= 2) {
-        // After 2 in a row, hand off using HANDOFF_LINE
-        state.is_stopped = true;
-        textToSpeak = HANDOFF_LINE;
-        beatType = "stop";
-        toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
-        onScriptComplete(state);
+        // Beat 1 is the recording disclosure: refusing it twice withholds consent, so the call ends
+        // exactly like a recording objection. Moving on would continue a recorded call without consent.
+        if (state.current_beat === 1) {
+          textToSpeak = "I understand. I'll end this session now.";
+          beatType = "stop";
+          onScriptComplete(state);
+          break;
+        }
+        // After 2 in a row, respect it and move on to the next beat (there is no human handoff)
+        state.no_count_in_a_row = 0;
+        const nextBeatId = state.current_beat + 1;
+        if (nextBeatId > BEATS.length) {
+          textToSpeak = `${REPEATED_NO_LINE} ${SCRIPT_COMPLETE_LINE}`;
+          beatType = "stop";
+          toolCalls = [{ name: "show_content", args: { item: "deal_summary" } }];
+          onScriptComplete(state);
+          break;
+        }
+        state.current_beat = nextBeatId;
+        state.delivered_beats.push(nextBeatId);
+        const nextBeat = BEATS.find((b) => b.id === nextBeatId)!;
+        textToSpeak = `${REPEATED_NO_LINE} ${getFullBeatUtterance(nextBeat, state.dealConfig, state)}`;
+        beatType = nextBeat.type;
+        toolCalls = getBeatToolCalls(nextBeatId);
       } else {
         // Speak lead-in line LEAD_IN_NO, then the same beat once more plus its check-in
         const currentBeat = BEATS.find((b) => b.id === state.current_beat)!;
@@ -2491,7 +2558,8 @@ export async function processControllerTurn(
     }
 
     case "compliment": {
-      // Acknowledge vehicle compliments or laughter/humor and advance to next beat
+      // Acknowledge vehicle compliments or laughter/humor, then re-ask the current beat's check-in.
+      // Never advance (a compliment is not an answer, e.g. to the Beat 1 recording consent) and never end the call.
       const norm = customerTranscript.toLowerCase();
       const isLaughterOrHumor =
         norm.includes("haha") ||
@@ -2501,22 +2569,23 @@ export async function processControllerTurn(
         norm.includes("crack me up");
 
       const leadIn = isLaughterOrHumor ? EQ_EXCITEMENT_LINE : COMPLIMENT_LINE;
+      const currentBeat = BEATS.find((b) => b.id === state.current_beat)!;
+      textToSpeak = `${leadIn} ${getBeatCheckInQuestion(currentBeat)}`;
+      beatType = "wait";
+      break;
+    }
 
-      const nextBeatId = state.current_beat + 1;
-      if (nextBeatId <= 22) {
-        state.current_beat = nextBeatId;
-        state.delivered_beats.push(nextBeatId);
-        const nextBeat = BEATS.find((b) => b.id === nextBeatId)!;
-        const nextUtterance = getFullBeatUtterance(nextBeat, state.dealConfig);
-        textToSpeak = `${leadIn} ${nextUtterance}`;
-        beatType = nextBeat.type;
-        toolCalls = getBeatToolCalls(nextBeatId);
-      } else {
-        textToSpeak = `${leadIn} ${HANDOFF_LINE}`;
-        state.is_stopped = true;
-        beatType = "stop";
-        toolCalls = [{ name: "show_content", args: { item: "escalate" } }];
-      }
+    case "why_asking": {
+      // "Why do you keep asking me that": re-ask only the current check-in, not the whole beat
+      const currentBeat = BEATS.find((b) => b.id === state.current_beat)!;
+      textToSpeak = getBeatCheckInQuestion(currentBeat);
+      beatType = "wait";
+      break;
+    }
+
+    case "language_request": {
+      textToSpeak = LANGUAGE_LINE;
+      beatType = "wait";
       break;
     }
 
@@ -2714,6 +2783,12 @@ export async function processControllerTurn(
       else if (norm.includes("honda")) extractedModel = "Honda";
       else if (norm.includes("kia")) extractedModel = "Kia";
       else if (norm.includes("hyundai")) extractedModel = "Hyundai";
+      if (!extractedModel) {
+        // "It's a CX-30, not a CX-5": take the CX model that is not the one on file
+        const onFile = state.dealConfig.vehicle_model.toLowerCase();
+        const named = [...norm.matchAll(/\bcx\s*-?\s*(\d+)/g)].map((m) => `CX-${m[1]}`);
+        extractedModel = named.find((m) => m.toLowerCase() !== onFile) ?? "";
+      }
 
       if (extractedModel) {
         state.dealConfig.vehicle_model = extractedModel;
@@ -2721,10 +2796,16 @@ export async function processControllerTurn(
       }
 
       const vehicleName = extractedModel || "correct vehicle";
-      textToSpeak = VEHICLE_DISCREPANCY_LINE.replace(/\{\{vehicle_model\}\}/g, vehicleName);
+      const discrepancyLine = VEHICLE_DISCREPANCY_LINE.replace(/\{\{vehicle_model\}\}/g, vehicleName);
+      if (state.current_beat === 2) {
+        // The line ends by re-asking Beat 2's test-drive question
+        textToSpeak = discrepancyLine;
+      } else {
+        // Any other beat: keep the acknowledgement, drop the test-drive question, re-ask where we are
+        const ack = discrepancyLine.split(" — ")[0];
+        textToSpeak = `${ack}. ${getBeatCheckInQuestion(BEATS.find((b) => b.id === state.current_beat)!)}`;
+      }
       beatType = "wait";
-      // Hold Beat 2 (Qualifying test-drive question) so customer can answer
-      state.current_beat = 2;
       toolCalls = [];
       break;
     }

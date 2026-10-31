@@ -130,8 +130,13 @@ export const CALL_PURPOSE_LINE = "Every buyer meets with finance before delivery
 
 // Spoken when a customer asks something the approved knowledge base cannot answer.
 // Status: PENDING TXM APPROVAL. Replaces any invented answer; the question is logged.
-// There is no human escalation, so this must never promise to bring anyone in.
-export const UNKNOWN_QUESTION_LINE = "That's covered in your contract paperwork, and I'll go over the details with you before you sign.";
+// There is no human escalation, so this must never promise to bring anyone in, and it must never
+// imply the thing asked about is covered.
+export const UNKNOWN_QUESTION_LINE = "I don't have that detail in front of me and I don't want to guess, so the contract paperwork spells it out and I'll point you to it before you sign.";
+
+// Spoken when the customer speaks or asks for a language other than English.
+// Status: PENDING TXM
+export const LANGUAGE_LINE = "I'm sorry, I can only continue in English.";
 
 // Spoken on every turn after the call has stopped (recording objection or hang-up).
 // Status: PENDING TXM / LEGAL — confirm wording for the recording-objection case.

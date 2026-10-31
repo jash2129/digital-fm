@@ -7,7 +7,7 @@ Next.js app (`tavus-avatar/`) for an AWS Summit Sydney booth demo. Real-time con
 - `tavus-avatar/src/lib/tavus-api.ts` - Core API client (base URL: `https://tavusapi.com/v2`, auth via `x-api-key` header)
 - `tavus-avatar/src/lib/tavus-personas.ts` - Persona resolution with derived persona creation & caching
 - `tavus-avatar/src/lib/tavus-custom-llms.ts` - Custom LLM layer config (currently empty map)
-- `tavus-avatar/src/lib/persona-tools.ts` - Tool definitions, event-aware (AWS: show_content, show_schedule, dismiss_content; Finance: show_pricing, show_payment_breakdown, escalate_to_human, dismiss_content)
+- `tavus-avatar/src/lib/persona-tools.ts` - Tool definitions, event-aware (AWS: show_content, show_schedule, dismiss_content; Finance: show_pricing, show_payment_breakdown, dismiss_content)
 - `tavus-avatar/src/lib/event.ts` - `isFinanceEvent()`, the single source of truth other event-aware modules branch on
 - `tavus-avatar/src/lib/active-conversations.ts` / `visitor.ts` - per-visitor conversation tracking + anonymous session cookie (see "Production hardening" below)
 - `tavus-avatar/src/lib/deal-context.ts` - short-lived external deal-data intake
@@ -18,7 +18,6 @@ Next.js app (`tavus-avatar/`) for an AWS Summit Sydney booth demo. Real-time con
 - `tavus-avatar/src/app/api/conversation/route.ts` - POST to create conversation
 - `tavus-avatar/src/app/api/conversation/[conversationId]/route.ts` - DELETE to end conversation
 - `tavus-avatar/src/app/api/deal-context/route.ts` - POST to store external deal data, returns `deal_id`
-- `tavus-avatar/src/app/api/escalation/route.ts` - POST, logs `escalate_to_human` tool calls
 - `tavus-avatar/src/app/api/persona/setup-tools/route.ts` - PATCH persona with tool definitions
 - `tavus-avatar/src/app/api/personas/route.ts` - GET list all personas
 - `prompts/tavus-system-instruction-1.md` - System prompt for the booth assistant
@@ -46,9 +45,9 @@ content panels differ, selected via `isFinanceEvent()` in `src/lib/event.ts`.
 - `src/lib/persona-tools.ts` - finance-event tools: `show_pricing({product})` (coverage-only panels,
   no price shown — these products are sold bundled, not itemized), `show_payment_breakdown({daily_rate})`
   (shows only the single rate currently being spoken, never the full negotiation ladder — the panel
-  and the AI's voice must never disagree), `escalate_to_human`, `dismiss_content`.
-- `src/app/content/pricing-{gap,vsc,tire-wheel,maintenance}/page.tsx`, `payment-breakdown/page.tsx`,
-  `escalate/page.tsx` - the panels those tools display.
+  and the AI's voice must never disagree), `dismiss_content`.
+- `src/app/content/pricing-{gap,vsc,tire-wheel,maintenance}/page.tsx`, `payment-breakdown/page.tsx`
+  - the panels those tools display.
 - `scripts/create-finance-persona.ps1` - one-time persona creation (stock replica + system prompt),
   reads keys from `.env.local` so they never need to be typed into a command.
 - After changing the prompt or tools: authenticate (`POST /api/auth` with `DEMO_API_TOKEN`, once a
@@ -78,9 +77,16 @@ project planning thread, not in this repo. Below is what's actually landed in co
 - **Cost visibility**: `src/lib/conversation-usage.ts` logs `[conversation.started]` /
   `[conversation.ended]` (with duration) to stdout — the direct proxy for Tavus billing. First pass
   only; no aggregation/dashboard.
-- **Escalation logging**: `POST /api/escalation` logs every `escalate_to_human` tool call
-  (conversation id, reason, timestamp). No live paging yet (Slack/email/SMS) — deliberately deferred,
-  the route is the single seam to add one later.
+- **No human escalation**: removed at the client's request — there is no team behind the AI to hand
+  off to. Max (`src/lib/beat-controller.ts`) never stops the call, offers a handoff, or shows an
+  escalate panel because of a question: asking for a human gets `HANDOFF_LINE` and the beat is held;
+  unanswerable questions get `UNKNOWN_QUESTION_LINE` and the call continues; two "no"s in a row get
+  `REPEATED_NO_LINE` and move to the next beat. The call only ends on a recording objection (or two
+  "no"s to the Beat 1 recording disclosure), a hang-up, or script completion; after that every turn
+  gets the fixed `CLOSING_LINE`. `src/lib/multi-turn.test.ts` guards this. Legacy escalation code not
+  yet deleted (unused by Max, do not build on it): the Tavus-path `escalate_to_human` tool in
+  `persona-tools.ts`, `POST /api/escalation`, `src/app/content/escalate/page.tsx`, and the
+  "6. Escalate" operator button in `src/components/liveavatar-demo.tsx`.
 - **Tests**: `npm test` (Vitest) covers the concurrency fix (including a real concurrent-HTTP-request
   integration test against a mocked Tavus API, so it doesn't need live Tavus credits), visitor cookie
   handling, the auth middleware's fail-closed behavior, and deal-context/usage-logging. `server-only`
