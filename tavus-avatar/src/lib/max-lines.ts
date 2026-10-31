@@ -94,6 +94,14 @@ export const STEP_0_CHECKIN_LINE = "How has your experience been with our team s
 // TXM's introduction from STEP_0_RAPPORT_LINE, now said once on the way into Beat 1
 export const STEP_0_INTRO_LINE = "I'm Max, your finance manager, and I'll be handling your paperwork today.";
 
+// Stage 0: the customer's answer to the check-in was negative or hostile ("I don't trust any of
+// this", "terrible"). Replaces "Glad to hear that!" in the transition into Beat 1.
+// Status: PENDING TXM
+export const STEP_0_SORRY_LINE = "I'm sorry to hear that, I'll do my best to make the rest easy.";
+// Stage 0: an answer that is neither clearly good nor bad (a second "hmm", an unrelated remark)
+// Status: PENDING TXM
+export const STEP_0_NEUTRAL_ACK_LINE = "Thanks for sharing that.";
+
 // Stage 0 Transition into Legal Disclosure
 // Status: APPROVED
 export const STEP_0_TRANSITION_LINE = "Glad to hear that! Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.";

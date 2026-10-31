@@ -13,6 +13,8 @@ import {
   STEP_0_OPENER_LINE,
   STEP_0_CHECKIN_LINE,
   STEP_0_INTRO_LINE,
+  STEP_0_SORRY_LINE,
+  STEP_0_NEUTRAL_ACK_LINE,
   BEAT_TRANSITION_BRIDGES,
   PAUSE_LINE,
   LISTENING_LINE,
@@ -100,6 +102,8 @@ export interface CallState {
   interrupted?: { remaining: string; after: DeliveryPointer; toolCalls: ControllerDecision["toolCalls"] };
   /** full text of the last line re-spoken from its first sentence (a line restarts from the top once at most) */
   restarted_text?: string;
+  /** Step 0: a bare filler ("hmm") already got the check-in re-asked once */
+  step0_filler_reasked?: boolean;
   /** Max has already said who he is (identity answer), so the Beat 1 transition skips the intro */
   max_introduced?: boolean;
   /** the customer said the vehicle on file is wrong: every line says "your new vehicle" instead */
@@ -781,17 +785,21 @@ function isOtherLanguage(norm: string): boolean {
 const MAKES =
   "audi|bmw|mercedes|benz|maybach|porsche|lexus|toyota|honda|ford|kia|hyundai|nissan|chevy|chevrolet|tesla|subaru|volkswagen|vw|jeep|dodge|ram|gmc|cadillac|acura|infiniti|volvo|genesis|lincoln|buick|mitsubishi|mazda";
 
+/** Names a make other than the one on file ("Are you listening? Audi!"). Takes the normalized transcript. */
+function namesOtherMake(norm: string, dealConfig: DealConfig): boolean {
+  const onFile = dealConfig.vehicle_make.toLowerCase();
+  return [...norm.matchAll(new RegExp(`\\b(${MAKES})\\b`, "g"))].some((m) => m[1] !== onFile);
+}
+
 /** "not a Mazda", "I agreed to buy an Audi", "wrong car", "I didn't buy a Mazda". Takes the normalized transcript. */
 export function isVehicleCorrection(norm: string, dealConfig: DealConfig = DEFAULT_DEAL_CONFIG): boolean {
   const n = ` ${norm.replace(/\b(uh|um|er|ah|like)\b/g, " ").replace(/\s+/g, " ").trim()} `;
   const onFile = dealConfig.vehicle_make.toLowerCase();
-  const otherMake = new RegExp(`\\b(${MAKES})\\b`, "g");
-  const namesOtherMake = [...n.matchAll(otherMake)].some((m) => m[1] !== onFile);
   return (
     /\b(wrong (car|vehicle)|not my (car|vehicle)|that s not my car|different (car|vehicle))\b/.test(n) ||
     new RegExp(`\\bnot (the |a |an )?${onFile}\\b`).test(n) ||
     new RegExp(`\\b(didn t|did not|never|not going to|am not|i m not) (buy|buying|bought|get|getting) (a |an |the )?${onFile}\\b`).test(n) ||
-    (namesOtherMake && /\b(bought|buying|agreed to buy|purchased|purchasing|getting|picked|chose|it s an?|it is an?)\b/.test(n))
+    (namesOtherMake(n, dealConfig) && /\b(bought|buying|agreed to buy|purchased|purchasing|getting|picked|chose|it s an?|it is an?)\b/.test(n))
   );
 }
 
@@ -2016,8 +2024,8 @@ export async function generateStep0Turn(
   customerTranscript: string,
   step0Turns: number,
   dealConfig = DEFAULT_DEAL_CONFIG,
-  opts: { introduced?: boolean } = {}
-): Promise<{ text: string; moveToBeat1: boolean }> {
+  opts: { introduced?: boolean; fillerReasked?: boolean } = {}
+): Promise<{ text: string; moveToBeat1: boolean; reasked?: boolean }> {
   const norm = customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
   const isTechAck =
     norm.includes("see you") ||
@@ -2200,16 +2208,23 @@ export async function generateStep0Turn(
     };
   }
 
+  // A bare filler ("hmm", "uh") is not an answer: re-ask the check-in once, never claim it went well
+  const isFiller = /^((h+m+|uh+|um+|er+|ah+|eh|mm+|mhm|uh huh|well|so|oh)\s*)+$/.test(norm);
+  if (isFiller && !opts.fillerReasked) return { text: STEP_0_CHECKIN_LINE, moveToBeat1: false, reasked: true };
+
+  // Only a clearly good answer gets "glad to hear that". "not bad" / "no complaints" count as good.
+  const softened = norm.replace(/\bnot (too |that |so )?bad\b|\bno complaints\b/g, "fine");
+  const isHostile =
+    /\b(don t trust|dont trust|do not trust|not trust|terrible|awful|horrible|bad|worst|upsell\w*|scam\w*|rip ?off|ripped off|hate|angry|mad|pissed|furious|ridiculous|stupid|sucks?|sucked|garbage|crap|disappoint\w*|frustrat\w*|annoy\w*|rude|pushy|liars?|lying|are you listening|not listening|you re not listening)\b/.test(softened) ||
+    /\bnot (good|great|happy|impressed|very good|so good|great so far)\b/.test(softened);
+  const isPositive =
+    /\b(good|great|fine|ok|okay|alright|all right|nice|smooth|easy|excellent|wonderful|fantastic|amazing|awesome|perfect|love|loved|happy|pleasant|helpful|friendly|decent|cool|went well|so far so good|yes|yeah|yep)\b/.test(softened);
+
   // Turn 2+: Customer answered the rapport question ("it was great", "good", "fine", or complained about wait) -> smooth transition into Beat 1 Legal Disclosure
   const isNegative =
     norm.includes("wait") ||
     norm.includes("hour") ||
     norm.includes("forever") ||
-    norm.includes("terrible") ||
-    norm.includes("bad") ||
-    norm.includes("horrible") ||
-    norm.includes("frustrat") ||
-    norm.includes("annoy") ||
     norm.includes("waste") ||
     norm.includes("hurry") ||
     norm.includes("rush") ||
@@ -2244,7 +2259,9 @@ export async function generateStep0Turn(
     norm.includes("pumped");
 
   let transitionLine = STEP_0_TRANSITION_LINE;
-  if (isNegative) {
+  if (isHostile) {
+    transitionLine = STEP_0_TRANSITION_LINE.replace("Glad to hear that!", STEP_0_SORRY_LINE);
+  } else if (isNegative) {
     transitionLine = STEP_0_TRANSITION_LINE.replace(
       "Glad to hear that!",
       "Understood, I value your time and will keep this crisp, direct, and straight to the point."
@@ -2259,11 +2276,13 @@ export async function generateStep0Turn(
       "Glad to hear that!",
       "I love that excitement! That new car is an absolute blast to drive!"
     );
-  } else {
+  } else if (isPositive) {
     transitionLine = STEP_0_TRANSITION_LINE.replace(
       "Glad to hear that!",
       "Awesome, so glad to hear that! Our team works really hard to take care of our customers."
     );
+  } else {
+    transitionLine = STEP_0_TRANSITION_LINE.replace("Glad to hear that!", STEP_0_NEUTRAL_ACK_LINE);
   }
 
   // The opener no longer introduces Max; do it once here unless he already answered "who are you?"
@@ -2497,14 +2516,17 @@ async function runControllerTurn(
   if (!state.step0_completed) {
     state.step0_turns++;
     const step0Norm = customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
-    if (isVehicleCorrection(step0Norm, state.dealConfig)) {
+    // Once the vehicle is disputed, naming another make again ("Are you listening? Audi!") is the same correction
+    if (isVehicleCorrection(step0Norm, state.dealConfig) || (state.vehicle_disputed && namesOtherMake(step0Norm, state.dealConfig))) {
       const text = vehicleCorrectionReply(state);
       state.last_spoken_text = text;
       return { textToSpeak: text, beatId: 0, beatType: "wait", toolCalls: [], state, intent: "vehicle_discrepancy" };
     }
     const step0Result = await generateStep0Turn(customerTranscript, state.step0_turns, state.dealConfig, {
       introduced: state.max_introduced,
+      fillerReasked: state.step0_filler_reasked,
     });
+    if (step0Result.reasked) state.step0_filler_reasked = true;
     if (/\bI'm Max\b/.test(step0Result.text)) state.max_introduced = true;
 
     if (step0Result.moveToBeat1) {
