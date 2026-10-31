@@ -791,10 +791,8 @@ export function LiveAvatarDemo() {
     recognizer.lang = "en-US";
 
     recognizer.onresult = (event: any) => {
-      const results: RecognizerResult[] = Array.from(event.results as ArrayLike<any>, (r: any) => ({
-        transcript: r[0].transcript,
-        isFinal: r.isFinal,
-      }));
+      const raw = event.results as ArrayLike<{ 0: { transcript: string }; isFinal: boolean }>;
+      const results: RecognizerResult[] = Array.from(raw, (r) => ({ transcript: r[0].transcript, isFinal: r.isFinal }));
       const { interim: interimText, final: finalTranscript } = interimBufferRef.current.update(results, event.resultIndex);
 
       setUserSpeaking(true);
