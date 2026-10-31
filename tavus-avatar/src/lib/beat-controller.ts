@@ -794,16 +794,37 @@ function namesOtherMake(norm: string, dealConfig: DealConfig): boolean {
   return [...norm.matchAll(new RegExp(`\\b(${MAKES})\\b`, "g"))].some((m) => m[1] !== onFile);
 }
 
-/** "not a Mazda", "I agreed to buy an Audi", "wrong car", "I didn't buy a Mazda". Takes the normalized transcript. */
+// A sentence about someone else's car ("my brother in law has a Toyota", "he owns a BMW"). A bare
+// "brother" is how the live-call customer addressed Max, so only possessives and subjects count.
+const THIRD_PARTY =
+  /\b(my|his|her|their|our) (brother|sister|mother|father|mom|dad|wife|husband|son|daughter|uncle|aunt|cousin|friend|neighbou?r|coworker|boss|parents?|kids?)\b|\b(he|she|they|someone|somebody|everyone|everybody) (has|had|have|owns|owned|bought|drives|drove|got|gets)\b|\b(has|had|owns|owned|drives) (a|an)\b/;
+// A first-person claim about buying THIS car ("I'm buying", "I was agreed to buy", "we bought")
+const FIRST_PERSON_PURCHASE =
+  /\b((i m|im|i am|i was|we re|we are|we were) (buying|getting|purchasing|picking up)|(i|we)( was| were)? (bought|agreed to buy|purchased|chose|picked|ordered))\b/;
+// Weaker: "my car is an Audi", "it's an Audi" (only without someone else in the sentence)
+const FIRST_PERSON_VEHICLE = /\b(my (car|vehicle|new car|new vehicle) is|it s an?|it is an?)\b/;
+
+/**
+ * "not a Mazda", "I agreed to buy an Audi", "wrong car", "I didn't buy a Mazda". A make named in a
+ * sentence about someone else ("my brother in law has a Toyota") never counts. Takes the normalized transcript.
+ */
 export function isVehicleCorrection(norm: string, dealConfig: DealConfig = DEFAULT_DEAL_CONFIG): boolean {
   const n = ` ${norm.replace(/\b(uh|um|er|ah|like)\b/g, " ").replace(/\s+/g, " ").trim()} `;
   const onFile = dealConfig.vehicle_make.toLowerCase();
+  if (/\b(wrong (car|vehicle)|not my (car|vehicle)|that s not my car|different (car|vehicle))\b/.test(n)) return true;
+  const otherMake = namesOtherMake(n, dealConfig);
+  if (otherMake && FIRST_PERSON_PURCHASE.test(n)) return true;
+  if (THIRD_PARTY.test(n)) return false;
   return (
-    /\b(wrong (car|vehicle)|not my (car|vehicle)|that s not my car|different (car|vehicle))\b/.test(n) ||
     new RegExp(`\\bnot (the |a |an )?${onFile}\\b`).test(n) ||
     new RegExp(`\\b(didn t|did not|never|not going to|am not|i m not) (buy|buying|bought|get|getting) (a |an |the )?${onFile}\\b`).test(n) ||
-    (namesOtherMake(n, dealConfig) && /\b(bought|buying|agreed to buy|purchased|purchasing|getting|picked|chose|it s an?|it is an?)\b/.test(n))
+    (otherMake && FIRST_PERSON_VEHICLE.test(n))
   );
+}
+
+/** Once the vehicle is disputed, naming another make again ("Are you listening? Audi!") is the same correction. */
+function repeatsVehicleCorrection(norm: string, state: CallState): boolean {
+  return Boolean(state.vehicle_disputed) && namesOtherMake(norm, state.dealConfig) && !THIRD_PARTY.test(` ${norm} `);
 }
 
 /** Max's reply to a vehicle correction: acknowledge once, never argue, never the same reply twice. */
@@ -947,17 +968,8 @@ export function classifyCustomerInputRuleBased(
   // 1.3. Vehicle Mismatch / Car Discrepancy (e.g. "buying a Maybach", "I was buying Maybach", "that's not my car", "confirm which car", "how can you ask me that")
   // MUST be checked before generic negation 'no' or generic greetings!
   const isVehicleDiscrepancy =
+    // Only a first-person claim about this car: a make in a sentence about someone else is not one
     isVehicleCorrection(norm) ||
-    norm.includes("maybach") ||
-    norm.includes("mercedes") ||
-    norm.includes("bmw") ||
-    norm.includes("audi") ||
-    norm.includes("porsche") ||
-    norm.includes("lexus") ||
-    norm.includes("buying a ") ||
-    norm.includes("was buying") ||
-    norm.includes("am buying") ||
-    norm.includes("bought a ") ||
     norm.includes("not buying a mazda") ||
     norm.includes("not a mazda") ||
     norm.includes("not my car") ||
@@ -2526,7 +2538,7 @@ async function runControllerTurn(
     state.step0_turns++;
     const step0Norm = customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
     // Once the vehicle is disputed, naming another make again ("Are you listening? Audi!") is the same correction
-    if (isVehicleCorrection(step0Norm, state.dealConfig) || (state.vehicle_disputed && namesOtherMake(step0Norm, state.dealConfig))) {
+    if (isVehicleCorrection(step0Norm, state.dealConfig) || repeatsVehicleCorrection(step0Norm, state)) {
       const text = vehicleCorrectionReply(state);
       state.last_spoken_text = text;
       return { textToSpeak: text, beatId: 0, beatType: "wait", toolCalls: [], state, intent: "vehicle_discrepancy" };
@@ -2575,7 +2587,11 @@ async function runControllerTurn(
   metrics.classifierMs = Date.now() - tClassify;
   if (classification.usedLLM) metrics.usedLLM = true;
   if (classification.timedOut) metrics.classifierTimedOut = true;
-  const { intent, topic_beat_ids } = classification;
+  const { topic_beat_ids } = classification;
+  let { intent } = classification;
+  if (intent !== "vehicle_discrepancy" && repeatsVehicleCorrection(customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim(), state)) {
+    intent = "vehicle_discrepancy";
+  }
   // What the turn log records; differs from `intent` only where the reply's role is clearer
   let reportedIntent: ControllerDecision["intent"] = intent;
 
