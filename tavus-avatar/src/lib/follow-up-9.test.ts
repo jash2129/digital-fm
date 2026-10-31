@@ -66,3 +66,35 @@ describe("1: a make named in a sentence about someone else is not a vehicle corr
     expect(again.beatId).toBe(3);
   });
 });
+
+describe("2: a happy rambler is not treated as rushed", () => {
+  const RUSHED = "I value your time";
+
+  it.each([
+    "Oh it was great, the salesman Dave was awesome... the drive over here took forever because of the traffic",
+    "It was great, took a little time but Dave was helpful",
+    "great, though the traffic was bad on the way in",
+  ])("'%s' gets the glad line", async (line) => {
+    const sid = await atCheckIn();
+    const t = await say(sid, line);
+    expect(t.textToSpeak).not.toContain(RUSHED);
+    expect(t.textToSpeak).toContain(GLAD);
+    expect(t.beatId).toBe(1);
+  });
+
+  it.each(["I'm in a hurry", "how long is this going to take?", "I don't have time for this", "get to the point"])(
+    "explicit hurry about this call: '%s'",
+    async (line) => {
+      const sid = await atCheckIn();
+      const t = await say(sid, line);
+      expect(t.textToSpeak).toContain(RUSHED);
+    }
+  );
+
+  it("a plain waiting complaint still gets the time line, not 'glad'", async () => {
+    const sid = await atCheckIn();
+    const t = await say(sid, "I've been sitting here for three hours");
+    expect(t.textToSpeak).toContain(RUSHED);
+    expect(t.textToSpeak).not.toContain(GLAD);
+  });
+});

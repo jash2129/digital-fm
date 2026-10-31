@@ -2235,30 +2235,21 @@ export async function generateStep0Turn(
 
   // Only a clearly good answer gets "glad to hear that". "not bad" / "no complaints" count as good.
   const softened = norm.replace(/\bnot (too |that |so )?bad\b|\bno complaints\b/g, "fine");
+  // Hostile toward Max or the dealership: always the sorry line
   const isHostile =
-    /\b(don t trust|dont trust|do not trust|not trust|terrible|awful|horrible|bad|worst|upsell\w*|scam\w*|rip ?off|ripped off|hate|angry|mad|pissed|furious|ridiculous|stupid|sucks?|sucked|garbage|crap|disappoint\w*|frustrat\w*|annoy\w*|rude|pushy|liars?|lying|are you listening|not listening|you re not listening)\b/.test(softened) ||
+    /\b(don t trust|dont trust|do not trust|not trust|upsell\w*|scam\w*|rip ?off|ripped off|hate|angry|mad|pissed|furious|ridiculous|stupid|garbage|crap|rude|pushy|liars?|lying|are you listening|not listening|you re not listening)\b/.test(softened) ||
     /\bnot (good|great|happy|impressed|very good|so good|great so far)\b/.test(softened);
+  // Unhappy words, which in a happy ramble are about something else ("great, but the traffic was bad")
+  const isUnhappy = /\b(terrible|awful|horrible|bad|worst|sucks?|sucked|disappoint\w*|frustrat\w*|annoy\w*)\b/.test(softened);
   const isPositive =
     /\b(good|great|fine|ok|okay|alright|all right|nice|smooth|easy|excellent|wonderful|fantastic|amazing|awesome|perfect|love|loved|happy|pleasant|helpful|friendly|decent|cool|went well|so far so good|yes|yeah|yep)\b/.test(softened);
 
-  // Turn 2+: Customer answered the rapport question ("it was great", "good", "fine", or complained about wait) -> smooth transition into Beat 1 Legal Disclosure
-  const isNegative =
-    norm.includes("wait") ||
-    norm.includes("hour") ||
-    norm.includes("forever") ||
-    norm.includes("waste") ||
-    norm.includes("hurry") ||
-    norm.includes("rush") ||
-    norm.includes("get this over") ||
-    norm.includes("been here") ||
-    norm.includes("sitting here") ||
-    norm.includes("long time") ||
-    norm.includes("point") ||
-    norm.includes("get to the point") ||
-    norm.includes("cut to the chase") ||
-    norm.includes("make it brief") ||
-    norm.includes("appointment") ||
-    norm.includes("move on");
+  // Explicit hurry about THIS call. "The drive over took forever because of the traffic" is not one.
+  const isHurry =
+    /\b(in a hurry|hurry up|hurry this up|how long (is|will) this (going to |gonna )?take|how long does this take|i don t have (much )?time|i dont have (much )?time|no time for this|get to the point|cut to the chase|make it (brief|quick|fast)|get this over)\b/.test(norm);
+  // A complaint about waiting, with nothing positive in it ("I've been sitting here for three hours")
+  const isWaitComplaint =
+    !isPositive && /\b(wait\w*|hours?|forever|long time|sitting here|been here|waste|rush\w*|appointment|move on)\b/.test(norm);
 
   const isAnxious =
     norm.includes("scared") ||
@@ -2269,9 +2260,8 @@ export async function generateStep0Turn(
     norm.includes("first time") ||
     norm.includes("hesitant");
 
+  // Excitement about the car itself ("amazing"/"awesome" may be about the salesman: just positive)
   const isExcited =
-    norm.includes("amazing") ||
-    norm.includes("awesome") ||
     norm.includes("so excited") ||
     norm.includes("love it") ||
     norm.includes("love the car") ||
@@ -2280,13 +2270,11 @@ export async function generateStep0Turn(
     norm.includes("pumped");
 
   let transitionLine = STEP_0_TRANSITION_LINE;
-  if (isHostile) {
+  const valueTimeLine = "Understood, I value your time and will keep this crisp, direct, and straight to the point.";
+  if (isHostile || (isUnhappy && !isPositive)) {
     transitionLine = STEP_0_TRANSITION_LINE.replace("Glad to hear that!", STEP_0_SORRY_LINE);
-  } else if (isNegative) {
-    transitionLine = STEP_0_TRANSITION_LINE.replace(
-      "Glad to hear that!",
-      "Understood, I value your time and will keep this crisp, direct, and straight to the point."
-    );
+  } else if (isHurry) {
+    transitionLine = STEP_0_TRANSITION_LINE.replace("Glad to hear that!", valueTimeLine);
   } else if (isAnxious) {
     transitionLine = STEP_0_TRANSITION_LINE.replace(
       "Glad to hear that!",
@@ -2302,6 +2290,8 @@ export async function generateStep0Turn(
       "Glad to hear that!",
       "Awesome, so glad to hear that! Our team works really hard to take care of our customers."
     );
+  } else if (isWaitComplaint) {
+    transitionLine = STEP_0_TRANSITION_LINE.replace("Glad to hear that!", valueTimeLine);
   } else {
     transitionLine = STEP_0_TRANSITION_LINE.replace("Glad to hear that!", STEP_0_NEUTRAL_ACK_LINE);
   }
