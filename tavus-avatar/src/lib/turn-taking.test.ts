@@ -13,6 +13,9 @@ import {
   isPresenceCheck,
   bargeInDecision,
   BARGE_IN_GRACE_MS,
+  InterimBuffer,
+  INTERIM_STALE_MS,
+  tokenOverlap,
   type RepromptKind,
   type AvatarCommand,
   type TurnLogEvent,
@@ -320,5 +323,48 @@ describe("P: a short confirmation never cuts Max off", () => {
     expect(bargeInDecision("who is this", 300).interrupt).toBe(true);
     expect(bargeInDecision("excuse me", BARGE_IN_GRACE_MS - 1).interrupt).toBe(true);
     expect(bargeInDecision("tell me more about it", BARGE_IN_GRACE_MS + 1).interrupt).toBe(true);
+  });
+});
+
+describe("Follow-up 7 C: barge-in needs real speech, fresh speech, once", () => {
+  it("'brother' 7 s into a line does not cut Max off; neither do 'are you' or 'who are'", () => {
+    for (const t of ["brother", "are you", "who are", "actually", "Audi"]) expect(bargeInDecision(t, 7000).interrupt, t).toBe(false);
+  });
+
+  it("'wait a second' cuts at any length; so do the other stop phrases", () => {
+    for (const t of ["wait a second", "stop", "hold on", "hang on", "excuse me", "listen", "hear me out", "let me finish"])
+      expect(bargeInDecision(t, 3000).interrupt, t).toBe(true);
+  });
+
+  it("a 4-word complaint cuts Max off", () => {
+    expect(bargeInDecision("this is taking forever", 3000)).toMatchObject({ interrupt: true, reason: "substantive_speech" });
+  });
+
+  it("stale interim text from the previous turn never cuts", async () => {
+    const buf = new InterimBuffer();
+    // Customer's earlier utterance, still sitting in the recognizer's results
+    buf.update([{ transcript: "audi you are saying", isFinal: false }], 0);
+    // Max starts a new line
+    buf.reset();
+    expect(buf.update([{ transcript: "audi you are saying", isFinal: false }], 0)).toEqual({ interim: "", final: "" });
+  });
+
+  it("interim text that has not changed for 2 s is ignored; new speech counts", async () => {
+    const buf = new InterimBuffer();
+    expect(buf.update([{ transcript: "i was agreed", isFinal: false }], 0).interim).toBe("i was agreed");
+    await vi.advanceTimersByTimeAsync(INTERIM_STALE_MS + 100);
+    expect(buf.update([{ transcript: "i was agreed", isFinal: false }], 0).interim).toBe("");
+    expect(buf.update([{ transcript: "i was agreed to buy", isFinal: false }], 0).interim).toBe("i was agreed to buy");
+  });
+
+  it("one utterance delivered twice within 3 s (partial, then punctuated final) is processed once", async () => {
+    const { controller, sent, logs } = harness({ requestMs: 100 });
+    controller.onTranscript("are you are you on your senses what i'm saying is i am not going to buy mazda i was agreed to buy");
+    await vi.advanceTimersByTimeAsync(2000);
+    controller.onTranscript("Are you, are you on your senses? What I'm saying is I am not going to buy Mazda. I was agreed to buy uh.");
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(sent).toHaveLength(1);
+    expect(logs.some((e) => e.reason === "duplicate_of_recent_turn")).toBe(true);
+    expect(tokenOverlap("yes I drove it", "no I did not")).toBeLessThan(0.8);
   });
 });

@@ -280,6 +280,12 @@ function isBackchannelOnly(n: string): boolean {
   return chunks.every((w) => w === "_" || BARGE_IN_BACKCHANNEL.has(w));
 }
 
+// Stop phrases cut Max at any length after the grace period. Nothing else short does: live call
+// ba0dad23 cut him on "brother", "are you", "who are" (the old 1-2 word cut-off rules).
+const STOP_PHRASES = /\b(stop|wait|hold on|hang on|excuse me|listen|hear me out|let me (speak|finish|explain))\b/;
+// After the grace period, anything that is not a stop phrase needs this many words to cut Max off
+export const BARGE_IN_MIN_WORDS = 4;
+
 export function bargeInDecision(transcript: string, msIntoLine: number): { interrupt: boolean; reason: string } {
   const n = norm(transcript);
   if (!n) return { interrupt: false, reason: "empty" };
@@ -287,7 +293,52 @@ export function bargeInDecision(transcript: string, msIntoLine: number): { inter
   if (msIntoLine < BARGE_IN_GRACE_MS) {
     return GRACE_STOP_WORDS.test(n) ? { interrupt: true, reason: "stop_word_in_grace" } : { interrupt: false, reason: "grace_period" };
   }
-  return shouldCutMaxOff(transcript) ? { interrupt: true, reason: "cutoff_rules" } : { interrupt: false, reason: "not_substantive" };
+  if (STOP_PHRASES.test(n)) return { interrupt: true, reason: "stop_phrase" };
+  return n.split(" ").length >= BARGE_IN_MIN_WORDS
+    ? { interrupt: true, reason: "substantive_speech" }
+    : { interrupt: false, reason: "too_short" };
+}
+
+// -----------------------------------------------------------------------------
+// Interim transcript buffer: the Web Speech recognizer keeps every result of the session. Only results
+// from the current Max line / speech segment count, and interim text that has not changed for 2 s is
+// stale (live call: "audi you are saying" cut Max 39 s after the customer said it).
+// -----------------------------------------------------------------------------
+export const INTERIM_STALE_MS = 2000;
+export interface RecognizerResult {
+  transcript: string;
+  isFinal: boolean;
+}
+
+export class InterimBuffer {
+  private base = 0;
+  private length = 0;
+  private lastChange = new Map<number, { text: string; at: number }>();
+
+  /** Start of a Max line, or a new speech start: earlier results no longer count. */
+  reset(): void {
+    this.base = this.length;
+    this.lastChange.clear();
+  }
+
+  /** Feed a recognizer result event; returns only fresh interim text and the finals since the last reset. */
+  update(results: RecognizerResult[], resultIndex: number): { interim: string; final: string } {
+    this.length = results.length;
+    const now = Date.now();
+    let interim = "";
+    let final = "";
+    for (let i = Math.max(resultIndex, this.base); i < results.length; i++) {
+      const r = results[i];
+      if (r.isFinal) {
+        final += r.transcript;
+        continue;
+      }
+      const prev = this.lastChange.get(i);
+      if (!prev || prev.text !== r.transcript) this.lastChange.set(i, { text: r.transcript, at: now });
+      if (now - (this.lastChange.get(i)?.at ?? now) <= INTERIM_STALE_MS) interim += r.transcript;
+    }
+    return { interim, final };
+  }
 }
 
 // Helper to determine if incoming user speech should trigger instant barge-in cut-off
@@ -385,6 +436,17 @@ export function shouldCutMaxOff(spoken: string): boolean {
 }
 
 export const PENDING_MAX_AGE_MS = 8000;
+// One utterance delivered twice (lowercase partial, then punctuated final) is dropped the second time
+export const DUPLICATE_WINDOW_MS = 3000;
+const tokenSet = (t: string) => new Set(norm(t).split(" ").filter(Boolean));
+export function tokenOverlap(a: string, b: string): number {
+  const A = tokenSet(a);
+  const B = tokenSet(b);
+  if (!A.size || !B.size) return 0;
+  let shared = 0;
+  for (const w of A) if (B.has(w)) shared++;
+  return shared / Math.max(A.size, B.size);
+}
 // Transcripts this soon after Max stops are usually the tail of his own audio
 export const POST_SPEECH_GUARD_MS = 600;
 const STOP_WORDS = ["stop", "wait", "hold on", "excuse me", "hang on", "hold up", "pause"];
@@ -412,6 +474,7 @@ export class TurnController {
   private heardAudioSinceTurn = false;
   private silenceTimer: ReturnType<typeof setTimeout> | null = null;
   private silencePrompts = 0;
+  private lastSent: { text: string; at: number } | null = null;
 
   constructor(private deps: TurnControllerDeps) {}
 
@@ -429,6 +492,11 @@ export class TurnController {
     const transcript = text.trim();
     if (!transcript) return;
     this.onCustomerActivity();
+    const recent = this.lastSent;
+    if (recent && Date.now() - recent.at < DUPLICATE_WINDOW_MS && tokenOverlap(recent.text, transcript) >= 0.8) {
+      this.deps.log({ ts: new Date().toISOString(), event: "transcript_dropped", reason: "duplicate_of_recent_turn", transcript, ageMs: Date.now() - recent.at });
+      return;
+    }
     if (isPresenceCheck(transcript)) return this.presenceCheck(transcript);
     const blocked = this.blockedReason(transcript);
     if (blocked) {
@@ -528,6 +596,7 @@ export class TurnController {
   }
 
   protected async dispatch(transcript: string, bypass: boolean): Promise<void> {
+    this.lastSent = { text: transcript, at: Date.now() };
     const turnId = ++this.turnSeq;
     this.inFlight++;
     this.armDeadMan();

@@ -15,6 +15,8 @@ import {
   AvatarVoice,
   BARGE_IN_CUTOFF_WORDS,
   bargeInDecision,
+  InterimBuffer,
+  type RecognizerResult,
   type AvatarCommand,
   type RepromptKind,
   type TurnLogEvent,
@@ -199,6 +201,8 @@ export function LiveAvatarDemo() {
   // Latency & Barge-In Instrumentation Refs
   const userSpeechEndTimestampRef = useRef<number>(0);
   const lastHeardWordsRef = useRef<string>("");
+  // Only speech from the current Max line / speech segment counts, never stale interim text
+  const interimBufferRef = useRef(new InterimBuffer());
   const continuePauseTimerRef = useRef<any>(null);
   const currentTurnTimingRef = useRef<{
     turnId: number;
@@ -507,6 +511,8 @@ export function LiveAvatarDemo() {
 
       // Restore volume before Max's next utterance starts
       setRemoteAudioMutedLocally(false);
+      // Speech heard before this line can never cut it off
+      interimBufferRef.current.reset();
 
       // Serialized with interrupts; skipped if a barge-in happened after it was issued
       const published = await voiceRef.current!.speak(clean);
@@ -785,17 +791,11 @@ export function LiveAvatarDemo() {
     recognizer.lang = "en-US";
 
     recognizer.onresult = (event: any) => {
-      let interimText = "";
-      let finalTranscript = "";
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript;
-        } else {
-          interimText += transcript;
-        }
-      }
+      const results: RecognizerResult[] = Array.from(event.results as ArrayLike<any>, (r: any) => ({
+        transcript: r[0].transcript,
+        isFinal: r.isFinal,
+      }));
+      const { interim: interimText, final: finalTranscript } = interimBufferRef.current.update(results, event.resultIndex);
 
       setUserSpeaking(true);
 
@@ -948,6 +948,9 @@ export function LiveAvatarDemo() {
         }
       }, delay);
     };
+
+    // A new speech segment: earlier interim text is no longer what the customer is saying
+    recognizer.onspeechstart = () => interimBufferRef.current.reset();
 
     recognizer.onerror = (e: any) => {
       if (e.error !== "no-speech" && e.error !== "aborted") {
