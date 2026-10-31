@@ -10,7 +10,18 @@ import DealSummaryPage from "@/app/content/deal-summary/page";
 import EscalatePage from "@/app/content/escalate/page";
 import { CallSummaryScreen } from "@/components/CallSummaryScreen";
 import type { ControllerTurnMetrics } from "@/lib/heygen-logger";
-import { TurnController, AvatarVoice, type AvatarCommand, type RepromptKind, type TurnLogEvent } from "@/lib/turn-taking";
+import {
+  TurnController,
+  AvatarVoice,
+  BARGE_IN_CUTOFF_WORDS,
+  bargeInDecision,
+  type AvatarCommand,
+  type RepromptKind,
+  type TurnLogEvent,
+} from "@/lib/turn-taking";
+
+// Barge-in rules live in turn-taking.ts (unit-tested); re-exported for existing callers
+export { shouldCutMaxOff } from "@/lib/turn-taking";
 
 // =============================================================================
 // SPEED & BARGE-IN TUNING CONFIGURATION
@@ -26,29 +37,8 @@ export const SPEED_AND_BARGE_IN_CONFIG = {
   // Ultra-fast threshold for short definitive answers ("yes", "no", "ok", "i did", etc.)
   QUICK_ANSWER_SILENCE_MS: 300,
 
-  // Single words / short phrases that immediately cut Max off:
-  BARGE_IN_CUTOFF_WORDS: [
-    "wait",
-    "stop",
-    "no",
-    "hold on",
-    "sorry",
-    "what",
-    "hang on",
-    "one second",
-    "let me",
-    "let me tell you",
-    "let me speak",
-    "let me explain",
-    "let me finish",
-    "let me complete",
-    "listen",
-    "hear me out",
-    "hear me",
-    "actually",
-    "excuse me",
-    "hold up",
-  ],
+  // Single words / short phrases that immediately cut Max off (after the first 1.5 s of a line):
+  BARGE_IN_CUTOFF_WORDS,
 
   // Minimum words of any reply to trigger cut-off (5 or more substantive words):
   MIN_WORDS_ANY_BARGE_IN: 5,
@@ -100,100 +90,6 @@ type Message = {
   role: "user" | "assistant";
   content: string;
 };
-
-// Helper to determine if incoming user speech should trigger instant barge-in cut-off
-export function shouldCutMaxOff(spoken: string): boolean {
-  const norm = spoken.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
-  const words = norm.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return false;
-
-  // 1. Explicit passive backchannel murmurs do NOT cut Max off
-  const PASSIVE_BACKCHANNELS = new Set([
-    "mhm",
-    "uh huh",
-    "uh-huh",
-    "uhhuh",
-    "mm",
-    "hmm",
-    "yeah",
-    "yes",
-    "okay",
-    "ok",
-    "right",
-    "sure",
-    "yep",
-    "gotcha",
-    "uh",
-    "um",
-    "ah",
-  ]);
-
-  if (PASSIVE_BACKCHANNELS.has(norm)) {
-    return false;
-  }
-  // Single-word passive acknowledgment
-  if (words.length === 1 && PASSIVE_BACKCHANNELS.has(words[0])) {
-    return false;
-  }
-  // Repetitive backchannel mutterings (e.g. "yeah yeah", "uh huh")
-  if (words.every((w) => PASSIVE_BACKCHANNELS.has(w))) {
-    return false;
-  }
-
-  // 2. Explicit cutoff words/phrases cut Max off immediately
-  for (const cutoff of SPEED_AND_BARGE_IN_CONFIG.BARGE_IN_CUTOFF_WORDS) {
-    if (
-      norm === cutoff ||
-      norm.startsWith(`${cutoff} `) ||
-      norm.endsWith(` ${cutoff}`) ||
-      norm.includes(` ${cutoff} `)
-    ) {
-      return true;
-    }
-  }
-
-  // 3. User questions starting with interrogatives or intent openers cut Max off
-  if (
-    norm.startsWith("who ") ||
-    norm.startsWith("what ") ||
-    norm.startsWith("why ") ||
-    norm.startsWith("how ") ||
-    norm.startsWith("when ") ||
-    norm.startsWith("where ") ||
-    norm.startsWith("which ") ||
-    norm.startsWith("can i ") ||
-    norm.startsWith("can you ") ||
-    norm.startsWith("could you ") ||
-    norm.startsWith("could i ") ||
-    norm.startsWith("is that ") ||
-    norm.startsWith("is it ") ||
-    norm.startsWith("is this ") ||
-    norm.startsWith("does it ") ||
-    norm.startsWith("does that ") ||
-    norm.startsWith("do you ") ||
-    norm.startsWith("will it ") ||
-    norm.startsWith("would it ") ||
-    norm.startsWith("tell me ") ||
-    norm.startsWith("i have ") ||
-    norm.startsWith("i want ") ||
-    norm.startsWith("i need ") ||
-    norm.startsWith("excuse me")
-  ) {
-    return true;
-  }
-
-  // 4. Any substantive speech of 2 or more words that is not a pure backchannel cuts Max off immediately!
-  if (words.length >= 2) {
-    return true;
-  }
-
-  // 5. Single words that are NOT passive backchannels (e.g. "wait", "stop", "no", "listen", "actually", "hey", "hello", "max")
-  if (words.length === 1 && !PASSIVE_BACKCHANNELS.has(words[0])) {
-    return true;
-  }
-
-  return false;
-}
 
 // Anti-echo without dropping real questions: rejects only when user transcript is an unambiguous speaker echo
 export function isNearExactEcho(
@@ -884,13 +780,18 @@ export function LiveAvatarDemo() {
 
       // 1. Instant Barge-In Cutoff:
       // If Max is speaking and the user speaks ANY substantive words, interrupt him instantly!
-      if (isAvatarSpeakingRef.current && shouldCutMaxOff(currentSpoken)) {
-        console.log("[liveavatar] Barge-in triggered by user speech:", currentSpoken);
+      const msIntoLine = voiceRef.current?.tracker.msIntoLine() ?? 0;
+      const bargeIn = isAvatarSpeakingRef.current ? bargeInDecision(currentSpoken, msIntoLine) : null;
+      if (bargeIn?.interrupt) {
+        console.log("[liveavatar] Barge-in triggered by user speech:", currentSpoken, bargeIn.reason, `${msIntoLine}ms into line`);
         bargeInsRef.current.push({
           timestamp: Date.now(),
           spokenText: currentSpoken,
           avatarTextWhenInterrupted: lastSpokenByAvatarRef.current,
           honored: true,
+          reason: bargeIn.reason,
+          words: currentSpoken.trim().split(/\s+/).filter(Boolean).length,
+          msIntoLine,
         });
         if (sessionIdRef.current) {
           void fetch(`/api/heygen/logs/${sessionIdRef.current}`, {

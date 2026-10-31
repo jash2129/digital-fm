@@ -47,6 +47,10 @@ export type BargeInLog = {
   avatarTextWhenInterrupted: string;
   honored: boolean;
   reason?: string;
+  /** words in the transcript that triggered it */
+  words?: number;
+  /** how far into Max's line (from first audio) the cut happened */
+  msIntoLine?: number;
 };
 
 export type HeygenCallLog = {

@@ -237,6 +237,153 @@ export const DEAD_MAN_MS = 4000;
 export const SILENCE_PROMPT_MS = 7000;
 export const MAX_SILENCE_PROMPTS = 3;
 
+// -----------------------------------------------------------------------------
+// Barge-in: should this customer speech cut Max off mid-line?
+// Live call 1ee5181b: a "yeah" right as Max began a line cut him after 0.3 s, so his question was
+// never heard. Backchannels never interrupt; in the first 1.5 s only a stop word does.
+// -----------------------------------------------------------------------------
+export const BARGE_IN_CUTOFF_WORDS = [
+    "wait",
+    "stop",
+    "no",
+    "hold on",
+    "sorry",
+    "what",
+    "hang on",
+    "one second",
+    "let me",
+    "let me tell you",
+    "let me speak",
+    "let me explain",
+    "let me finish",
+    "let me complete",
+    "listen",
+    "hear me out",
+    "hear me",
+    "actually",
+    "excuse me",
+    "hold up",
+];
+
+// No barge-in this early in a line unless a stop word is said
+export const BARGE_IN_GRACE_MS = 1500;
+const GRACE_STOP_WORDS = /\b(stop|wait|hold on|excuse me|who is this|who s this)\b/;
+const BARGE_IN_BACKCHANNEL = new Set([
+  "yes", "yeah", "yep", "ok", "okay", "sure", "mm hm", "mm hmm", "mhm", "uh huh", "uhhuh", "right",
+  "uh", "um", "hmm", "hm", "i see", "got it",
+]);
+
+function isBackchannelOnly(n: string): boolean {
+  if (BARGE_IN_BACKCHANNEL.has(n)) return true;
+  // "yeah yeah", "okay got it": every chunk is a backchannel
+  const chunks = n.replace(/\b(mm hm+|uh huh|i see|got it)\b/g, "_").split(" ");
+  return chunks.every((w) => w === "_" || BARGE_IN_BACKCHANNEL.has(w));
+}
+
+export function bargeInDecision(transcript: string, msIntoLine: number): { interrupt: boolean; reason: string } {
+  const n = norm(transcript);
+  if (!n) return { interrupt: false, reason: "empty" };
+  if (isBackchannelOnly(n)) return { interrupt: false, reason: "backchannel" };
+  if (msIntoLine < BARGE_IN_GRACE_MS) {
+    return GRACE_STOP_WORDS.test(n) ? { interrupt: true, reason: "stop_word_in_grace" } : { interrupt: false, reason: "grace_period" };
+  }
+  return shouldCutMaxOff(transcript) ? { interrupt: true, reason: "cutoff_rules" } : { interrupt: false, reason: "not_substantive" };
+}
+
+// Helper to determine if incoming user speech should trigger instant barge-in cut-off
+export function shouldCutMaxOff(spoken: string): boolean {
+  const norm = spoken.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+  const words = norm.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return false;
+
+  // 1. Explicit passive backchannel murmurs do NOT cut Max off
+  const PASSIVE_BACKCHANNELS = new Set([
+    "mhm",
+    "uh huh",
+    "uh-huh",
+    "uhhuh",
+    "mm",
+    "hmm",
+    "yeah",
+    "yes",
+    "okay",
+    "ok",
+    "right",
+    "sure",
+    "yep",
+    "gotcha",
+    "uh",
+    "um",
+    "ah",
+  ]);
+
+  if (PASSIVE_BACKCHANNELS.has(norm)) {
+    return false;
+  }
+  // Single-word passive acknowledgment
+  if (words.length === 1 && PASSIVE_BACKCHANNELS.has(words[0])) {
+    return false;
+  }
+  // Repetitive backchannel mutterings (e.g. "yeah yeah", "uh huh")
+  if (words.every((w) => PASSIVE_BACKCHANNELS.has(w))) {
+    return false;
+  }
+
+  // 2. Explicit cutoff words/phrases cut Max off immediately
+  for (const cutoff of BARGE_IN_CUTOFF_WORDS) {
+    if (
+      norm === cutoff ||
+      norm.startsWith(`${cutoff} `) ||
+      norm.endsWith(` ${cutoff}`) ||
+      norm.includes(` ${cutoff} `)
+    ) {
+      return true;
+    }
+  }
+
+  // 3. User questions starting with interrogatives or intent openers cut Max off
+  if (
+    norm.startsWith("who ") ||
+    norm.startsWith("what ") ||
+    norm.startsWith("why ") ||
+    norm.startsWith("how ") ||
+    norm.startsWith("when ") ||
+    norm.startsWith("where ") ||
+    norm.startsWith("which ") ||
+    norm.startsWith("can i ") ||
+    norm.startsWith("can you ") ||
+    norm.startsWith("could you ") ||
+    norm.startsWith("could i ") ||
+    norm.startsWith("is that ") ||
+    norm.startsWith("is it ") ||
+    norm.startsWith("is this ") ||
+    norm.startsWith("does it ") ||
+    norm.startsWith("does that ") ||
+    norm.startsWith("do you ") ||
+    norm.startsWith("will it ") ||
+    norm.startsWith("would it ") ||
+    norm.startsWith("tell me ") ||
+    norm.startsWith("i have ") ||
+    norm.startsWith("i want ") ||
+    norm.startsWith("i need ") ||
+    norm.startsWith("excuse me")
+  ) {
+    return true;
+  }
+
+  // 4. Any substantive speech of 2 or more words that is not a pure backchannel cuts Max off immediately!
+  if (words.length >= 2) {
+    return true;
+  }
+
+  // 5. Single words that are NOT passive backchannels (e.g. "wait", "stop", "no", "listen", "actually", "hey", "hello", "max")
+  if (words.length === 1 && !PASSIVE_BACKCHANNELS.has(words[0])) {
+    return true;
+  }
+
+  return false;
+}
+
 export const PENDING_MAX_AGE_MS = 8000;
 // Transcripts this soon after Max stops are usually the tail of his own audio
 export const POST_SPEECH_GUARD_MS = 600;

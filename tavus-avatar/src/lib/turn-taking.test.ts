@@ -11,6 +11,8 @@ import {
   SILENCE_PROMPT_MS,
   isLoneFiller,
   isPresenceCheck,
+  bargeInDecision,
+  BARGE_IN_GRACE_MS,
   type RepromptKind,
   type AvatarCommand,
   type TurnLogEvent,
@@ -292,5 +294,31 @@ describe("W: dead-man switch, silence watchdog, presence checks", () => {
     c.onAvatarFinished("continue");
     await vi.advanceTimersByTimeAsync(SILENCE_PROMPT_MS + 10);
     expect(reprompts).toEqual([]);
+  });
+});
+
+describe("P: a short confirmation never cuts Max off", () => {
+  it("'yeah' 400 ms into a line is not an interrupt", () => {
+    expect(bargeInDecision("yeah", 400)).toMatchObject({ interrupt: false });
+  });
+
+  it("'wait, hold on' 400 ms in is an interrupt", () => {
+    expect(bargeInDecision("wait, hold on", 400)).toMatchObject({ interrupt: true, reason: "stop_word_in_grace" });
+  });
+
+  it("a 6-word question 2 s in is an interrupt", () => {
+    expect(bargeInDecision("what does the warranty actually cover", 2000)).toMatchObject({ interrupt: true });
+  });
+
+  it("backchannels never interrupt, at any point in the line", () => {
+    for (const t of ["yes", "okay", "sure", "mm-hm", "uh-huh", "right", "um", "hmm", "I see", "got it", "yeah yeah", "okay got it"])
+      for (const ms of [0, 800, 5000]) expect(bargeInDecision(t, ms).interrupt, `${t} @${ms}`).toBe(false);
+  });
+
+  it("in the first 1.5 s only stop words interrupt; before first audio counts as the start", () => {
+    expect(bargeInDecision("tell me more about it", 0).interrupt).toBe(false);
+    expect(bargeInDecision("who is this", 300).interrupt).toBe(true);
+    expect(bargeInDecision("excuse me", BARGE_IN_GRACE_MS - 1).interrupt).toBe(true);
+    expect(bargeInDecision("tell me more about it", BARGE_IN_GRACE_MS + 1).interrupt).toBe(true);
   });
 });
