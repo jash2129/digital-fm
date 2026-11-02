@@ -8,9 +8,10 @@ services:
   - type: web
     name: max-finance-manager
     runtime: node
-    # Paid instance: never sleeps (the free plan spins down when idle, which drops in-memory calls
-    # and adds a ~1 min cold start) and allows the persistent disk below
-    plan: starter
+    # Free instance: sleeps after ~15 min with no traffic (the next visit waits ~1 min for it to
+    # wake) and has no persistent disk. A call in progress keeps it awake. Switch to "starter" and
+    # add a disk (see docs/DEPLOY-RENDER.md) if it never-sleeps or call-log history matters.
+    plan: free
     # Closest Render region to the Texas dealership
     region: ohio
     # The whole repo is checked out; the app also reads ../prompts at runtime
@@ -21,11 +22,8 @@ services:
     # Deploy only when you click "Manual Deploy". A deploy restarts the server, which ends any live
     # call, so it should never happen just because a commit landed on main.
     autoDeployTrigger: "off"
-    # Call logs (what the Inspector reads) survive restarts and redeploys
-    disk:
-      name: call-logs
-      mountPath: /opt/render/project/src/tavus-avatar/logs-heygen
-      sizeGB: 1
+    # No disk on the free plan: call logs (what the Inspector reads) are lost whenever the server
+    # sleeps, restarts or redeploys
     envVars:
       - key: NODE_VERSION
         value: "24"

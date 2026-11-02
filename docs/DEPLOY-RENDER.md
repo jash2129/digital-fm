@@ -31,8 +31,24 @@ call. Moving that state to a shared store (Redis) is a separate project.
 
 ## Cost
 
-The **Starter** plan (about $7/month) plus a 1 GB disk (about $0.25/month). Do not switch to the free
-plan: it sleeps when idle, which ends live calls and adds a one-minute wait on the next visit.
+**Free.** `render.yaml` uses Render's free plan, which comes with two catches:
+
+- **It sleeps after about 15 minutes with no traffic.** The next visitor waits about a minute while
+  it wakes up. Before a demo, open the URL a minute or two early so it is awake. A call in progress
+  keeps it awake.
+- **No persistent disk.** Call logs are lost whenever the server sleeps, restarts or redeploys, so the
+  Inspector only shows calls since the last wake-up. Open the Inspector right after a call if you
+  need it.
+
+To remove both catches later (about $7/month plus about $0.25/month for the disk): in `render.yaml`
+change `plan: free` to `plan: starter` and add a disk under the service:
+
+```yaml
+    disk:
+      name: call-logs
+      mountPath: /opt/render/project/src/tavus-avatar/logs-heygen
+      sizeGB: 1
+```
 
 ## Deploying a new version
 
@@ -44,8 +60,8 @@ Auto-deploy is **off** on purpose: a deploy restarts the server and ends any cal
 
 ## Call logs and the Inspector
 
-Call logs are saved on the service's disk (`tavus-avatar/logs-heygen`), so they survive restarts and
-redeploys. Open the Inspector at `https://<your-render-url>/inspector?session=<session id>`.
+Open the Inspector at `https://<your-render-url>/inspector?session=<session id>`. On the free plan
+the logs only last until the server next sleeps, restarts or redeploys (see Cost above).
 
 ## Limits to know
 
