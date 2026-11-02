@@ -10,7 +10,7 @@ services:
     runtime: node
     # Free instance: sleeps after ~15 min with no traffic (the next visit waits ~1 min for it to
     # wake) and has no persistent disk. A call in progress keeps it awake. Switch to "starter" and
-    # add a disk (see docs/DEPLOY-RENDER.md) if it never-sleeps or call-log history matters.
+    # add a disk (see docs/DEPLOY-RENDER.md) if it must never sleep or call-log history matters.
     plan: free
     # Closest Render region to the Texas dealership
     region: ohio
