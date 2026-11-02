@@ -1,0 +1,49 @@
+# Render Blueprint for Max, the Digital Finance Manager (tavus-avatar/ only).
+#
+# Why Render and not Vercel: every live call's state (script position, pending turn commits,
+# per-visitor conversations) lives in this server's memory, so all turns of a call must reach the
+# same always-on Node process. See CLAUDE.md "Production hardening" -> "Hard constraint".
+# Step-by-step setup: docs/DEPLOY-RENDER.md
+services:
+  - type: web
+    name: max-finance-manager
+    runtime: node
+    # Paid instance: never sleeps (the free plan spins down when idle, which drops in-memory calls
+    # and adds a ~1 min cold start) and allows the persistent disk below
+    plan: starter
+    # Closest Render region to the Texas dealership
+    region: ohio
+    # The whole repo is checked out; the app also reads ../prompts at runtime
+    rootDir: tavus-avatar
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    # Deploy only when you click "Manual Deploy". A deploy restarts the server, which ends any live
+    # call, so it should never happen just because a commit landed on main.
+    autoDeployTrigger: "off"
+    # Call logs (what the Inspector reads) survive restarts and redeploys
+    disk:
+      name: call-logs
+      mountPath: /opt/render/project/src/tavus-avatar/logs-heygen
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: EVENT_CONFIG
+        value: digital-finance-manager
+      # The shared sign-in password for the demo. Required: in production the app refuses every
+      # /api request (503) until it is set.
+      - key: DEMO_API_TOKEN
+        sync: false
+      - key: HEYGEN_API_KEY
+        sync: false
+      - key: HEYGEN_AVATAR_ID
+        sync: false
+      - key: XAI_API_KEY
+        sync: false
+      - key: GROK_MODEL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: DEALERSHIP_NAME
+        sync: false
