@@ -2,7 +2,7 @@
  * Follow-up 10: speaker echo (live call d4711cfb, client on laptop speakers).
  */
 import { describe, it, expect } from "vitest";
-import { normalizeSpeech, isNearExactEcho } from "./echo-guard";
+import { normalizeSpeech, isNearExactEcho, isMaxWordRun, checkEcho, EchoTimeline, ECHO_TAIL_MS } from "./echo-guard";
 import { isAvatarScriptEcho } from "./beat-controller";
 
 describe("E1: both sides are normalized before comparing", () => {
@@ -26,5 +26,58 @@ describe("E1: both sides are normalized before comparing", () => {
 
   it("the server-side script echo check sees the same normalized text", () => {
     expect(isAvatarScriptEcho("make sure you understand first ok")).toBe(true);
+  });
+});
+
+// Max spoke from t=1000 to t=5000
+function timeline() {
+  const t = new EchoTimeline();
+  t.maxStarted(1000);
+  t.maxStopped(5000);
+  return t;
+}
+
+describe("E2: fragments of Max's recent speech are echo", () => {
+  const STILL_WITH_ME = "Are you still with me? Is that okay with you?";
+  const CLARIFY = "Would you like me to continue, or go over that again?";
+  const check = (said: string, lines: string[], at = 4000) => checkEcho(said, { recentMaxLines: lines, speechStartAt: at, timeline: timeline() });
+
+  it("'are you' after Max said '...are you still with me' is dropped as echo_fragment", () => {
+    expect(check("are you", [STILL_WITH_ME])).toEqual({ echo: true, reason: "echo_fragment" });
+  });
+
+  it("'would you like me' after 'Would you like me to continue' is dropped", () => {
+    expect(check("would you like me", [CLARIFY])).toEqual({ echo: true, reason: "echo_fragment" });
+  });
+
+  it("'yes please continue' is kept: 'yes please' is not a run of Max's words", () => {
+    expect(check("yes please continue", [CLARIFY])).toEqual({ echo: false });
+  });
+
+  it("a 1-word reply is never a fragment, even if Max said it", () => {
+    expect(check("okay", [STILL_WITH_ME])).toEqual({ echo: false });
+    expect(check("continue", [CLARIFY])).toEqual({ echo: false });
+  });
+
+  it("a transcript with a word Max did not say is kept", () => {
+    // Short enough that only the fragment rule could catch it ("stop" / "that" are not his words)
+    expect(check("would you stop", [CLARIFY])).toEqual({ echo: false });
+    expect(check("you like that", [CLARIFY])).toEqual({ echo: false });
+  });
+
+  it("only within 3 s after Max stopped", () => {
+    expect(check("would you like me", [CLARIFY], 5000 + ECHO_TAIL_MS - 1).echo).toBe(true);
+    expect(check("would you like me", [CLARIFY], 5000 + ECHO_TAIL_MS + 1).echo).toBe(false);
+    expect(check("would you like me", [CLARIFY], 500).echo).toBe(false);
+  });
+
+  it("only Max's last 2 lines count", () => {
+    expect(check("would you like me", [CLARIFY, "Great.", "Thanks."]).echo).toBe(false);
+    expect(check("would you like me", ["Great.", CLARIFY]).echo).toBe(true);
+  });
+
+  it("the run has to be contiguous", () => {
+    expect(isMaxWordRun("would like", [CLARIFY])).toBe(false);
+    expect(isMaxWordRun("like me to", [CLARIFY])).toBe(true);
   });
 });

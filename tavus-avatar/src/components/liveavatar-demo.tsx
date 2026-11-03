@@ -21,7 +21,7 @@ import {
   type RepromptKind,
   type TurnLogEvent,
 } from "@/lib/turn-taking";
-import { isNearExactEcho } from "@/lib/echo-guard";
+import { isNearExactEcho, checkEcho, EchoTimeline } from "@/lib/echo-guard";
 
 // Barge-in rules live in turn-taking.ts (unit-tested); re-exported for existing callers
 export { shouldCutMaxOff } from "@/lib/turn-taking";
@@ -219,6 +219,9 @@ export function LiveAvatarDemo() {
   });
   const lastSpokenByAvatarRef = useRef<string>("");
   const recentAvatarTextsRef = useRef<Array<{ text: string; timestamp: number }>>([]);
+  // When Max's voice was coming out of the speakers (echo fragments are judged against it)
+  const echoTimelineRef = useRef(new EchoTimeline());
+  const echoDropsRef = useRef(0);
   const avatarFinishedAtRef = useRef<number>(0);
   const lastInterruptedAtRef = useRef<number>(0);
   const isListeningRef = useRef<boolean>(false);
@@ -428,6 +431,8 @@ export function LiveAvatarDemo() {
       (speaking, reason) => {
         setIsAvatarSpeaking(speaking);
         isAvatarSpeakingRef.current = speaking;
+        if (speaking) echoTimelineRef.current.maxStarted();
+        else echoTimelineRef.current.maxStopped();
         if (!speaking) {
           // Did the customer hear the reply for this turn? Finished naturally, or cut late enough.
           const turn = speakingTurnRef.current;
@@ -720,6 +725,15 @@ export function LiveAvatarDemo() {
   const interruptAvatarRef = useRef(interruptAvatar);
   interruptAvatarRef.current = interruptAvatar;
 
+  // Echo check for one transcript: Max's recent lines (newest last) and when he was audible
+  const echoCheck = (transcript: string, speechStartAt: number) => {
+    const lines = recentAvatarTextsRef.current.map((r) => r.text);
+    if (lastSpokenByAvatarRef.current && lines.at(-1) !== lastSpokenByAvatarRef.current) lines.push(lastSpokenByAvatarRef.current);
+    return checkEcho(transcript, { recentMaxLines: lines, speechStartAt, timeline: echoTimelineRef.current });
+  };
+  const echoCheckRef = useRef(echoCheck);
+  echoCheckRef.current = echoCheck;
+
   // One TurnController for the component's lifetime; it reaches the latest callbacks through refs
   const sendToGrokRef = useRef(sendToGrok);
   sendToGrokRef.current = sendToGrok;
@@ -730,7 +744,7 @@ export function LiveAvatarDemo() {
       reprompt: (kind) => repromptAvatarRef.current(kind),
       isAvatarSpeaking: () => isAvatarSpeakingRef.current,
       avatarStoppedAt: () => avatarFinishedAtRef.current,
-      isEcho: (t) => isNearExactEcho(t, [lastSpokenByAvatarRef.current, ...recentAvatarTextsRef.current.map((r) => r.text)]),
+      isEcho: (t) => echoCheckRef.current(t, Date.now()).echo,
       log: (e) => logTurnEvent(e),
     });
   }
@@ -855,14 +869,12 @@ export function LiveAvatarDemo() {
           return;
         }
 
-        // 1. Discard any transcript that matches recent avatar utterances (true echo only)
-        if (
-          isNearExactEcho(spoken, [
-            lastSpokenByAvatarRef.current,
-            ...recentAvatarTextsRef.current.map((r) => r.text),
-          ])
-        ) {
-          logTurnEvent({ ts: new Date().toISOString(), event: "transcript_dropped", reason: "avatar_echo", transcript: spoken });
+        // 1. Discard Max's own voice from the speakers: a near-exact copy of a recent line, or a run of
+        // his last two lines heard while he was audible ("would you like me")
+        const echo = echoCheckRef.current(spoken, Date.now());
+        if (echo.echo) {
+          echoDropsRef.current++;
+          logTurnEvent({ ts: new Date().toISOString(), event: "transcript_dropped", reason: echo.reason, transcript: spoken });
           return;
         }
 

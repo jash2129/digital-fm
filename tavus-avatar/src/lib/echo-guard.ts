@@ -39,7 +39,7 @@ const wordsOf = (text: string) => normalizeSpeech(text).split(" ").filter(Boolea
 
 /**
  * A long transcript that is (almost) word for word something Max just said. Short human replies
- * (1-3 words) are never caught here.
+ * (1-3 words) are never caught here; the fragment rule below handles short echoes, with timing.
  */
 export function isNearExactEcho(userTranscript: string, recentAvatarSources: string | Array<string | { text: string }>): boolean {
   if (!userTranscript) return false;
@@ -65,3 +65,63 @@ export function isNearExactEcho(userTranscript: string, recentAvatarSources: str
   }
   return false;
 }
+
+/**
+ * A run of 2+ consecutive words from one of Max's recent lines, with no word he did not say
+ * ("would you like me" after "Would you like me to continue, or go over that again?").
+ * Timing is checked separately (EchoTimeline): this only answers "could these words be his?".
+ */
+export function isMaxWordRun(transcript: string, maxLines: string[]): boolean {
+  const user = wordsOf(transcript);
+  if (user.length < 2) return false;
+  const run = ` ${user.join(" ")} `;
+  return maxLines.some((line) => ` ${wordsOf(line).join(" ")} `.includes(run));
+}
+
+/** How long after Max stops that his own voice can still arrive as a transcript */
+export const ECHO_TAIL_MS = 3000;
+
+/** When Max's voice was coming out of the speakers, so late finals are judged by when speech started. */
+export class EchoTimeline {
+  private intervals: Array<{ start: number; end: number | null }> = [];
+
+  maxStarted(at = Date.now()): void {
+    const last = this.intervals.at(-1);
+    if (last && last.end === null) return;
+    this.intervals.push({ start: at, end: null });
+    if (this.intervals.length > 20) this.intervals.shift();
+  }
+
+  maxStopped(at = Date.now()): void {
+    const last = this.intervals.at(-1);
+    if (last && last.end === null) last.end = at;
+  }
+
+  /** Was Max speaking at `at`, or had he stopped less than ECHO_TAIL_MS before it? */
+  maxAudibleAt(at: number): boolean {
+    return this.intervals.some((i) => at >= i.start && (i.end === null || at <= i.end + ECHO_TAIL_MS));
+  }
+}
+
+export type EchoVerdict = { echo: false } | { echo: true; reason: "avatar_echo" | "echo_fragment" };
+
+/**
+ * The full check for one customer transcript.
+ *  - avatar_echo: near-exact copy of one of Max's recent lines (any timing)
+ *  - echo_fragment: a 2+ word run of Max's last 2 lines that STARTED while Max was audible (speaking,
+ *    or within 3 s after). Judged by speechStartAt, not by when the late final arrived.
+ */
+export function checkEcho(
+  transcript: string,
+  opts: { recentMaxLines: string[]; speechStartAt: number; timeline: EchoTimeline }
+): EchoVerdict {
+  if (isNearExactEcho(transcript, opts.recentMaxLines)) return { echo: true, reason: "avatar_echo" };
+  const lastTwo = opts.recentMaxLines.filter(Boolean).slice(-2);
+  if (isMaxWordRun(transcript, lastTwo) && opts.timeline.maxAudibleAt(opts.speechStartAt)) {
+    return { echo: true, reason: "echo_fragment" };
+  }
+  return { echo: false };
+}
+
+/** After this many echo drops in one call, the tester is told speakers are feeding back */
+export const ECHO_NOTICE_AFTER = 2;
