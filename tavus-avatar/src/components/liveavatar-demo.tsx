@@ -21,7 +21,7 @@ import {
   type RepromptKind,
   type TurnLogEvent,
 } from "@/lib/turn-taking";
-import { checkEcho, EchoTimeline, UtteranceClock } from "@/lib/echo-guard";
+import { checkEcho, EchoTimeline, UtteranceClock, ECHO_NOTICE_AFTER, type EchoVerdict } from "@/lib/echo-guard";
 
 // Barge-in rules live in turn-taking.ts (unit-tested); re-exported for existing callers
 export { shouldCutMaxOff } from "@/lib/turn-taking";
@@ -140,6 +140,8 @@ export function LiveAvatarDemo() {
   }, []);
   const [isMicMuted, setIsMicMuted] = useState(false);
   const [canPlaybackAudio, setCanPlaybackAudio] = useState(true);
+  // Shown once Max's voice has come back through the mic ECHO_NOTICE_AFTER times this call
+  const [showEchoNotice, setShowEchoNotice] = useState(false);
   const [isGrokThinking, setIsGrokThinking] = useState(false);
 
   // Verified Avatar Preview URL (Dexter Lawyer - US English) & Remote Tracks
@@ -728,6 +730,23 @@ export function LiveAvatarDemo() {
   const interruptAvatarRef = useRef(interruptAvatar);
   interruptAvatarRef.current = interruptAvatar;
 
+  // A recognized transcript dropped as Max's own voice: logged with both timestamps, and counted
+  // so the tester is told about speaker echo after ECHO_NOTICE_AFTER drops
+  const noteEchoDrop = (transcript: string, verdict: Extract<EchoVerdict, { echo: true }>, speechStartAt: number) => {
+    echoDropsRef.current++;
+    logTurnEvent({
+      ts: new Date().toISOString(),
+      event: "transcript_dropped",
+      reason: verdict.reason,
+      transcript,
+      speechStartAt: new Date(speechStartAt).toISOString(),
+      finalAt: new Date(lastSttFinalAtRef.current || Date.now()).toISOString(),
+    });
+    if (echoDropsRef.current >= ECHO_NOTICE_AFTER) setShowEchoNotice(true);
+  };
+  const noteEchoDropRef = useRef(noteEchoDrop);
+  noteEchoDropRef.current = noteEchoDrop;
+
   // Echo check for one transcript: Max's recent lines (newest last) and when he was audible
   const echoCheck = (transcript: string, speechStartAt: number) => {
     const lines = recentAvatarTextsRef.current.map((r) => r.text);
@@ -785,6 +804,11 @@ export function LiveAvatarDemo() {
         const echo = echoCheckRef.current(currentSpoken, speechStartAt);
         if (echo.echo) {
           console.warn(`[anti-echo] ignoring ${echo.reason} while Max audible: "${currentSpoken}"`);
+          // Interim echoes come many times per utterance: log and count the final only
+          if (finalTranscript.trim()) {
+            noteEchoDropRef.current(finalTranscript.trim(), echo, speechStartAt);
+            utteranceClockRef.current.reset();
+          }
           return;
         }
       }
@@ -885,8 +909,7 @@ export function LiveAvatarDemo() {
         };
         const echo = echoCheckRef.current(spoken, speechStartAt);
         if (echo.echo) {
-          echoDropsRef.current++;
-          logTurnEvent({ ts: new Date().toISOString(), event: "transcript_dropped", reason: echo.reason, transcript: spoken, ...timing });
+          noteEchoDropRef.current(spoken, echo, speechStartAt);
           return;
         }
         logTurnEvent({ ts: new Date().toISOString(), event: "transcript_heard", transcript: spoken, ...timing });
@@ -1149,6 +1172,8 @@ export function LiveAvatarDemo() {
 
     setIsConnecting(true);
     setError(null);
+    echoDropsRef.current = 0;
+    setShowEchoNotice(false);
     setActiveOverlay(null);
     setShownProducts([]);
     setActiveProduct(null);
@@ -1714,6 +1739,22 @@ export function LiveAvatarDemo() {
       {/* Permanent, Always-Mounted Audio Element for LiveKit Remote Audio Track */}
       <audio ref={audioRef} autoPlay playsInline className="hidden" />
 
+      {/* Speaker echo notice: Max's voice keeps coming back through the tester's mic */}
+      {isConnected && showEchoNotice && (
+        <div className="absolute top-28 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/15 px-4 py-2 text-xs text-amber-100 shadow-2xl">
+          <span className="select-none">🎧</span>
+          <span>Max can hear himself through your speakers. Headphones will help.</span>
+          <button
+            type="button"
+            onClick={() => setShowEchoNotice(false)}
+            className="ml-1 text-amber-200/70 hover:text-amber-100"
+            aria-label="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Browser Autoplay Blocked Banner */}
       {isConnected && !canPlaybackAudio && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50">
@@ -2023,6 +2064,12 @@ export function LiveAvatarDemo() {
                     </div>
                   )}
 
+                  {/* Speakers feed Max's voice back into the mic (follow-up 10): ask for headphones up front */}
+                  <div className="w-full mb-3 flex items-center justify-center gap-2 rounded-xl border border-sky-400/25 bg-sky-500/10 px-3.5 py-2 text-xs text-sky-100">
+                    <span className="select-none">🎧</span>
+                    <span>Use headphones for best results.</span>
+                  </div>
+
                   {/* Glowing Start Button */}
                   <button
                     onClick={handleStart}
@@ -2042,14 +2089,6 @@ export function LiveAvatarDemo() {
                       </>
                     )}
                   </button>
-
-                  {/* Audio echo prevention note for tester */}
-                  <div className="flex items-center gap-2.5 rounded-xl border border-sky-400/25 bg-sky-500/10 px-3.5 py-2.5 text-xs text-sky-200 mt-3.5 shadow-sm">
-                    <span className="text-base select-none">🎧</span>
-                    <div className="leading-snug">
-                      <span className="font-semibold text-white">Tester Note:</span> Please wear headphones for demos to eliminate room speaker echo and ensure seamless barge-in.
-                    </div>
-                  </div>
 
                   {/* Call Experience Inspector Link */}
                   <a

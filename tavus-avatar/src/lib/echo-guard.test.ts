@@ -2,7 +2,7 @@
  * Follow-up 10: speaker echo (live call d4711cfb, client on laptop speakers).
  */
 import { describe, it, expect } from "vitest";
-import { normalizeSpeech, isNearExactEcho, isMaxWordRun, checkEcho, EchoTimeline, ECHO_TAIL_MS, UtteranceClock, UTTERANCE_GAP_MS } from "./echo-guard";
+import { normalizeSpeech, isNearExactEcho, isMaxWordRun, checkEcho, EchoTimeline, ECHO_TAIL_MS, UtteranceClock, UTTERANCE_GAP_MS, ECHO_NOTICE_AFTER } from "./echo-guard";
 import { isAvatarScriptEcho } from "./beat-controller";
 
 describe("E1: both sides are normalized before comparing", () => {
@@ -108,5 +108,11 @@ describe("E3: speech is timed by when it started, not when the text arrived", ()
     expect(clock.result(1000 + UTTERANCE_GAP_MS + 1)).toBe(1000 + UTTERANCE_GAP_MS + 1);
     clock.reset();
     expect(clock.result(9000)).toBe(9000);
+  });
+});
+
+describe("E4: the tester is told after repeated echo", () => {
+  it("the notice shows from the 2nd dropped echo in a call", () => {
+    expect(ECHO_NOTICE_AFTER).toBe(2);
   });
 });
