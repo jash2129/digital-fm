@@ -103,6 +103,42 @@ export class EchoTimeline {
   }
 }
 
+/** A recognizer result after this long a gap starts a new utterance */
+export const UTTERANCE_GAP_MS = 2000;
+
+/**
+ * When the current utterance STARTED: the recognizer's speech-start event, or the first result after
+ * a gap. Finals arrive 2-5 s after the words were spoken, so this, not their arrival, says whether
+ * the customer was talking over Max.
+ */
+export class UtteranceClock {
+  private startAt: number | null = null;
+  private lastAt = 0;
+  // The first result after a speech-start event can take 5 s (live call: 5.4 s): it belongs to it
+  private awaitingFirstResult = false;
+
+  speechStarted(at = Date.now()): void {
+    this.startAt = at;
+    this.lastAt = at;
+    this.awaitingFirstResult = true;
+  }
+
+  /** A result arrived; returns when its utterance started */
+  result(at = Date.now()): number {
+    const gap = at - this.lastAt > UTTERANCE_GAP_MS;
+    if (this.startAt === null || (gap && !this.awaitingFirstResult)) this.startAt = at;
+    this.awaitingFirstResult = false;
+    this.lastAt = at;
+    return this.startAt;
+  }
+
+  /** The utterance was handled (or a new Max line began): the next result starts a new one */
+  reset(): void {
+    this.startAt = null;
+    this.awaitingFirstResult = false;
+  }
+}
+
 export type EchoVerdict = { echo: false } | { echo: true; reason: "avatar_echo" | "echo_fragment" };
 
 /**

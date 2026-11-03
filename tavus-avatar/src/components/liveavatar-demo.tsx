@@ -21,7 +21,7 @@ import {
   type RepromptKind,
   type TurnLogEvent,
 } from "@/lib/turn-taking";
-import { isNearExactEcho, checkEcho, EchoTimeline } from "@/lib/echo-guard";
+import { checkEcho, EchoTimeline, UtteranceClock } from "@/lib/echo-guard";
 
 // Barge-in rules live in turn-taking.ts (unit-tested); re-exported for existing callers
 export { shouldCutMaxOff } from "@/lib/turn-taking";
@@ -222,6 +222,8 @@ export function LiveAvatarDemo() {
   // When Max's voice was coming out of the speakers (echo fragments are judged against it)
   const echoTimelineRef = useRef(new EchoTimeline());
   const echoDropsRef = useRef(0);
+  // When the current utterance STARTED (first audio or result), not when its late final arrived
+  const utteranceClockRef = useRef(new UtteranceClock());
   const avatarFinishedAtRef = useRef<number>(0);
   const lastInterruptedAtRef = useRef<number>(0);
   const isListeningRef = useRef<boolean>(false);
@@ -476,6 +478,7 @@ export function LiveAvatarDemo() {
       setRemoteAudioMutedLocally(false);
       // Speech heard before this line can never cut it off
       interimBufferRef.current.reset();
+      utteranceClockRef.current.reset();
 
       // Serialized with interrupts; skipped if a barge-in happened after it was issued
       const published = await voiceRef.current!.speak(clean);
@@ -771,6 +774,20 @@ export function LiveAvatarDemo() {
 
       const currentSpoken = (interimText || finalTranscript).trim();
       if (!currentSpoken) return;
+
+      // When this utterance started: a result after a 2 s gap begins a new one
+      const speechStartAt = utteranceClockRef.current.result();
+
+      // Max's own voice from the speakers, judged by when the speech started (finals arrive 2-5 s
+      // late): never a barge-in, never customer activity. Live call d4711cfb: "can you hear and see
+      // me" cut Max off mid-line.
+      if (isAvatarSpeakingRef.current || echoTimelineRef.current.maxAudibleAt(speechStartAt)) {
+        const echo = echoCheckRef.current(currentSpoken, speechStartAt);
+        if (echo.echo) {
+          console.warn(`[anti-echo] ignoring ${echo.reason} while Max audible: "${currentSpoken}"`);
+          return;
+        }
+      }
       turnControllerRef.current?.onCustomerActivity();
       if (finalTranscript.trim()) lastSttFinalAtRef.current = Date.now();
 
@@ -815,16 +832,6 @@ export function LiveAvatarDemo() {
         }
         setRemoteAudioMutedLocally(true);
         void interruptAvatar();
-      } else if (isAvatarSpeakingRef.current) {
-        // User speech did not trigger cut-off; check if this is microphone acoustic echo
-        const isEcho = isNearExactEcho(currentSpoken, [
-          lastSpokenByAvatarRef.current,
-          ...recentAvatarTextsRef.current.map((r) => r.text),
-        ]);
-        if (isEcho) {
-          console.warn(`[anti-echo] REJECTED transcript as speaker echo: "${currentSpoken}"`);
-          return;
-        }
       }
 
       setLatestUserTranscript(currentSpoken);
@@ -871,12 +878,18 @@ export function LiveAvatarDemo() {
 
         // 1. Discard Max's own voice from the speakers: a near-exact copy of a recent line, or a run of
         // his last two lines heard while he was audible ("would you like me")
-        const echo = echoCheckRef.current(spoken, Date.now());
+        utteranceClockRef.current.reset();
+        const timing = {
+          speechStartAt: new Date(speechStartAt).toISOString(),
+          finalAt: new Date(lastSttFinalAtRef.current || Date.now()).toISOString(),
+        };
+        const echo = echoCheckRef.current(spoken, speechStartAt);
         if (echo.echo) {
           echoDropsRef.current++;
-          logTurnEvent({ ts: new Date().toISOString(), event: "transcript_dropped", reason: echo.reason, transcript: spoken });
+          logTurnEvent({ ts: new Date().toISOString(), event: "transcript_dropped", reason: echo.reason, transcript: spoken, ...timing });
           return;
         }
+        logTurnEvent({ ts: new Date().toISOString(), event: "transcript_heard", transcript: spoken, ...timing });
 
         // STT sometimes re-delivers the tail of the previous utterance a moment later. Only treat it as
         // a duplicate within 2.5 s: a customer repeating "say something" later is a real new turn.
@@ -918,7 +931,10 @@ export function LiveAvatarDemo() {
     };
 
     // A new speech segment: earlier interim text is no longer what the customer is saying
-    recognizer.onspeechstart = () => interimBufferRef.current.reset();
+    recognizer.onspeechstart = () => {
+      interimBufferRef.current.reset();
+      utteranceClockRef.current.speechStarted();
+    };
 
     recognizer.onerror = (e: any) => {
       if (e.error !== "no-speech" && e.error !== "aborted") {

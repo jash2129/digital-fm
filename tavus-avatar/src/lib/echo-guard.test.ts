@@ -2,7 +2,7 @@
  * Follow-up 10: speaker echo (live call d4711cfb, client on laptop speakers).
  */
 import { describe, it, expect } from "vitest";
-import { normalizeSpeech, isNearExactEcho, isMaxWordRun, checkEcho, EchoTimeline, ECHO_TAIL_MS } from "./echo-guard";
+import { normalizeSpeech, isNearExactEcho, isMaxWordRun, checkEcho, EchoTimeline, ECHO_TAIL_MS, UtteranceClock, UTTERANCE_GAP_MS } from "./echo-guard";
 import { isAvatarScriptEcho } from "./beat-controller";
 
 describe("E1: both sides are normalized before comparing", () => {
@@ -79,5 +79,34 @@ describe("E2: fragments of Max's recent speech are echo", () => {
   it("the run has to be contiguous", () => {
     expect(isMaxWordRun("would like", [CLARIFY])).toBe(false);
     expect(isMaxWordRun("like me to", [CLARIFY])).toBe(true);
+  });
+});
+
+describe("E3: speech is timed by when it started, not when the text arrived", () => {
+  const CLARIFY = "Would you like me to continue, or go over that again?";
+
+  it("a final that arrives 5 s late but began while Max was talking is still echo", () => {
+    const clock = new UtteranceClock();
+    clock.speechStarted(4500); // Max is speaking (1000-5000)
+    const startAt = clock.result(9500); // the final lands 5 s later, after the 3 s tail
+    expect(startAt).toBe(4500);
+    expect(checkEcho("would you like me", { recentMaxLines: [CLARIFY], speechStartAt: startAt, timeline: timeline() }).echo).toBe(true);
+    // Judged by arrival time it would have slipped through
+    expect(checkEcho("would you like me", { recentMaxLines: [CLARIFY], speechStartAt: 9500, timeline: timeline() }).echo).toBe(false);
+  });
+
+  it("without a speech-start event, the first result starts the utterance and later results keep it", () => {
+    const clock = new UtteranceClock();
+    expect(clock.result(1000)).toBe(1000);
+    expect(clock.result(1800)).toBe(1000);
+    expect(clock.result(3500)).toBe(1000);
+  });
+
+  it("a result after a gap, or after reset, starts a new utterance", () => {
+    const clock = new UtteranceClock();
+    clock.result(1000);
+    expect(clock.result(1000 + UTTERANCE_GAP_MS + 1)).toBe(1000 + UTTERANCE_GAP_MS + 1);
+    clock.reset();
+    expect(clock.result(9000)).toBe(9000);
   });
 });
