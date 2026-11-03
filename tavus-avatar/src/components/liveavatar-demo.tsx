@@ -21,6 +21,7 @@ import {
   type RepromptKind,
   type TurnLogEvent,
 } from "@/lib/turn-taking";
+import { isNearExactEcho } from "@/lib/echo-guard";
 
 // Barge-in rules live in turn-taking.ts (unit-tested); re-exported for existing callers
 export { shouldCutMaxOff } from "@/lib/turn-taking";
@@ -93,52 +94,9 @@ type Message = {
   content: string;
 };
 
-// Anti-echo without dropping real questions: rejects only when user transcript is an unambiguous speaker echo
-export function isNearExactEcho(
-  userTranscript: string,
-  recentAvatarSources: string | string[] | Array<{ text: string }>
-): boolean {
-  if (!userTranscript) return false;
-  const userWords = userTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim().split(/\s+/).filter(Boolean);
-  // Real acoustic echo requires multiple words; short human phrases (1-3 words) are NEVER echo
-  if (userWords.length < 4) return false;
-
-  let sources: string[] = [];
-  if (typeof recentAvatarSources === "string") {
-    sources = [recentAvatarSources];
-  } else if (Array.isArray(recentAvatarSources)) {
-    sources = recentAvatarSources.map((s: any) => (typeof s === "string" ? s : s?.text || "")).filter(Boolean);
-  }
-
-  const userClean = userWords.join(" ");
-
-  for (const src of sources) {
-    const avatarWords = src.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim().split(/\s+/).filter(Boolean);
-    if (avatarWords.length === 0) continue;
-
-    const srcClean = avatarWords.join(" ");
-
-    // Exact phrase match: only if at least 5 consecutive words are identical
-    if (userWords.length >= 5 && srcClean.includes(userClean)) {
-      return true;
-    }
-
-    // High word overlap: if >= 80% of user words match avatar words in an utterance of 5+ words
-    if (userWords.length >= 5) {
-      const avatarSet = new Set(avatarWords);
-      let matchCount = 0;
-      for (const uWord of userWords) {
-        if (avatarSet.has(uWord)) matchCount++;
-      }
-      const ratio = matchCount / userWords.length;
-      if (ratio >= 0.8 && matchCount >= 4) {
-        return true;
-      }
-    }
-  }
-
-  return false;
-}
+// Anti-echo: rejects a transcript only when it is an unambiguous copy of Max's own speech.
+// Both sides are normalized first ("all right" = "alright", "ok" = "okay"): see src/lib/echo-guard.ts
+export { isNearExactEcho } from "@/lib/echo-guard";
 
 // Incomplete clause / trailing hesitation detector: prevents cutting callers off mid-thought
 export function isIncompleteUtterance(spoken: string): boolean {

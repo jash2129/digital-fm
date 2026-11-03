@@ -64,6 +64,7 @@ import {
   TECH_ISSUE_LINE,
   MARKUP_OBJECTION_LINE,
 } from "./max-lines";
+import { normalizeSpeech } from "./echo-guard";
 import { answerFromKnowledgeBase, looksLikeQuestion } from "./grounded-answer";
 
 export interface Beat {
@@ -597,7 +598,8 @@ export function onScriptComplete(state: CallState): void {
  * of Max's voice leaking through laptop speakers into the microphone.
  */
 export function isAvatarScriptEcho(transcript: string): boolean {
-  const norm = transcript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
+  // Normalized like Max's own text ("all right" = "alright", "ok" = "okay", numbers as words)
+  const norm = normalizeSpeech(transcript);
   if (!norm) return false;
 
   // Never treat customer questions or natural conversation as acoustic echo
