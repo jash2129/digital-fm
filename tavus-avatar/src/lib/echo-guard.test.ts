@@ -116,3 +116,39 @@ describe("E4: the tester is told after repeated echo", () => {
     expect(ECHO_NOTICE_AFTER).toBe(2);
   });
 });
+
+// Live call d4711cfb (client on laptop speakers), replayed through the filter. The log's timestamps
+// are broken, so timing comes from the turn log: every customer line below began while Max was
+// talking (it was parked as "avatar_speaking" or barged in), so speech starts mid-line.
+describe("Regression: live call d4711cfb through the echo filter", () => {
+  const OPENER = "Awesome, great to connect with you! First of all, congratulations on your new vehicle... How has your experience been with our team so far?";
+  const BEAT1 = "Before I start I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.";
+  const TRANSITION = `Thanks for sharing that. I'm Max, your finance manager, and I'll be handling your paperwork today. Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.`;
+  const CLARIFY = "Would you like me to continue, or go over that again?";
+
+  // [Max's line, what the mic heard while he said it, echo reason or false for the client's own words]
+  const CALL: Array<[string, string, "avatar_echo" | "echo_fragment" | false]> = [
+    ["Can you hear and see me alright?", "can you hear and see me all right", "avatar_echo"],
+    [OPENER, "are you", false], // not a run of Max's last two lines: kept (could be the client)
+    [TRANSITION, "it's been great thanks", false], // the client's real answer
+    [CLARIFY, "would you like me", "echo_fragment"],
+    [CLARIFY, "can we start over", false],
+    [BEAT1, "before I start I just want to let you know", "avatar_echo"],
+    [CLARIFY, "and you see Josh just cutting off it's not good", false], // the client talking to Josh
+    [CLARIFY, "would you like me", "echo_fragment"],
+    [BEAT1, "before", false], // one word: never a fragment
+  ];
+
+  it("drops Max's own voice and keeps everything the client said", () => {
+    const tl = new EchoTimeline();
+    const said: string[] = [];
+    CALL.forEach(([maxLine, heard, expected], i) => {
+      const start = i * 20_000;
+      said.push(maxLine);
+      tl.maxStarted(start);
+      const verdict = checkEcho(heard, { recentMaxLines: said, speechStartAt: start + 1500, timeline: tl });
+      tl.maxStopped(start + 10_000);
+      expect(verdict, heard).toEqual(expected ? { echo: true, reason: expected } : { echo: false });
+    });
+  });
+});
