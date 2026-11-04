@@ -142,6 +142,8 @@ export function LiveAvatarDemo() {
   const [canPlaybackAudio, setCanPlaybackAudio] = useState(true);
   // Shown once Max's voice has come back through the mic ECHO_NOTICE_AFTER times this call
   const [showEchoNotice, setShowEchoNotice] = useState(false);
+  // The ID of the call that just ended, shown so testers can quote it in their feedback
+  const [lastCallId, setLastCallId] = useState<string | null>(null);
   const [isGrokThinking, setIsGrokThinking] = useState(false);
 
   // Verified Avatar Preview URL (Dexter Lawyer - US English) & Remote Tracks
@@ -1234,6 +1236,9 @@ export function LiveAvatarDemo() {
           mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
             ? "audio/webm;codecs=opus"
             : "audio/webm",
+          // Voice is clear at 24 kbps and a call fits the call log webhook (the default rate made an
+          // 84 s call 1 MB, so anything over ~4 min was sent without its recording)
+          audioBitsPerSecond: 24_000,
         });
 
         recorder.ondataavailable = (e) => {
@@ -1496,6 +1501,13 @@ export function LiveAvatarDemo() {
       } catch (logErr) {
         console.error("[heygen-logger] Failed to save transcript:", logErr);
       }
+      // 3. Send the call to the call log sheet. Fire and forget: keepalive lets it finish even if the
+      // tester closes the tab, and a failure never blocks ending the call.
+      void fetch(`/api/call-log/${currentSessionId}`, { method: "POST", keepalive: true })
+        .then((r) => r.json())
+        .then((r) => console.log("[call-log]", r))
+        .catch((e) => console.warn("[call-log] not sent:", e));
+      setLastCallId(currentSessionId);
     }
 
     if (speechRecognitionRef.current) {
@@ -2061,6 +2073,15 @@ export function LiveAvatarDemo() {
                   {error && (
                     <div className="w-full mb-4 rounded-xl border border-rose-500/30 bg-rose-500/15 p-3 text-xs text-rose-200">
                       {error}
+                    </div>
+                  )}
+
+                  {/* After a call: the ID testers put at the top of their feedback */}
+                  {lastCallId && (
+                    <div className="w-full mb-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs text-emerald-100 text-center">
+                      Thanks for testing! Your call ID is{" "}
+                      <span className="font-mono font-bold text-white select-all">{lastCallId.slice(0, 8)}</span>.
+                      Please include it in your feedback.
                     </div>
                   )}
 

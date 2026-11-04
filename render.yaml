@@ -45,3 +45,8 @@ services:
         sync: false
       - key: DEALERSHIP_NAME
         sync: false
+      # Call log sheet (Make.com webhook, docs/MAKE-CALL-LOG.md). Leave unset to not send calls.
+      - key: CALL_LOG_WEBHOOK_URL
+        sync: false
+      - key: CALL_LOG_SECRET
+        sync: false

@@ -1,5 +1,10 @@
 # Call log in Make.com: build steps
 
+**Status:** the app side is built. When a call ends, the app saves the log and recording, then
+`POST /api/call-log/<session id>` sends them to Make from the server (`src/lib/call-log-webhook.ts`),
+so the secret never reaches the browser. With no `CALL_LOG_WEBHOOK_URL` set, nothing is sent. After
+the call, the start screen shows the first 8 characters of the call ID for the tester's feedback.
+
 When a call ends, the Max app sends one webhook to Make with the call's numbers, its transcript,
 the recording and the full log. The Make scenario saves the recording and the log to Google Drive
 and adds one row to your Google Sheet with links to both.
@@ -18,8 +23,9 @@ Use one or the other, not both.)
 
 - **The sheet:** a Google Sheet with a tab named `Calls` and the headers pasted in row 1.
 - **A Drive folder** named `Max Call Logs`.
-- **A secret:** any long random text, for example 32 letters and numbers from a password generator.
-  It stops anyone else who finds the webhook address from writing to your sheet. Keep it private.
+- **A secret:** the `CALL_LOG_SECRET` value in `tavus-avatar/.env.local` (already generated). It
+  stops anyone else who finds the webhook address from writing to your sheet. Keep it private, and
+  use the same value in the Make filter (step 2).
 
 ## 1. Webhook (the trigger)
 
@@ -132,8 +138,8 @@ Click **+** after the Sheets module and pick **Webhooks → Webhook response**. 
 ## Limits to know
 
 - **Free plan:** 1,000 operations a month (about 200 calls) and a maximum file size per upload.
-  Short calls are well within it. If a long call's recording is too big, that one upload is skipped
-  (the Ignore handler) and the row is still added.
+  The app records at 24 kbps and attaches recordings up to 3 MB (about 17 minutes); a longer call is
+  sent without its recording, and the row is still added.
 - **One row per call:** the app sends each call once, when it ends. If it ever sends the same call
   twice, you get two rows; delete the extra one.
 - **Keep the scenario ON** during testing. If it is off or errors, check the scenario's **History**

@@ -24,6 +24,8 @@ call. Moving that state to a shared store (Redis) is a separate project.
    | `GROK_MODEL` | `.env.local` |
    | `OPENAI_API_KEY` | `.env.local` |
    | `DEALERSHIP_NAME` | Optional. The dealership name shown in the header. Leave blank for a generic label. |
+   | `CALL_LOG_WEBHOOK_URL` | `.env.local`. Sends every finished call to the call log sheet (`docs/MAKE-CALL-LOG.md`). |
+   | `CALL_LOG_SECRET` | `.env.local`. Must match the secret in the Make scenario's filter. |
 
 4. Click **Apply**. The first build takes a few minutes. When it is live, open the
    `https://max-finance-manager-xxxx.onrender.com` URL Render shows and sign in with
