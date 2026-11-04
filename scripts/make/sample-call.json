@@ -1,0 +1,21 @@
+{
+  "secret": "PASTE-YOUR-SECRET-HERE",
+  "callId": "SAMPLE-0001",
+  "startTime": "2026-11-04T10:15:00.000Z",
+  "durationSec": 84,
+  "environment": "local",
+  "endedHow": "customer left the call",
+  "furthestBeat": 1,
+  "finalPrice": "",
+  "customerTurns": 7,
+  "avgReplyMs": 3700,
+  "slowestReplyMs": 6624,
+  "interruptions": 3,
+  "echoDrops": 2,
+  "unknownReplies": 0,
+  "transcriptText": "Max: Can you hear and see me alright?\nCustomer: Yes I can.\nMax: Awesome, great to connect with you! First of all, congratulations on your new vehicle... How has your experience been with our team so far?\nCustomer: It's been great, thanks.",
+  "inspectorUrl": "http://localhost:3000/inspector?session=SAMPLE-0001",
+  "recordingBase64": "U0FNUExFIC0gbm90IHJlYWwgYXVkaW8=",
+  "recordingMimeType": "audio/webm",
+  "logJson": "{\"sessionId\":\"SAMPLE-0001\",\"note\":\"sample log, safe to delete\"}"
+}
