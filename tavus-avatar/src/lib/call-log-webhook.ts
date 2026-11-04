@@ -3,6 +3,7 @@ import "server-only";
 import { activeStates, type CallState } from "./beat-controller";
 import { getHeygenAudio, getHeygenTranscript, type HeygenCallLog } from "./heygen-logger";
 import { UNKNOWN_QUESTION_LINE } from "./max-lines";
+import { analyzeFinishedCall, type PostCallAnalysis } from "./post-call-analysis";
 
 // Sends each finished call to the call log sheet (a Make.com webhook, see docs/MAKE-CALL-LOG.md).
 // Needs CALL_LOG_WEBHOOK_URL; CALL_LOG_SECRET is checked by the scenario's filter. With no URL set
@@ -21,7 +22,18 @@ const SEND_TIMEOUT_MS = 20_000;
 const globalForCallLog = globalThis as unknown as { sentCallLogs?: Set<string> };
 const sent = (globalForCallLog.sentCallLogs ??= new Set<string>());
 
-export interface CallLogPayload {
+const NO_ANALYSIS: PostCallAnalysis = {
+  aiScore: "",
+  aiVerdict: "",
+  callSummary: "",
+  customerSentiment: "",
+  problemsFound: "",
+  wentWell: "",
+  suggestedFixes: "",
+  complianceCheck: "",
+};
+
+export interface CallLogPayload extends PostCallAnalysis {
   secret: string;
   callId: string;
   startTime: string;
@@ -44,7 +56,7 @@ export interface CallLogPayload {
 }
 
 function howItEnded(state: CallState | undefined): string {
-  if (!state) return "not recorded (server restarted during the call)";
+  if (!state) return "unknown (call state no longer in server memory)";
   if (state.is_stopped && state.current_beat >= 25) return "script complete";
   if (state.is_stopped) return "ended by Max (goodbye or recording objection)";
   return "customer ended the call";
@@ -53,7 +65,14 @@ function howItEnded(state: CallState | undefined): string {
 /** The sheet row for one call: its numbers, transcript, links and attachments. Pure, for tests. */
 export function buildCallLogPayload(
   log: HeygenCallLog,
-  opts: { secret: string; origin: string; environment: string; state?: CallState; recording?: Buffer | null }
+  opts: {
+    secret: string;
+    origin: string;
+    environment: string;
+    state?: CallState;
+    recording?: Buffer | null;
+    analysis?: PostCallAnalysis;
+  }
 ): CallLogPayload {
   const transcript = log.transcript ?? [];
   const latencies = (log.timingLogs ?? [])
@@ -94,6 +113,7 @@ export function buildCallLogPayload(
     recordingBase64: recording ? recording.toString("base64") : "",
     recordingMimeType: "audio/webm",
     logJson,
+    ...(opts.analysis ?? NO_ANALYSIS),
   };
 }
 
@@ -107,15 +127,25 @@ export async function sendCallLog(sessionId: string, origin: string): Promise<Se
   const log = getHeygenTranscript(sessionId);
   if (!log) return { sent: false, reason: "no saved log for this call" };
 
-  const payload = buildCallLogPayload(log, {
+  const base = {
     secret: process.env.CALL_LOG_SECRET?.trim() ?? "",
     origin,
     environment: process.env.RENDER ? "render" : process.env.NODE_ENV === "production" ? "production" : "local",
     state: activeStates.get(sessionId),
     recording: getHeygenAudio(sessionId),
-  });
+  };
+  sent.add(sessionId); // claimed before the slow AI review, so a second "end" cannot race it
 
-  sent.add(sessionId);
+  // Post-call analysis: the facts the reviewer gets are the measured ones, so it does not guess them
+  const draft = buildCallLogPayload(log, base);
+  const facts = [
+    `Duration: ${draft.durationSec}s, ended: ${draft.endedHow}, furthest script beat: ${draft.furthestBeat || "unknown"} of 25`,
+    `Average reply time: ${draft.avgReplyMs || "?"} ms, slowest: ${draft.slowestReplyMs || "?"} ms`,
+    `Max was interrupted ${draft.interruptions} times; ${draft.echoDrops} transcripts were dropped as Max's own voice (speaker echo)`,
+  ].join("\n");
+  const analysis = await analyzeFinishedCall(log, base.state, draft.transcriptText, facts);
+  const payload = { ...draft, ...analysis };
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), SEND_TIMEOUT_MS);
   try {

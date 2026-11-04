@@ -17,5 +17,13 @@
   "inspectorUrl": "http://localhost:3000/inspector?session=SAMPLE-0001",
   "recordingBase64": "U0FNUExFIC0gbm90IHJlYWwgYXVkaW8=",
   "recordingMimeType": "audio/webm",
-  "logJson": "{\"sessionId\":\"SAMPLE-0001\",\"note\":\"sample log, safe to delete\"}"
+  "logJson": "{\"sessionId\":\"SAMPLE-0001\",\"note\":\"sample log, safe to delete\"}",
+  "aiScore": 3,
+  "aiVerdict": "Poor: High friction detected: 2 speaker-to-mic echo loops and 3 mid-sentence cutoffs made Max feel erratic and robotic.",
+  "callSummary": "SAMPLE: Max got stuck repeating the recording disclosure after the customer asked to start over. The call ended at the disclosure.",
+  "customerSentiment": "Frustrated: kept getting cut off and repeated to",
+  "problemsFound": "• SAMPLE problem one\n• Timing: [00:04] Cut 1 of 3 (critical)",
+  "wentWell": "• SAMPLE: friendly greeting",
+  "suggestedFixes": "• SAMPLE: acknowledge 'start over' instead of repeating the disclosure",
+  "complianceCheck": "Disclosure given: PASS | Price never under $3/day: not reached | No human handoff promised: PASS"
 }

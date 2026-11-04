@@ -90,8 +90,8 @@ Module: **Google Sheets → Add a Row**.
 | Sheet Name | `Calls` |
 | Table contains headers | Yes |
 
-The columns then appear by header name. Map the first 17 and **leave the rest empty** (they are for
-testers and reviewers):
+The columns then appear by header name. Map the 25 automatic columns below and **leave the rest
+empty** (they are for testers and reviewers):
 
 | Column | Value |
 |---|---|
@@ -112,6 +112,20 @@ testers and reviewers):
 | Recording Link | **Web View Link** from module 2 (Drive: recording) |
 | Full Log Link | **Web View Link** from module 3 (Drive: log) |
 | Inspector Link | `{{1.inspectorUrl}}` |
+| AI Score (1-10) | `{{1.aiScore}}` |
+| AI Verdict | `{{1.aiVerdict}}` |
+| AI Call Summary | `{{1.callSummary}}` |
+| AI Customer Sentiment | `{{1.customerSentiment}}` |
+| AI Problems Found | `{{1.problemsFound}}` |
+| AI What Went Well | `{{1.wentWell}}` |
+| AI Suggested Fixes | `{{1.suggestedFixes}}` |
+| Compliance Check | `{{1.complianceCheck}}` |
+
+The eight analysis columns come from `src/lib/post-call-analysis.ts`: the Inspector's turn-taking
+analyzer (verdict and timestamped problems), compliance checks in code (disclosure, $3 floor, no
+handoff promise), and one AI review of the transcript using the app's xAI / OpenAI key (summary,
+sentiment, score, problems, what went well, fixes; roughly a tenth of a cent per call). If the AI
+review fails, its columns are blank and the rest of the row is still filled.
 
 `Date & Time` uses the scenario's time zone. To set it, open the scenario's **⋯ → Settings**.
 
