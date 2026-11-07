@@ -16,9 +16,9 @@ const nextConfig: NextConfig = {
   // monorepo-root inference, which intermittently causes it to resolve
   // dependencies (e.g. tailwindcss) from the wrong directory and crash.
   // Pinning the root here to this project's own directory fixes it.
-  turbopack: {
-    root: fileURLToPath(new URL(".", import.meta.url)),
-  },
+  // Not on Vercel: it sets outputFileTracingRoot to the repo root itself, and the two must match
+  // (a mismatch is a build warning, and Next uses Vercel's value anyway).
+  ...(process.env.VERCEL ? {} : { turbopack: { root: fileURLToPath(new URL(".", import.meta.url)) } }),
   // Forwarded into both server and client bundles so event-scoped modules
   // (content-items.ts, persona-tools.ts) can branch on the active event
   // without needing a separate NEXT_PUBLIC_ variable.

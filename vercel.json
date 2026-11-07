@@ -4,7 +4,7 @@
     "max-finance-manager": {
       "root": "tavus-avatar",
       "framework": "nextjs",
-      "buildCommand": "npm ci && npm run build"
+      "buildCommand": "npm run build"
     }
   },
   "rewrites": [
