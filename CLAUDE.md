@@ -12,7 +12,7 @@ Next.js app (`tavus-avatar/`) for an AWS Summit Sydney booth demo. Real-time con
 - `tavus-avatar/src/lib/active-conversations.ts` / `visitor.ts` - per-visitor conversation tracking + anonymous session cookie (see "Production hardening" below)
 - `tavus-avatar/src/lib/deal-context.ts` - short-lived external deal-data intake
 - `tavus-avatar/src/lib/conversation-usage.ts` - conversation start/end cost-visibility logging
-- `tavus-avatar/src/middleware.ts` - `DEMO_API_TOKEN` auth gate on `/api/*`
+- `tavus-avatar/src/proxy.ts` - `DEMO_API_TOKEN` auth gate on `/api/*` (Next.js 16 "proxy", formerly `middleware.ts`; runs on Node.js, which Vercel's services mode requires)
 - `tavus-avatar/src/types/tavus.ts` - TypeScript types for Tavus conversation messages
 - `tavus-avatar/src/components/tavus-demo.tsx` - Main demo component with Daily.js integration
 - `tavus-avatar/src/app/api/conversation/route.ts` - POST to create conversation
@@ -28,7 +28,7 @@ Next.js app (`tavus-avatar/`) for an AWS Summit Sydney booth demo. Real-time con
 - `TAVUS_PERSONA_ID` - Default persona ID. **For Pipecat integrations, always use `pipecat-stream`** — this is a special Tavus persona (pipeline_mode: echo) that disables Tavus's own greeting and LLM, letting Pipecat handle all AI orchestration. It will NOT appear in `GET /v2/personas` list but is valid and available on all accounts.
 - `EVENT_CONFIG` - Directory name under `prompts/` (default `aws-summit-mumbai-2026`). Selects the system prompt (`prompts/<event>/system-instruction.md`) and greeting (`prompts/<event>/greeting.md`, falls back to the AWS Summit Sydney greeting if absent). Forwarded into the client bundle via `next.config.ts`'s `env` field, so `src/lib/content-items.ts` and `src/lib/persona-tools.ts` can also branch on it (see `src/lib/event.ts`).
 - `OPENAI_API_KEY` - only used by `scripts/create-finance-persona.ps1 -UseOpenAI` to point the finance persona's LLM layer at OpenAI directly instead of Tavus's built-in model. Not read by the running app itself.
-- `DEMO_API_TOKEN` - gates every `/api/*` route (except `/api/auth`) behind a shared login token, checked in `src/middleware.ts`. Unset → auth is skipped in dev, but **fails closed with 503** if `NODE_ENV=production` and it's still unset — a missing token in production means the deployment is misconfigured, not that auth should be silently disabled. Required for any deployment reachable outside your own machine.
+- `DEMO_API_TOKEN` - gates every `/api/*` route (except `/api/auth`) behind a shared login token, checked in `src/proxy.ts`. Unset → auth is skipped in dev, but **fails closed with 503** if `NODE_ENV=production` and it's still unset — a missing token in production means the deployment is misconfigured, not that auth should be silently disabled. Required for any deployment reachable outside your own machine.
 
 ## Digital Finance Manager event (`EVENT_CONFIG=digital-finance-manager`)
 A second persona alongside the AWS booth demo: an F&I finance-manager voice agent built from a
