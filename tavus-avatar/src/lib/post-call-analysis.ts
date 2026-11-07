@@ -52,9 +52,15 @@ export function complianceChecks(log: HeygenCallLog, state?: CallState): string 
   return `Disclosure given: ${disclosure} | Price never under $3/day: ${priceFloor} | No human handoff promised: ${handoff}`;
 }
 
-/** The analyzer's timestamped problems, worst first, as sheet lines. */
+/** The analyzer's timestamped problems, worst first, as sheet lines. Never throws: odd logs get a note. */
 function timingProblems(log: HeygenCallLog): { verdict: string; rating: string; lines: string[] } {
-  const a = analyzeCallExperience(log);
+  let a: ReturnType<typeof analyzeCallExperience>;
+  try {
+    a = analyzeCallExperience(log);
+  } catch (err) {
+    console.warn("[post-call-analysis] turn-taking analysis failed:", err);
+    return { rating: "Unknown", verdict: "turn-taking analysis unavailable for this call", lines: [] };
+  }
   const order = { critical: 0, warning: 1, minor: 2 } as const;
   const lines = [...a.experienceFlaws]
     .sort((x, y) => order[x.severity] - order[y.severity] || x.second - y.second)

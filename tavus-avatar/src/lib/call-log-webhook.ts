@@ -119,12 +119,19 @@ export function buildCallLogPayload(
 
 export type SendResult = { sent: true; status: number } | { sent: false; reason: string };
 
-/** Reads the saved log and recording for a finished call and posts them to the call log webhook. */
-export async function sendCallLog(sessionId: string, origin: string): Promise<SendResult> {
+/**
+ * Posts a finished call to the call log webhook. The app sends the log and recording with the
+ * request (serverless hosts have no lasting disk); without them they are read from the saved files.
+ */
+export async function sendCallLog(
+  sessionId: string,
+  origin: string,
+  provided: { log?: HeygenCallLog | null; recording?: Buffer | null } = {}
+): Promise<SendResult> {
   const url = process.env.CALL_LOG_WEBHOOK_URL?.trim();
   if (!url) return { sent: false, reason: "CALL_LOG_WEBHOOK_URL not set" };
   if (sent.has(sessionId)) return { sent: false, reason: "already sent" };
-  const log = getHeygenTranscript(sessionId);
+  const log = provided.log ?? getHeygenTranscript(sessionId);
   if (!log) return { sent: false, reason: "no saved log for this call" };
 
   const base = {
@@ -132,7 +139,7 @@ export async function sendCallLog(sessionId: string, origin: string): Promise<Se
     origin,
     environment: process.env.RENDER ? "render" : process.env.NODE_ENV === "production" ? "production" : "local",
     state: activeStates.get(sessionId),
-    recording: getHeygenAudio(sessionId),
+    recording: provided.recording ?? getHeygenAudio(sessionId),
   };
   sent.add(sessionId); // claimed before the slow AI review, so a second "end" cannot race it
 

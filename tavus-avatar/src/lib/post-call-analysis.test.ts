@@ -122,3 +122,12 @@ describe("calling the reviewer", () => {
     expect((await judgeCall("Max: hi", "facts"))?.score).toBe(6);
   });
 });
+
+describe("a log the turn-taking analyzer cannot read", () => {
+  it("still produces a row instead of failing the whole send", () => {
+    const odd = { ...log(["hi"]), timingLogs: [{ stageMs: { total: 3000 } }] } as unknown as HeygenCallLog;
+    const a = combineAnalysis(odd, undefined, null);
+    expect(a.aiVerdict).toBe("Unknown: turn-taking analysis unavailable for this call");
+    expect(a.complianceCheck).toContain("Disclosure given:");
+  });
+});

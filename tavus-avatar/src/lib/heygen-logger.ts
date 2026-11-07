@@ -100,7 +100,9 @@ export type HeygenCallLog = {
 };
 
 export function getHeygenLogsDir() {
-  const logsDir = resolve(process.cwd(), "logs-heygen");
+  // Vercel's app folder is read-only; /tmp is writable but private to one instance and temporary,
+  // so there the call log sheet (src/lib/call-log-webhook.ts) is the lasting copy
+  const logsDir = process.env.VERCEL ? "/tmp/logs-heygen" : resolve(process.cwd(), "logs-heygen");
   if (!existsSync(logsDir)) {
     mkdirSync(logsDir, { recursive: true });
   }

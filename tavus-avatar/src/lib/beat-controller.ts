@@ -264,7 +264,7 @@ if (process.env.NODE_ENV !== "production") {
 // TWO-PHASE TURNS (live calls): a turn's state change only counts once the client confirms Max's
 // reply was delivered. Until then the pre-turn state is kept so it can be rolled back.
 // -----------------------------------------------------------------------------
-interface PendingCommit {
+export interface PendingCommit {
   turnId: number;
   before: CallState;
   after: CallState;
@@ -272,7 +272,7 @@ interface PendingCommit {
   toolCalls: ControllerDecision["toolCalls"];
 }
 const globalForCommits = globalThis as unknown as { pendingCommits?: Map<string, PendingCommit> };
-const pendingCommits = globalForCommits.pendingCommits ?? new Map<string, PendingCommit>();
+export const pendingCommits = globalForCommits.pendingCommits ?? new Map<string, PendingCommit>();
 if (process.env.NODE_ENV !== "production") globalForCommits.pendingCommits = pendingCommits;
 
 // Max must have said this much of a reply for it to count as heard

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { saveHeygenAudio, getHeygenAudio } from "@/lib/heygen-logger";
 
+// Saving the recording and transcribing it can take a while; Vercel's free plan allows up to 60 s
+export const maxDuration = 60;
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ sessionId: string }> }

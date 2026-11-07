@@ -95,4 +95,24 @@ describe("sending", () => {
     expect(await sendCallLog("anything", "http://x")).toEqual({ sent: false, reason: "CALL_LOG_WEBHOOK_URL not set" });
     expect(fetchSpy).not.toHaveBeenCalled();
   });
+
+  it("uses the log and recording the app sent, so no files are needed (serverless hosts)", async () => {
+    vi.stubEnv("CALL_LOG_WEBHOOK_URL", "https://hook.example/x");
+    vi.stubEnv("XAI_API_KEY", "");
+    vi.stubEnv("OPENAI_API_KEY", "");
+    let sentBody: Record<string, unknown> = {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init: { body: string }) => {
+        sentBody = JSON.parse(init.body);
+        return { ok: true, status: 200 };
+      })
+    );
+    const id = `provided_${Math.random()}`;
+    const result = await sendCallLog(id, "https://max.vercel.app", { log: { ...LOG, sessionId: id }, recording: Buffer.from("rec") });
+    expect(result).toEqual({ sent: true, status: 200 });
+    expect(sentBody.callId).toBe(id);
+    expect(Buffer.from(String(sentBody.recordingBase64), "base64").toString()).toBe("rec");
+    expect(sentBody.inspectorUrl).toBe(`https://max.vercel.app/inspector?session=${encodeURIComponent(id)}`);
+  });
 });

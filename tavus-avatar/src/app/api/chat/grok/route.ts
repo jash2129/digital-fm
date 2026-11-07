@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { processClientTurn, commitTurn, repromptText } from "@/lib/beat-controller";
 import { DEFAULT_DEAL_CONFIG } from "@/lib/deal-config";
+import { loadSession, saveSession } from "@/lib/session-store";
 
 export async function POST(request: Request) {
   // Server-clock stage timing; the client measures network and HeyGen on its own clock
@@ -14,16 +15,23 @@ export async function POST(request: Request) {
     }
     const { messages = [], sessionId = "live_session", dealConfig = DEFAULT_DEAL_CONFIG, clientBeatId, turnId = 0 } = body;
 
+    // Serverless hosts: this call's state comes from the shared store and goes back after the turn
+    // (a no-op on one long-running server, see session-store.ts)
+    await loadSession(sessionId);
+
     // Two-phase turns: the client reports whether Max's reply for turnId was actually heard
     if (body.action === "commit") {
       const result = commitTurn(sessionId, Number(body.turnId), Boolean(body.delivered), Number(body.spokenFraction) || 0);
+      await saveSession(sessionId);
       return NextResponse.json(result);
     }
 
     // Dead-man switch / silence watchdog: something to say when the line has gone quiet
     if (body.action === "reprompt") {
       const kind = ["resume", "still_with_me", "clarify"].includes(body.kind) ? body.kind : "resume";
-      return NextResponse.json({ text: repromptText(sessionId, kind), kind });
+      const text = repromptText(sessionId, kind);
+      await saveSession(sessionId);
+      return NextResponse.json({ text, kind });
     }
 
     const latestUserMessage =
@@ -33,6 +41,7 @@ export async function POST(request: Request) {
 
     // Execute verbatim Beat Controller (LLM only classifies intent, words come strictly from script & max-lines)
     const decision = await processClientTurn(sessionId, latestUserMessage, Number(turnId), dealConfig);
+    await saveSession(sessionId);
 
     console.log(
       `[api/chat/grok] Decision -> Beat ${decision.beatId} (${decision.beatType}), Intent: ${decision.intent}`

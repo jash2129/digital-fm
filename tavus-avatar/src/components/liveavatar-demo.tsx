@@ -198,6 +198,8 @@ export function LiveAvatarDemo() {
   const [callFinished, setCallFinished] = useState(false);
   const [savedAudioUrl, setSavedAudioUrl] = useState<string | null>(null);
   const startTimeRef = useRef<string | null>(null);
+  // The finished call's recording, sent with the call log (serverless hosts keep no files)
+  const lastRecordingRef = useRef<Blob | null>(null);
   const audioRecorderRef = useRef<{
     stopAndUpload: (id: string) => Promise<string | null>;
   } | null>(null);
@@ -1253,6 +1255,7 @@ export function LiveAvatarDemo() {
                 recorder.onstop = async () => {
                   audioCtx.close().catch(() => {});
                   const blob = new Blob(audioChunks, { type: "audio/webm" });
+                  lastRecordingRef.current = blob.size > 0 ? blob : null;
                   if (blob.size > 0) {
                     try {
                       await fetch(`/api/heygen/logs/${sid}/audio`, {
@@ -1474,36 +1477,46 @@ export function LiveAvatarDemo() {
         conversationHistoryRef.current.length > 0
           ? conversationHistoryRef.current
           : messagesRef.current;
+      const callLog = {
+        engine: "heygen-grok",
+        avatarId: "heygen-liveavatar",
+        avatarName,
+        startTime: start,
+        endTime: now,
+        durationSeconds,
+        status: "completed",
+        productsCovered: shownProductsRef.current,
+        finalDailyRate: dailyRateRef.current,
+        transcript: allMessages.map((m) => ({
+          role: m.role,
+          text: m.content,
+          timestamp: new Date().toISOString(),
+        })),
+        timingLogs: timingLogsRef.current,
+        bargeIns: bargeInsRef.current,
+        turnLogs: turnLogsRef.current,
+      };
       try {
         await fetch(`/api/heygen/logs/${currentSessionId}`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            avatarId: "heygen-liveavatar",
-            avatarName,
-            startTime: start,
-            endTime: now,
-            durationSeconds,
-            status: "completed",
-            productsCovered: shownProductsRef.current,
-            finalDailyRate: dailyRateRef.current,
-            transcript: allMessages.map((m) => ({
-              role: m.role,
-              text: m.content,
-              timestamp: new Date().toISOString(),
-            })),
-            timingLogs: timingLogsRef.current,
-            bargeIns: bargeInsRef.current,
-            turnLogs: turnLogsRef.current,
-          }),
+          body: JSON.stringify(callLog),
         });
         console.log(`[heygen-logger] Transcript saved to logs-heygen/${currentSessionId}.json (${allMessages.length} entries)`);
       } catch (logErr) {
         console.error("[heygen-logger] Failed to save transcript:", logErr);
       }
-      // 3. Send the call to the call log sheet. Fire and forget: keepalive lets it finish even if the
-      // tester closes the tab, and a failure never blocks ending the call.
-      void fetch(`/api/call-log/${currentSessionId}`, { method: "POST", keepalive: true })
+      // 3. Send the call to the call log sheet, with the log and recording in the request (serverless
+      // hosts have no lasting disk to read them from). Not keepalive: browsers cap those at 64 KB.
+      // Fire and forget: a failure never blocks ending the call.
+      const form = new FormData();
+      form.append("log", JSON.stringify(callLog));
+      // Vercel caps a request at 4.5 MB; the server only attaches recordings up to 3 MB anyway
+      if (lastRecordingRef.current && lastRecordingRef.current.size <= 3.5 * 1024 * 1024) {
+        form.append("recording", lastRecordingRef.current, `${currentSessionId}.webm`);
+      }
+      lastRecordingRef.current = null;
+      void fetch(`/api/call-log/${currentSessionId}`, { method: "POST", body: form })
         .then((r) => r.json())
         .then((r) => console.log("[call-log]", r))
         .catch((e) => console.warn("[call-log] not sent:", e));
@@ -2081,7 +2094,8 @@ export function LiveAvatarDemo() {
                     <div className="w-full mb-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3.5 py-2.5 text-xs text-emerald-100 text-center">
                       Thanks for testing! Your call ID is{" "}
                       <span className="font-mono font-bold text-white select-all">{lastCallId.slice(0, 8)}</span>.
-                      Please include it in your feedback.
+                      Please include it in your feedback, and keep this page open for a few seconds
+                      while your call is saved.
                     </div>
                   )}
 
