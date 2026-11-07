@@ -1,0 +1,16 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "services": {
+    "max-finance-manager": {
+      "root": "tavus-avatar",
+      "framework": "nextjs",
+      "buildCommand": "npm ci && npm run build"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": { "service": "max-finance-manager" }
+    }
+  ]
+}

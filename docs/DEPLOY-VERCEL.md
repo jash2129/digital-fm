@@ -19,7 +19,10 @@ On your own PC nothing changes: with no Upstash settings, everything stays in me
 
 1. Sign in at https://vercel.com with your GitHub account.
 2. **Add New → Project**, find this repository, click **Import**.
-3. **Root Directory:** click **Edit** and choose `tavus-avatar`. Framework Preset shows **Next.js**.
+3. **Root Directory:** leave it at the repository root (`./`). The `vercel.json` there tells Vercel to
+   build one service, `max-finance-manager` (the `tavus-avatar/` app, Next.js), and to send every
+   path to it. The Pipecat demo in `tavus-pipecat-example/` is not deployed: Max runs on HeyGen
+   LiveAvatar and does not use it.
 4. Open **Environment Variables** and add these (copy values from `tavus-avatar/.env.local`):
 
    | Name | Value |
