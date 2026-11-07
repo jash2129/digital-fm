@@ -1760,13 +1760,13 @@ export function LiveAvatarDemo() {
   }
 
   return (
-    <div className="relative h-screen w-full bg-slate-950 font-sans text-slate-100 overflow-hidden flex flex-col select-none">
+    <div className="relative h-dvh w-full bg-slate-950 font-sans text-slate-100 overflow-hidden flex flex-col select-none">
       {/* Permanent, Always-Mounted Audio Element for LiveKit Remote Audio Track */}
       <audio ref={audioRef} autoPlay playsInline className="hidden" />
 
       {/* Speaker echo notice: Max's voice keeps coming back through the tester's mic */}
       {isConnected && showEchoNotice && (
-        <div className="absolute top-28 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 rounded-full border border-amber-400/40 bg-amber-500/15 px-4 py-2 text-xs text-amber-100 shadow-2xl">
+        <div className="absolute top-28 left-1/2 -translate-x-1/2 z-50 flex w-max max-w-[92vw] items-center gap-2 rounded-2xl sm:rounded-full border border-amber-400/40 bg-amber-500/15 px-4 py-2 text-xs text-amber-100 shadow-2xl">
           <span className="select-none">🎧</span>
           <span>Max can hear himself through your speakers. Headphones will help.</span>
           <button
@@ -1782,7 +1782,7 @@ export function LiveAvatarDemo() {
 
       {/* Browser Autoplay Blocked Banner */}
       {isConnected && !canPlaybackAudio && (
-        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50">
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 w-max max-w-[92vw]">
           <button
             type="button"
             onClick={async () => {
@@ -1810,20 +1810,21 @@ export function LiveAvatarDemo() {
       <header
         className={`${
           isConnected ? "absolute top-0 inset-x-0 z-30 bg-slate-950/60" : "relative z-30 bg-slate-950/75 shrink-0"
-        } flex items-center justify-between border-b border-white/10 px-5 py-2.5 backdrop-blur-xl`}
+        } flex items-center justify-between gap-2 border-b border-white/10 px-3 py-2 sm:px-5 sm:py-2.5 backdrop-blur-xl`}
       >
-        <div className="flex items-center gap-3">
-          <div className="flex size-9 items-center justify-center rounded-xl border border-sky-400/40 bg-gradient-to-br from-sky-500/20 to-indigo-600/30 text-sky-300 font-black shadow-[0_0_15px_rgba(56,189,248,0.25)]">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+          <div className="flex size-8 sm:size-9 shrink-0 items-center justify-center rounded-xl border border-sky-400/40 bg-gradient-to-br from-sky-500/20 to-indigo-600/30 text-sky-300 font-black shadow-[0_0_15px_rgba(56,189,248,0.25)]">
             N
           </div>
-          <div>
+          {/* In a call on a phone, the logo alone: the controls need the width */}
+          <div className={isConnected ? "hidden sm:block min-w-0" : "min-w-0"}>
             <div className="flex items-center gap-2">
-              <h1 className="text-sm font-bold tracking-tight text-white">Novus Digital Finance Suite</h1>
-              <span className="rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-sky-300">
+              <h1 className="truncate text-sm font-bold tracking-tight text-white">Novus Digital Finance Suite</h1>
+              <span className="hidden sm:inline rounded-full border border-sky-400/30 bg-sky-500/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-sky-300">
                 LiveAvatar Ultra-HD
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
+            <p className="hidden sm:flex text-[11px] text-slate-400 items-center gap-1.5">
               <span>{avatarName}</span>
               <span className="size-1 rounded-full bg-slate-600" />
               <span className="text-emerald-400 font-medium">xAI Grok (~150ms TTFT)</span>
@@ -1832,9 +1833,9 @@ export function LiveAvatarDemo() {
         </div>
 
         {isConnected && (
-          <div className="flex items-center gap-2.5">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2.5">
             {/* Live Call Duration Stopwatch */}
-            <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/80 px-3 py-1 text-xs font-mono text-slate-200 backdrop-blur-md shadow-inner">
+            <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-slate-900/80 px-2.5 sm:px-3 py-1 text-xs font-mono text-slate-200 backdrop-blur-md shadow-inner">
               <span className="size-2 rounded-full bg-rose-500 animate-pulse" />
               <span className="font-semibold">{formatDuration(callDuration)}</span>
             </div>
@@ -1850,7 +1851,7 @@ export function LiveAvatarDemo() {
             <button
               onClick={() => setShowCaptions((prev) => !prev)}
               type="button"
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition ${
+              className={`flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1.5 text-xs font-bold transition ${
                 showCaptions
                   ? "border border-sky-400/40 bg-sky-500/20 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.25)]"
                   : "border border-white/15 bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200"
@@ -1858,14 +1859,14 @@ export function LiveAvatarDemo() {
               title="Toggle Subtitles / Closed Captions (Shortcut: C)"
             >
               <span>CC</span>
-              <span className="text-[10px] uppercase font-mono">{showCaptions ? "ON" : "OFF"}</span>
+              <span className="hidden sm:inline text-[10px] uppercase font-mono">{showCaptions ? "ON" : "OFF"}</span>
             </button>
 
             {/* Camera Quick Toggle */}
             <button
               onClick={handleToggleCamera}
               type="button"
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+              className={`flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
                 isCameraOff
                   ? "border border-rose-500/40 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30"
                   : "border border-white/20 bg-white/5 text-slate-200 hover:bg-white/10"
@@ -1873,6 +1874,7 @@ export function LiveAvatarDemo() {
               title="Toggle Camera (Shortcut: V)"
             >
               <span className={`size-2 rounded-full ${isCameraOff ? "bg-rose-400" : "bg-emerald-400"}`} />
+              <span className="sm:hidden" aria-hidden="true">📷</span>
               <span className="hidden sm:inline">{isCameraOff ? "Cam Off" : "Cam On"}</span>
             </button>
 
@@ -1880,7 +1882,7 @@ export function LiveAvatarDemo() {
             <button
               onClick={handleToggleMic}
               type="button"
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
+              className={`flex items-center gap-1.5 rounded-full px-2.5 sm:px-3 py-1.5 text-xs font-semibold uppercase tracking-wider transition ${
                 isMicMuted
                   ? "border border-rose-500/40 bg-rose-500/20 text-rose-300 hover:bg-rose-500/30"
                   : "border border-emerald-500/40 bg-emerald-500/20 text-emerald-300 hover:bg-emerald-500/30"
@@ -1888,6 +1890,7 @@ export function LiveAvatarDemo() {
               title="Toggle Microphone (Shortcut: Space or M)"
             >
               <span className={`size-2 rounded-full ${isMicMuted ? "bg-rose-400" : "bg-emerald-400 animate-pulse"}`} />
+              <span className="sm:hidden" aria-hidden="true">🎙️</span>
               <span className="hidden sm:inline">{isMicMuted ? "Muted" : "Mic Live"}</span>
             </button>
 
@@ -1907,11 +1910,12 @@ export function LiveAvatarDemo() {
             <button
               onClick={handleEnd}
               type="button"
-              className="flex items-center gap-1.5 rounded-full border border-rose-500 bg-rose-600 px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(225,29,72,0.4)] transition hover:bg-rose-500 hover:scale-105 active:scale-95"
+              className="flex items-center gap-1.5 rounded-full border border-rose-500 bg-rose-600 px-3 sm:px-3.5 py-1.5 text-xs font-bold uppercase tracking-wider text-white shadow-[0_0_20px_rgba(225,29,72,0.4)] transition hover:bg-rose-500 hover:scale-105 active:scale-95"
               title="End consultation and generate summary"
             >
-              <span>🔴</span>
-              <span>End Call</span>
+              <span className="hidden sm:inline">🔴</span>
+              <span className="sm:hidden">End</span>
+              <span className="hidden sm:inline">End Call</span>
             </button>
           </div>
         )}
@@ -1925,11 +1929,11 @@ export function LiveAvatarDemo() {
       >
         {!isConnected ? (
           /* Pre-Join Luxury Dealership Virtual Suite Lobby */
-          <div className="h-full w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-y-auto no-scrollbar">
-            <div className="z-10 w-full max-w-5xl rounded-3xl border border-white/10 bg-slate-900/70 p-6 sm:p-8 lg:p-10 shadow-2xl backdrop-blur-2xl">
+          <div className="h-full w-full flex items-start sm:items-center justify-center p-3 sm:p-6 lg:p-8 overflow-y-auto no-scrollbar">
+            <div className="z-10 w-full max-w-5xl rounded-3xl border border-white/10 bg-slate-900/70 p-4 sm:p-8 lg:p-10 shadow-2xl backdrop-blur-2xl">
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
                 {/* Left Column: Real-time Video Mirror & Live Audio Meter */}
-                <div className="lg:col-span-6 flex flex-col items-center">
+                <div className="lg:col-span-6 min-w-0 flex flex-col items-center">
                   <div className="relative h-60 sm:h-72 w-full overflow-hidden rounded-2xl border border-white/15 bg-slate-950 shadow-2xl flex items-center justify-center group">
                     <video
                       ref={preJoinVideoRef}
@@ -1961,9 +1965,9 @@ export function LiveAvatarDemo() {
                     </div>
 
                     {/* Bottom Controls & Reactive Audio Equalizer */}
-                    <div className="absolute bottom-3 inset-x-3 flex items-center justify-between">
+                    <div className="absolute bottom-3 inset-x-2 sm:inset-x-3 flex items-center justify-between gap-2">
                       {/* Live 5-Bar Reactive Audio Equalizer */}
-                      <div className="flex items-center gap-2 rounded-full bg-black/70 px-3 py-1.5 border border-white/10 backdrop-blur-md">
+                      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2 rounded-full bg-black/70 px-2.5 sm:px-3 py-1.5 border border-white/10 backdrop-blur-md">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-slate-300">Mic</span>
                         <div className="flex items-end gap-1 h-3.5">
                           {[0.3, 0.7, 1.0, 0.8, 0.4].map((mult, i) => (
@@ -1984,7 +1988,7 @@ export function LiveAvatarDemo() {
                             />
                           ))}
                         </div>
-                        <span className="text-[10px] font-mono text-emerald-400">
+                        <span className="hidden sm:inline text-[10px] font-mono text-emerald-400">
                           {isMicMuted ? "MUTED" : micVolume > 5 ? `${micVolume}%` : "READY"}
                         </span>
                       </div>
@@ -1994,7 +1998,7 @@ export function LiveAvatarDemo() {
                         <button
                           type="button"
                           onClick={handleToggleCamera}
-                          className={`rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-md transition ${
+                          className={`whitespace-nowrap rounded-full px-2.5 sm:px-3 py-1 text-xs font-semibold backdrop-blur-md transition ${
                             isCameraOff
                               ? "bg-rose-500/80 text-white hover:bg-rose-500 shadow-md"
                               : "bg-black/60 text-white/90 hover:bg-black/80 border border-white/10"
@@ -2005,7 +2009,7 @@ export function LiveAvatarDemo() {
                         <button
                           type="button"
                           onClick={handleToggleMic}
-                          className={`rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-md transition ${
+                          className={`whitespace-nowrap rounded-full px-2.5 sm:px-3 py-1 text-xs font-semibold backdrop-blur-md transition ${
                             isMicMuted
                               ? "bg-rose-500/80 text-white hover:bg-rose-500 shadow-md"
                               : "bg-black/60 text-white/90 hover:bg-black/80 border border-white/10"
@@ -2023,7 +2027,7 @@ export function LiveAvatarDemo() {
                 </div>
 
                 {/* Right Column: Executive Consultation Brief & CTA */}
-                <div className="lg:col-span-6 flex flex-col justify-center text-left">
+                <div className="lg:col-span-6 min-w-0 flex flex-col justify-center text-left">
                   <div className="inline-flex items-center gap-2 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-sky-300 w-fit mb-3">
                     <span className="size-1.5 rounded-full bg-sky-400 animate-pulse" />
                     <span>Novus Luxury Automotive Group • F&I Advisory</span>
@@ -2144,22 +2148,24 @@ export function LiveAvatarDemo() {
           <div className="absolute inset-0 h-full w-full overflow-hidden bg-black">
             {/* 1. Traditional Screen-Share Presentation Stage (Zoom / Teams Style) */}
             {activeOverlay && (
-              <div className="absolute inset-0 z-10 flex flex-col bg-slate-950/95 backdrop-blur-3xl animate-in fade-in duration-500">
-                {/* Screen Share Header Bar */}
-                <div className="flex items-center justify-between px-6 py-3.5 border-b border-white/10 bg-slate-900/80 backdrop-blur-xl">
-                  <div className="flex items-center gap-3">
-                    <span className="flex size-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-xs font-semibold tracking-wide text-slate-300">
-                      Screen Sharing Active • <span className="text-sky-400 font-bold">2026 Mazda CX-5 Finance Review</span>
+              <div className="absolute inset-0 z-10 flex flex-col pt-12 sm:pt-14 bg-slate-950/95 backdrop-blur-3xl animate-in fade-in duration-500">
+                {/* Screen Share Header Bar (below the floating app header) */}
+                <div className="flex items-center justify-between gap-2 px-3 sm:px-6 py-2.5 sm:py-3.5 border-b border-white/10 bg-slate-900/80 backdrop-blur-xl">
+                  <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+                    <span className="flex size-2.5 shrink-0 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="truncate text-xs font-semibold tracking-wide text-slate-300">
+                      <span className="hidden sm:inline">Screen Sharing Active • </span>
+                      <span className="text-sky-400 font-bold">2026 Mazda CX-5 Finance Review</span>
                     </span>
                   </div>
                   <button
                     type="button"
                     onClick={() => setActiveOverlay(null)}
-                    className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-semibold text-slate-200 hover:bg-white/20 hover:text-white transition active:scale-95 shadow-md"
+                    className="flex shrink-0 items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 sm:px-4 py-1.5 text-xs font-semibold text-slate-200 hover:bg-white/20 hover:text-white transition active:scale-95 shadow-md"
                   >
                     <span>✕</span>
-                    <span>Stop Screen Share (Return to Full Video)</span>
+                    <span className="sm:hidden">Close</span>
+                    <span className="hidden sm:inline">Stop Screen Share (Return to Full Video)</span>
                   </button>
                 </div>
 
@@ -2200,8 +2206,8 @@ export function LiveAvatarDemo() {
             <div
               className={
                 activeOverlay
-                  ? "absolute right-6 top-16 z-30 h-[180px] w-[135px] sm:h-[220px] sm:w-[165px] overflow-hidden rounded-2xl border-2 border-sky-400/60 bg-slate-950/95 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur transition-all duration-500 ease-in-out flex items-center justify-center"
-                  : "absolute inset-0 z-0 h-full w-full bg-slate-950 transition-all duration-500 ease-in-out overflow-hidden flex items-center justify-center pt-14 pb-24 px-4"
+                  ? "absolute right-2 bottom-20 sm:bottom-auto sm:right-6 sm:top-16 z-30 h-[128px] w-[96px] sm:h-[220px] sm:w-[165px] overflow-hidden rounded-2xl border-2 border-sky-400/60 bg-slate-950/95 shadow-[0_20px_50px_rgba(0,0,0,0.8)] backdrop-blur transition-all duration-500 ease-in-out flex items-center justify-center"
+                  : "absolute inset-0 z-0 h-full w-full bg-slate-950 transition-all duration-500 ease-in-out overflow-hidden flex items-center justify-center pt-14 pb-36 px-2 sm:pb-24 sm:px-4"
               }
             >
               {/* Ambient Studio Lighting Backdrop (blends letterbox gracefully without cropping) */}
@@ -2305,7 +2311,7 @@ export function LiveAvatarDemo() {
             />
 
             {/* 3. Floating User Camera PiP Box */}
-            <div className="absolute bottom-24 right-4 z-20 h-[100px] w-[140px] sm:h-[120px] sm:w-[160px] md:h-[135px] md:w-[180px] overflow-hidden rounded-2xl border border-white/20 bg-slate-950/90 shadow-2xl backdrop-blur transition-all duration-300">
+            <div className="absolute top-14 right-2 h-[96px] w-[72px] sm:top-auto sm:bottom-24 sm:right-4 z-20 sm:h-[120px] sm:w-[160px] md:h-[135px] md:w-[180px] overflow-hidden rounded-xl sm:rounded-2xl border border-white/20 bg-slate-950/90 shadow-2xl backdrop-blur transition-all duration-300">
               <video
                 ref={localVideoRef}
                 autoPlay
@@ -2321,8 +2327,8 @@ export function LiveAvatarDemo() {
                 isCameraOff ||
                 !localVideoStream.getVideoTracks().some((t) => t.enabled)) && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 text-slate-500">
-                  <span className="text-xl mb-0.5">📷</span>
-                  <span className="text-[10px] uppercase font-bold tracking-wider">Camera off</span>
+                  <span className="text-base sm:text-xl mb-0.5">📷</span>
+                  <span className="text-[8px] sm:text-[10px] uppercase font-bold tracking-wider">Camera off</span>
                 </div>
               )}
               <span className="absolute bottom-1.5 left-2 rounded-md bg-black/60 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white/90 backdrop-blur-md">
@@ -2335,10 +2341,10 @@ export function LiveAvatarDemo() {
 
       {/* Bottom Bar: Manual Controls & Text Chat Input - Floats over video in-call just like Tavus */}
       {isConnected && (
-        <footer className="absolute bottom-0 inset-x-0 z-30 border-t border-white/10 bg-slate-950/75 px-4 py-2.5 backdrop-blur-xl">
+        <footer className="absolute bottom-0 inset-x-0 z-30 border-t border-white/10 bg-slate-950/75 px-2 py-2 sm:px-4 sm:py-2.5 backdrop-blur-xl">
           <div className="max-w-4xl mx-auto flex flex-col gap-2">
             {/* Stage Stepper Navigation Pills */}
-            <div className="flex items-center justify-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-xs font-semibold text-slate-300">
+            <div className="hidden sm:flex items-center justify-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 text-xs font-semibold text-slate-300">
               <span className="text-slate-500 uppercase tracking-widest text-[9px] mr-1 hidden sm:inline">
                 Stage:
               </span>
@@ -2424,12 +2430,12 @@ export function LiveAvatarDemo() {
             </div>
 
             {/* Bottom Row: Controls, Barge-In, Text Chat */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {/* Mic Toggle with Live Speaking / Reactive Glow */}
               <button
                 type="button"
                 onClick={handleToggleMic}
-                className={`flex items-center gap-2 rounded-full px-3.5 py-1.5 text-xs font-semibold border transition shrink-0 ${
+                className={`flex items-center gap-2 rounded-full px-3 py-2.5 sm:px-3.5 sm:py-1.5 text-xs font-semibold border transition shrink-0 ${
                   isMicMuted
                     ? "border-rose-500/40 bg-rose-500/15 text-rose-300 hover:bg-rose-500/25"
                     : isUserSpeaking
@@ -2443,7 +2449,8 @@ export function LiveAvatarDemo() {
                     isMicMuted ? "bg-rose-400" : isUserSpeaking ? "bg-emerald-400 animate-ping" : "bg-sky-400"
                   }`}
                 />
-                <span>{isMicMuted ? "Mic Muted" : isUserSpeaking ? "Listening..." : "Mic On"}</span>
+                <span className="hidden sm:inline">{isMicMuted ? "Mic Muted" : isUserSpeaking ? "Listening..." : "Mic On"}</span>
+                <span className="sm:hidden">{isMicMuted ? "Muted" : "Mic"}</span>
                 {!isMicMuted && isUserSpeaking && (
                   <div className="flex items-end gap-0.5 h-2.5 ml-1">
                     {[0.5, 1.0, 0.7].map((h, idx) => (
@@ -2464,11 +2471,11 @@ export function LiveAvatarDemo() {
                 <button
                   type="button"
                   onClick={() => void interruptAvatar()}
-                  className="flex items-center gap-1.5 rounded-full border border-amber-400/50 bg-amber-500/20 px-3 py-1.5 text-xs font-bold text-amber-200 hover:bg-amber-500/30 transition shadow-lg animate-pulse shrink-0"
+                  className="flex items-center gap-1.5 rounded-full border border-amber-400/50 bg-amber-500/20 px-3 py-2.5 sm:py-1.5 text-xs font-bold text-amber-200 hover:bg-amber-500/30 transition shadow-lg animate-pulse shrink-0"
                   title="Interrupt Max mid-sentence (Keyboard: B)"
                 >
                   <span>🛑</span>
-                  <span>Interrupt (B)</span>
+                  <span className="hidden sm:inline">Interrupt (B)</span>
                 </button>
               )}
 
@@ -2478,18 +2485,18 @@ export function LiveAvatarDemo() {
                   type="text"
                   value={textInput}
                   onChange={(e) => setTextInput(e.target.value)}
-                  placeholder="Speak into your mic or type to Max..."
-                  className="flex-1 min-w-0 rounded-full border border-white/15 bg-slate-900/90 px-4 py-2 text-xs text-white placeholder-slate-400 focus:border-sky-400 focus:outline-none transition"
+                  placeholder="Speak or type to Max..."
+                  className="flex-1 min-w-0 rounded-full border border-white/15 bg-slate-900/90 px-4 py-2 text-base sm:text-xs text-white placeholder-slate-400 focus:border-sky-400 focus:outline-none transition"
                 />
                 <button
                   type="submit"
                   disabled={isGrokThinking}
-                  className="rounded-full bg-gradient-to-r from-sky-500 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-lg transition hover:scale-105 active:scale-95 disabled:opacity-60 shrink-0 flex items-center gap-1.5"
+                  className="rounded-full bg-gradient-to-r from-sky-500 to-indigo-600 px-4 py-2.5 sm:py-2 text-xs font-bold text-white shadow-lg transition hover:scale-105 active:scale-95 disabled:opacity-60 shrink-0 flex items-center gap-1.5"
                 >
                   {isGrokThinking ? (
                     <>
                       <span className="size-1.5 rounded-full bg-amber-300 animate-ping" />
-                      <span>Thinking...</span>
+                      <span className="hidden sm:inline">Thinking...</span>
                     </>
                   ) : (
                     <span>Send</span>
@@ -2545,9 +2552,32 @@ function TranscriptPanel({
       ? "Max is speaking..."
       : latestReplicaTranscript || "Max's responses appear here.";
 
+  // On a phone: one small caption above the controls, whoever is talking now, at most 2 lines,
+  // so Max stays in view. From sm up: the two-row panel.
+  const phoneSpeaker = userSpeaking ? "You" : "Max";
+  const phoneText = userSpeaking ? userText : replicaText;
+  const phoneCaption = (
+    <div className="sm:hidden absolute inset-x-3 bottom-[4.25rem] z-30 pointer-events-none flex justify-center">
+      <div className="max-w-full rounded-xl border border-white/10 bg-slate-950/75 px-2.5 py-1.5 shadow-lg backdrop-blur-md">
+        <p className="line-clamp-2 text-[12px] leading-snug text-white">
+          <span
+            className={`mr-1 font-bold ${
+              isThinking ? "text-amber-300" : userSpeaking ? "text-emerald-300" : "text-sky-300"
+            }`}
+          >
+            {phoneSpeaker}:
+          </span>
+          {phoneText}
+        </p>
+      </div>
+    </div>
+  );
+
   return (
+    <>
+    {phoneCaption}
     <div
-      className={`absolute z-30 transition-all duration-300 pointer-events-none ${
+      className={`hidden sm:block absolute z-30 transition-all duration-300 pointer-events-none ${
         isOverlayActive
           ? "bottom-28 left-1/2 -translate-x-1/2 max-w-2xl w-[92%] sm:w-[34rem]"
           : "bottom-28 left-4 sm:left-6 max-w-xl w-[calc(100vw-2rem)] sm:w-[32rem]"
@@ -2564,6 +2594,7 @@ function TranscriptPanel({
         />
       </div>
     </div>
+    </>
   );
 }
 

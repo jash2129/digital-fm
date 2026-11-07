@@ -28,10 +28,11 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="relative h-screen w-full bg-slate-950 overflow-hidden flex flex-col" suppressHydrationWarning>
-      {/* Engine Selector Badge - positioned at bottom left so it never overlaps header controls */}
+    <div className="relative h-dvh w-full bg-slate-950 overflow-hidden flex flex-col" suppressHydrationWarning>
+      {/* Engine Selector Badge - positioned at bottom left so it never overlaps header controls.
+          Hidden on phones: it covered the start button and the call controls, and testers use HeyGen. */}
       <div
-        className="fixed bottom-3 left-4 z-50 flex items-center gap-1 rounded-full border border-white/20 bg-slate-900/95 p-1 backdrop-blur-2xl shadow-2xl"
+        className="fixed bottom-3 left-4 z-50 hidden sm:flex items-center gap-1 rounded-full border border-white/20 bg-slate-900/95 p-1 backdrop-blur-2xl shadow-2xl"
         suppressHydrationWarning
       >
         <button

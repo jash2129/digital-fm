@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Mono, Space_Grotesk } from "next/font/google";
 
 import { isFinanceEvent } from "@/lib/event";
@@ -27,6 +27,13 @@ export const metadata: Metadata = isFinanceEvent()
       title: "AWS Voice AI Demo",
       description: "Private AWS Voice AI booth demo with Daily React and tool-driven content overlays.",
     };
+
+// Phones: fit the screen width, and match the browser bar to the app's dark background
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#020617",
+};
 
 export default function RootLayout({
   children,
