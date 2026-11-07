@@ -28,10 +28,10 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="flex h-screen items-center justify-center bg-slate-950 text-white">
+    <div className="flex h-dvh items-center justify-center bg-slate-950 px-4 text-white">
       <form
         onSubmit={handleSubmit}
-        className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-white/10 bg-slate-900 p-8"
+        className="flex w-full max-w-sm flex-col gap-4 rounded-2xl border border-white/10 bg-slate-900 p-6 sm:p-8"
       >
         <h1 className="text-lg font-semibold">Demo access</h1>
         <input
@@ -39,7 +39,7 @@ export default function AuthPage() {
           placeholder="Enter access token"
           value={token}
           onChange={(e) => setToken(e.target.value)}
-          className="rounded-lg border border-white/15 bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none"
+          className="rounded-lg border border-white/15 bg-slate-800 px-4 py-2.5 text-base sm:text-sm text-white placeholder-slate-500 focus:border-sky-500 focus:outline-none"
           autoFocus
         />
         {status === "error" && (

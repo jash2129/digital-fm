@@ -1186,6 +1186,11 @@ export function LiveAvatarDemo() {
     try {
       // Step 1: Create session via our server route
       const res = await fetch("/api/heygen/session", { method: "POST" });
+      // Not signed in yet (DEMO_API_TOKEN): send the tester to the sign-in page, which brings them back
+      if (res.status === 401) {
+        window.location.href = "/auth";
+        return;
+      }
       if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
         throw new Error(errJson.error || "Failed to initialize HeyGen LiveAvatar session.");
