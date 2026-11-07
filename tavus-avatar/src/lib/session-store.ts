@@ -1,56 +1,23 @@
 import "server-only";
 
 import { activeStates, pendingCommits, type CallState, type PendingCommit } from "./beat-controller";
+import { upstashEnabled, upstashPipeline } from "./upstash";
 
 // Shared storage for a live call's state on serverless hosts (Vercel), where each request can land
 // on a different instance with empty memory. Each API request loads the call's state into the
 // in-memory maps the beat controller already uses, runs unchanged, then saves it back.
 //
-// Uses Upstash Redis over its REST API (no extra dependency). Set UPSTASH_REDIS_REST_URL and
-// UPSTASH_REDIS_REST_TOKEN (or the KV_REST_API_URL / KV_REST_API_TOKEN names Vercel's Upstash
-// integration creates). With neither set it does nothing: one long-running server (your PC, Render)
-// keeps everything in memory exactly as before.
+// Uses Upstash Redis (src/lib/upstash.ts). With no Upstash settings it does nothing: one long-running
+// server (your PC, Render) keeps everything in memory exactly as before.
 
 /** A call's state is kept this long after its last turn */
 export const SESSION_TTL_SECONDS = 2 * 60 * 60;
-const TIMEOUT_MS = 3000;
 
 const stateKey = (id: string) => `max:state:${id}`;
 const commitKey = (id: string) => `max:commit:${id}`;
 
-function redisConfig(): { url: string; token: string } | null {
-  const url = (process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || "").trim().replace(/\/$/, "");
-  const token = (process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || "").trim();
-  return url && token ? { url, token } : null;
-}
-
-export function sharedStoreEnabled(): boolean {
-  return redisConfig() !== null;
-}
-
-/** Runs several Redis commands in one round trip; returns each command's result. */
-async function pipeline(commands: Array<Array<string | number>>): Promise<unknown[]> {
-  const cfg = redisConfig();
-  if (!cfg) return [];
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(`${cfg.url}/pipeline`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${cfg.token}`, "Content-Type": "application/json" },
-      body: JSON.stringify(commands),
-      signal: controller.signal,
-    });
-    if (!res.ok) throw new Error(`Upstash answered ${res.status}`);
-    const out = (await res.json()) as Array<{ result?: unknown; error?: string }>;
-    return out.map((r) => {
-      if (r.error) throw new Error(`Upstash: ${r.error}`);
-      return r.result;
-    });
-  } finally {
-    clearTimeout(timer);
-  }
-}
+export const sharedStoreEnabled = upstashEnabled;
+const pipeline = upstashPipeline;
 
 let warnedNoStore = false;
 

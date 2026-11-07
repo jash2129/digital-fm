@@ -1,7 +1,8 @@
 import "server-only";
 
 import { activeStates, type CallState } from "./beat-controller";
-import { getHeygenAudio, getHeygenTranscript, type HeygenCallLog } from "./heygen-logger";
+import { getHeygenAudio, type HeygenCallLog } from "./heygen-logger";
+import { loadCallLog, saveCallLog } from "./call-log-store";
 import { UNKNOWN_QUESTION_LINE } from "./max-lines";
 import { analyzeFinishedCall, type PostCallAnalysis } from "./post-call-analysis";
 
@@ -117,6 +118,23 @@ export function buildCallLogPayload(
   };
 }
 
+/**
+ * If the scenario's webhook response includes the recording's Drive link
+ * ({"ok": true, "recordingUrl": "..."}), keep it on the stored log so the Inspector can link to the
+ * recording on hosts with no audio file (Vercel). Any other response is fine and ignored.
+ */
+async function rememberRecordingLink(res: Response, log: HeygenCallLog): Promise<void> {
+  try {
+    const data = (await res.json()) as { recordingUrl?: unknown };
+    if (typeof data.recordingUrl === "string" && data.recordingUrl.startsWith("http")) {
+      const saved = (await loadCallLog(log.sessionId)) ?? log;
+      await saveCallLog({ ...saved, recordingUrl: data.recordingUrl });
+    }
+  } catch {
+    // Make's default reply is plain text ("Accepted"): nothing to remember
+  }
+}
+
 export type SendResult = { sent: true; status: number } | { sent: false; reason: string };
 
 /**
@@ -131,7 +149,7 @@ export async function sendCallLog(
   const url = process.env.CALL_LOG_WEBHOOK_URL?.trim();
   if (!url) return { sent: false, reason: "CALL_LOG_WEBHOOK_URL not set" };
   if (sent.has(sessionId)) return { sent: false, reason: "already sent" };
-  const log = provided.log ?? getHeygenTranscript(sessionId);
+  const log = provided.log ?? (await loadCallLog(sessionId));
   if (!log) return { sent: false, reason: "no saved log for this call" };
 
   const base = {
@@ -166,6 +184,7 @@ export async function sendCallLog(
       sent.delete(sessionId); // let a retry go through
       return { sent: false, reason: `webhook answered ${res.status}` };
     }
+    await rememberRecordingLink(res, log);
     return { sent: true, status: res.status };
   } catch (err) {
     sent.delete(sessionId);

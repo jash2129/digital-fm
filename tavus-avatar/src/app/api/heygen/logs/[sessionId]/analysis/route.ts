@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getHeygenTranscript } from "@/lib/heygen-logger";
+import { loadCallLog } from "@/lib/call-log-store";
 import { analyzeCallExperience } from "@/lib/call-experience-analyzer";
 
 export async function GET(
@@ -8,7 +8,7 @@ export async function GET(
 ) {
   try {
     const { sessionId } = await params;
-    const log = getHeygenTranscript(sessionId);
+    const log = await loadCallLog(sessionId);
     if (!log) {
       return NextResponse.json({ error: "Session log not found" }, { status: 404 });
     }

@@ -131,8 +131,17 @@ review fails, its columns are blank and the rest of the row is still filled.
 
 ## 6. Webhook response
 
-Click **+** after the Sheets module and pick **Webhooks → Webhook response**. Status `200`, body
-`{"ok": true}`. This tells the Max app the call was saved.
+Click **+** after the Sheets module and pick **Webhooks → Webhook response**. Status `200`, and
+this body (map the link from module 2, the recording upload):
+
+```
+{"ok": true, "recordingUrl": "{{2.webViewLink}}"}
+```
+
+Click into the body box and pick **Web View Link** from module 2 in place of `{{2.webViewLink}}` if
+your recording module has a different number. This tells the Max app the call was saved, and gives
+the Inspector a link to the recording (on Vercel, where the server keeps no audio file). With a plain
+`{"ok": true}` everything else still works; only that link is missing.
 
 ## 7. Test and switch on
 

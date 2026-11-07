@@ -12,6 +12,8 @@ type SessionSummary = {
   bargeInsCount: number;
   hasAudio: boolean;
   audioSizeBytes: number;
+  // Google Drive link to the recording (the call log sheet), for hosts with no audio file (Vercel)
+  recordingUrl?: string;
   avatarName: string;
   status: string;
 };
@@ -36,6 +38,7 @@ export default function CallInspectorPage() {
   const [selectedSessionId, setSelectedSessionId] = useState<string>("");
   const [analysis, setAnalysis] = useState<CallExperienceAnalysis | null>(null);
   const [turnTimings, setTurnTimings] = useState<TurnTimingLog[]>([]);
+  const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -89,6 +92,7 @@ export default function CallInspectorPage() {
         // Raw log for the per-turn latency table (the analysis only keeps timeline blocks)
         const raw = await fetch(`/api/heygen/logs/${selectedSessionId}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
         setTurnTimings(raw?.timingLogs || []);
+        setRecordingUrl(typeof raw?.recordingUrl === "string" ? raw.recordingUrl : null);
       } catch (err: any) {
         setError(err.message || "Failed to analyze call");
       } finally {
@@ -257,15 +261,27 @@ export default function CallInspectorPage() {
               </div>
 
               <div className="flex-1 max-w-md">
-                <audio
-                  ref={audioRef}
-                  controls
-                  className="w-full h-10 accent-blue-500"
-                  src={`/api/heygen/logs/${selectedSessionId}/audio`}
-                  onTimeUpdate={handleTimeUpdate}
-                  onPlay={() => setIsPlaying(true)}
-                  onPause={() => setIsPlaying(false)}
-                />
+                {/* No audio file on this server (Vercel keeps none): link to the recording in Drive */}
+                {sessions.find((s) => s.sessionId === selectedSessionId)?.hasAudio === false && recordingUrl ? (
+                  <a
+                    href={recordingUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex h-10 items-center justify-center gap-2 rounded-lg border border-blue-500/40 bg-blue-600/20 px-4 text-sm font-semibold text-blue-200 hover:bg-blue-600/30"
+                  >
+                    ▶ Open recording (Google Drive)
+                  </a>
+                ) : (
+                  <audio
+                    ref={audioRef}
+                    controls
+                    className="w-full h-10 accent-blue-500"
+                    src={`/api/heygen/logs/${selectedSessionId}/audio`}
+                    onTimeUpdate={handleTimeUpdate}
+                    onPlay={() => setIsPlaying(true)}
+                    onPause={() => setIsPlaying(false)}
+                  />
+                )}
               </div>
 
               <div className="text-right">

@@ -64,8 +64,15 @@ calls use the new version), but avoid pushing while testers are on calls.
 
 ## What is different from running it on your PC
 
-- **The call log sheet is the record.** Vercel keeps no files: the Inspector on the Vercel link
-  usually shows nothing, and recordings live only in the sheet's Drive links.
+- **The Inspector works**, at `https://<project>.vercel.app/inspector`: every call's log (transcript,
+  timeline, latency table, cut-offs, echo drops, analysis) is kept in Upstash for 30 days
+  (`src/lib/call-log-store.ts`), so any server can open it.
+- **Recordings are in Google Drive, not on Vercel.** The Inspector shows an **Open recording (Google
+  Drive)** button instead of its player, once the Make scenario returns the Drive link (see
+  "Webhook response" in `MAKE-CALL-LOG.md`). The second-by-second audio sync only works where the
+  audio file is on the server (your PC, Render).
+- **The call log sheet is the permanent record**: transcript, recording, log and analysis for every
+  call. Upstash keeps logs for 30 days.
 - **Testers should keep the page open for a few seconds after ending a call**, while the call is
   saved. The end screen says so.
 - **No sleep.** Unlike Render's free plan, there is no one-minute wake-up.

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { saveHeygenTranscript, getHeygenTranscript, type HeygenCallLog } from "@/lib/heygen-logger";
+import type { HeygenCallLog } from "@/lib/heygen-logger";
+import { loadCallLog, saveCallLog } from "@/lib/call-log-store";
 
 export async function POST(
   request: Request,
@@ -20,7 +21,8 @@ export async function POST(
     } catch {
       body = {};
     }
-    const existingLog = getHeygenTranscript(sessionId) || ({} as any);
+    // Merge with what is saved so far (shared via Upstash on Vercel, where each request is a new server)
+    const existingLog = (await loadCallLog(sessionId)) || ({} as any);
     const logData: HeygenCallLog = {
       sessionId,
       engine: "heygen-grok",
@@ -36,9 +38,10 @@ export async function POST(
       timingLogs: body.timingLogs || existingLog.timingLogs || [],
       bargeIns: body.bargeIns || existingLog.bargeIns || [],
       turnLogs: body.turnLogs || existingLog.turnLogs || [],
+      ...(existingLog.recordingUrl ? { recordingUrl: existingLog.recordingUrl } : {}),
     };
 
-    saveHeygenTranscript(logData);
+    await saveCallLog(logData);
 
     return NextResponse.json({ success: true, sessionId, savedTo: `logs-heygen/${sessionId}.json` });
   } catch (error: any) {
@@ -53,7 +56,7 @@ export async function GET(
 ) {
   try {
     const { sessionId } = await params;
-    const log = getHeygenTranscript(sessionId);
+    const log = await loadCallLog(sessionId);
     if (!log) {
       return NextResponse.json({ error: "Log not found in logs-heygen" }, { status: 404 });
     }
