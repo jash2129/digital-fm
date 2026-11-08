@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { storeStatus } from "@/lib/call-log-store";
-import { upstashEnvNames } from "@/lib/upstash";
+import { storeBackend, upstashEnvNames } from "@/lib/upstash";
 
 // What this deployment can reach, for setup checks: open /api/health in a signed-in browser, or
 // /api/health?session=<call id> to check one call's log. Yes/no answers and variable NAMES only,
@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   return NextResponse.json({
     host: process.env.VERCEL ? "vercel" : process.env.RENDER ? "render" : "local",
     deployment: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? null,
-    upstash: { ...(await storeStatus(sessionId)), envNames: upstashEnvNames() },
+    upstash: { ...(await storeStatus(sessionId)), ...storeBackend(), envNames: upstashEnvNames() },
     deepgramKey: set("DEEPGRAM_API_KEY"),
     sttDefault: process.env.NEXT_PUBLIC_STT_ENGINE || "webspeech",
     callLogWebhook: set("CALL_LOG_WEBHOOK_URL"),
