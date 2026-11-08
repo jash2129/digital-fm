@@ -18,6 +18,12 @@ type SessionSummary = {
   status: string;
 };
 
+// Google Drive's embeddable player for a file link (".../file/d/<id>/view" -> ".../file/d/<id>/preview")
+function drivePreviewUrl(url: string): string | null {
+  const id = url.match(/drive\.google\.com\/file\/d\/([^/?#]+)/)?.[1];
+  return id ? `https://drive.google.com/file/d/${id}/preview` : null;
+}
+
 // Per-turn stage durations (from stageMs, live calls only); "-" when a call predates stage logging
 function sumStages(t: TurnTimingLog, keys: string[]): number | undefined {
   if (!t.stageMs) return undefined;
@@ -39,6 +45,8 @@ export default function CallInspectorPage() {
   const [analysis, setAnalysis] = useState<CallExperienceAnalysis | null>(null);
   const [turnTimings, setTurnTimings] = useState<TurnTimingLog[]>([]);
   const [recordingUrl, setRecordingUrl] = useState<string | null>(null);
+  // The server has no audio file for this call (Vercel keeps none): use the Drive copy instead
+  const [audioMissing, setAudioMissing] = useState(false);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -90,6 +98,7 @@ export default function CallInspectorPage() {
         setLoading(true);
         setError(null);
         setSelectedBlock(null);
+        setAudioMissing(false);
         const res = await fetch(`/api/heygen/logs/${selectedSessionId}/analysis`);
         if (!res.ok) {
           const reason = ((await res.json().catch(() => ({}))) as { error?: string }).error;
@@ -273,22 +282,34 @@ export default function CallInspectorPage() {
               </div>
 
               <div className="flex-1 max-w-md">
-                {/* No audio file on this server (Vercel keeps none): link to the recording in Drive */}
-                {sessions.find((s) => s.sessionId === selectedSessionId)?.hasAudio === false && recordingUrl ? (
-                  <a
-                    href={recordingUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex h-10 items-center justify-center gap-2 rounded-lg border border-blue-500/40 bg-blue-600/20 px-4 text-sm font-semibold text-blue-200 hover:bg-blue-600/30"
-                  >
-                    ▶ Open recording (Google Drive)
-                  </a>
+                {/* No audio file on this server (Vercel keeps none): play the Drive copy from the call log */}
+                {audioMissing && recordingUrl ? (
+                  <div className="space-y-1.5">
+                    {drivePreviewUrl(recordingUrl) && (
+                      <iframe
+                        src={drivePreviewUrl(recordingUrl)!}
+                        title="Call recording (Google Drive)"
+                        allow="autoplay"
+                        className="h-20 w-full rounded-lg border border-slate-700 bg-slate-950"
+                      />
+                    )}
+                    <a href={recordingUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-blue-300 hover:text-blue-200">
+                      ▶ Open in Google Drive
+                    </a>
+                  </div>
+                ) : audioMissing ? (
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    The recording is not on this server. Play it from the <span className="text-slate-200">Recording Link</span> in
+                    the call log sheet. (To play it here, the Make scenario&apos;s webhook response must return the Drive link:
+                    docs/MAKE-CALL-LOG.md.)
+                  </p>
                 ) : (
                   <audio
                     ref={audioRef}
                     controls
                     className="w-full h-10 accent-blue-500"
                     src={`/api/heygen/logs/${selectedSessionId}/audio`}
+                    onError={() => setAudioMissing(true)}
                     onTimeUpdate={handleTimeUpdate}
                     onPlay={() => setIsPlaying(true)}
                     onPause={() => setIsPlaying(false)}
