@@ -91,7 +91,14 @@ export default function CallInspectorPage() {
         setError(null);
         setSelectedBlock(null);
         const res = await fetch(`/api/heygen/logs/${selectedSessionId}/analysis`);
-        if (!res.ok) throw new Error("Failed to load call analysis");
+        if (!res.ok) {
+          const reason = ((await res.json().catch(() => ({}))) as { error?: string }).error;
+          throw new Error(
+            res.status === 404
+              ? "This call's log is not stored (made before Upstash was connected, or it is not set up). Its row in the call log sheet still has the transcript and recording. Status: /api/health"
+              : `Failed to load call analysis (HTTP ${res.status}${reason ? `: ${reason}` : ""})`
+          );
+        }
         const data: CallExperienceAnalysis = await res.json();
         setAnalysis(data);
         // Raw log for the per-turn latency table (the analysis only keeps timeline blocks)

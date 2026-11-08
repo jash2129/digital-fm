@@ -26,6 +26,13 @@ export function upstashEnabled(): boolean {
   return redisConfig() !== null;
 }
 
+/** Names (never values) of the environment variables that look like Upstash settings, for /api/health */
+export function upstashEnvNames(): string[] {
+  return Object.keys(process.env)
+    .filter((k) => /(UPSTASH|REDIS|STORAGE|_REST_API_|^KV_)/.test(k))
+    .sort();
+}
+
 /** Runs several Redis commands in one round trip; returns each command's result. Throws on failure. */
 export async function upstashPipeline(commands: Array<Array<string | number>>): Promise<unknown[]> {
   const cfg = redisConfig();

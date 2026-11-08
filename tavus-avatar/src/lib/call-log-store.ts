@@ -36,6 +36,25 @@ export interface CallLogSummary {
   status: string;
 }
 
+/** For /api/health: is Upstash reachable, how many call logs it holds, and is this call's log there. */
+export async function storeStatus(sessionId?: string): Promise<{ reachable: boolean; logs: number | null; thisCall?: boolean; error?: string }> {
+  if (!upstashEnabled()) return { reachable: false, logs: null, error: "no Upstash settings found" };
+  try {
+    const [pong, count, exists] = await upstashPipeline([
+      ["PING"],
+      ["ZCARD", INDEX_KEY],
+      ...(sessionId ? [["EXISTS", logKey(sessionId)]] : []),
+    ]);
+    return {
+      reachable: pong === "PONG",
+      logs: typeof count === "number" ? count : null,
+      ...(sessionId ? { thisCall: exists === 1 } : {}),
+    };
+  } catch (err) {
+    return { reachable: false, logs: null, error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
 /** The log as JSON, small enough for Upstash: drops turn logs, then timing logs, if it must */
 export function fitForStore(log: StoredCallLog): string {
   let json = JSON.stringify(log);
