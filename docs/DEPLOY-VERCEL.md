@@ -37,6 +37,8 @@ On your own PC nothing changes: with no Upstash settings, everything stays in me
    | `CALL_LOG_WEBHOOK_URL` | `.env.local` (the Make webhook) |
    | `CALL_LOG_SECRET` | `.env.local` |
    | `DEALERSHIP_NAME` | Optional |
+   | `DEEPGRAM_API_KEY` | Optional. Your Deepgram key: server speech recognition (see below). |
+   | `NEXT_PUBLIC_STT_ENGINE` | Optional. `deepgram` to make it the default for every call. |
 
 5. Click **Deploy**. The first build takes a few minutes.
 
@@ -87,3 +89,21 @@ calls use the new version), but avoid pushing while testers are on calls.
 - **Requests:** at most 4.5 MB each and 60 seconds (set in the call-log and audio routes).
   Recordings over 3 MB (about 17 minutes) are sent to the sheet without the audio.
 - **Upstash free:** far more requests than 10 testers will use (each turn is two small requests).
+
+## Speech recognition: Deepgram (recommended)
+
+By default the browser's own speech recognition hears the customer. It cannot use the echo-cancelled
+microphone (Max's voice comes back through laptop speakers), takes 0.6-5 s to settle on the words,
+and does not exist in most phone browsers outside Chrome. Deepgram fixes all three.
+
+1. Create an account at https://console.deepgram.com (new accounts get free credit) and create an
+   API key with the **Member** role.
+2. In Vercel add `DEEPGRAM_API_KEY` (the key) and, to use it for every call,
+   `NEXT_PUBLIC_STT_ENGINE` = `deepgram`. Redeploy.
+3. Without the default, pick per call with the link: `https://<project>.vercel.app/?stt=deepgram` or
+   `?stt=webspeech`. Handy for comparing the two tonight.
+
+If Deepgram is not set up or does not connect, the call quietly uses the browser's recognition
+instead. The call log sheet's **Environment** column says which one each call used
+(`production · deepgram` or `production · webspeech`).
+

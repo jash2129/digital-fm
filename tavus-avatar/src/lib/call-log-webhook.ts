@@ -97,7 +97,8 @@ export function buildCallLogPayload(
     callId: log.sessionId,
     startTime: log.startTime,
     durationSec: log.durationSeconds ?? "",
-    environment: opts.environment,
+    // e.g. "production · deepgram", so calls can be compared by speech recognition
+    environment: log.sttEngine ? `${opts.environment} · ${log.sttEngine}` : opts.environment,
     endedHow: howItEnded(opts.state),
     furthestBeat,
     finalPrice,

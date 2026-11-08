@@ -50,3 +50,8 @@ services:
         sync: false
       - key: CALL_LOG_SECRET
         sync: false
+      # Server speech recognition (docs/DEPLOY-VERCEL.md, "Speech recognition"). Optional.
+      - key: DEEPGRAM_API_KEY
+        sync: false
+      - key: NEXT_PUBLIC_STT_ENGINE
+        sync: false

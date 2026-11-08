@@ -22,6 +22,7 @@ import {
   type TurnLogEvent,
 } from "@/lib/turn-taking";
 import { checkEcho, EchoTimeline, UtteranceClock, ECHO_NOTICE_AFTER, type EchoVerdict } from "@/lib/echo-guard";
+import { chooseSttEngine, DeepgramRecognizer, type RecognizerLike } from "@/lib/deepgram-stt";
 
 // Barge-in rules live in turn-taking.ts (unit-tested); re-exported for existing callers
 export { shouldCutMaxOff } from "@/lib/turn-taking";
@@ -190,6 +191,9 @@ export function LiveAvatarDemo() {
 
   // User Camera (Webcam Preview & In-Call PiP)
   const [localVideoStream, setLocalVideoStream] = useState<MediaStream | null>(null);
+  // The echo-cancelled mic, for server speech-to-text (Deepgram) to stream from
+  const localStreamRef = useRef<MediaStream | null>(null);
+  localStreamRef.current = localVideoStream;
   const [isCameraOff, setIsCameraOff] = useState(false);
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const preJoinVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -780,13 +784,28 @@ export function LiveAvatarDemo() {
   // ---------------------------------------------------------------------------
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
+    const BrowserRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const makeBrowserRecognizer = (): RecognizerLike | null => {
+      if (!BrowserRecognition) return null;
+      const r = new BrowserRecognition();
+      r.continuous = true;
+      r.interimResults = true;
+      r.lang = "en-US";
+      return r;
+    };
 
-    const recognizer = new SpeechRecognition();
-    recognizer.continuous = true;
-    recognizer.interimResults = true;
-    recognizer.lang = "en-US";
+    // Deepgram (server STT on the echo-cancelled mic) or the browser's recognizer: ?stt=deepgram|webspeech
+    // in the URL, else NEXT_PUBLIC_STT_ENGINE. Deepgram hands over to the browser one if it is unavailable.
+    const sttEngine = chooseSttEngine(window.location.search, process.env.NEXT_PUBLIC_STT_ENGINE);
+    const recognizer: RecognizerLike | null =
+      sttEngine === "deepgram"
+        ? new DeepgramRecognizer({
+            getStream: () => localStreamRef.current,
+            fallback: makeBrowserRecognizer,
+            log: (message) => logTurnEvent({ ts: new Date().toISOString(), event: "stt", reason: message }),
+          })
+        : makeBrowserRecognizer();
+    if (!recognizer) return;
 
     recognizer.onresult = (event: any) => {
       const raw = event.results as ArrayLike<{ 0: { transcript: string }; isFinal: boolean }>;
@@ -1484,6 +1503,8 @@ export function LiveAvatarDemo() {
           : messagesRef.current;
       const callLog = {
         engine: "heygen-grok",
+        // Which speech recognition this call actually used (Deepgram falls back to the browser's)
+        sttEngine: speechRecognitionRef.current?.engine ?? "webspeech",
         avatarId: "heygen-liveavatar",
         avatarName,
         startTime: start,

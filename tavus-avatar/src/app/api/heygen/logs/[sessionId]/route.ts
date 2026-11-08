@@ -38,6 +38,7 @@ export async function POST(
       timingLogs: body.timingLogs || existingLog.timingLogs || [],
       bargeIns: body.bargeIns || existingLog.bargeIns || [],
       turnLogs: body.turnLogs || existingLog.turnLogs || [],
+      sttEngine: body.sttEngine || existingLog.sttEngine,
       ...(existingLog.recordingUrl ? { recordingUrl: existingLog.recordingUrl } : {}),
     };
 

@@ -73,6 +73,8 @@ export type BargeInLog = {
 export type HeygenCallLog = {
   sessionId: string;
   engine: "heygen-grok";
+  /** Speech recognition the call used: "deepgram" or "webspeech" (the browser's) */
+  sttEngine?: string;
   avatarId: string;
   avatarName: string;
   startTime: string;

@@ -1,6 +1,9 @@
 # Design note: replacing Chrome Web Speech with server STT (follow-up 10 E5)
 
-Status: **plan only, not started.** Do not start before the demo.
+Status: **built** (`src/lib/deepgram-stt.ts`, `src/app/api/stt/token/route.ts`), behind the
+`?stt=` / `NEXT_PUBLIC_STT_ENGINE` switch with automatic fallback to the browser's recognition.
+Setup: "Speech recognition" in `DEPLOY-VERCEL.md`. The design below is what was built, except
+that end-of-speech still uses the call screen's own timers (Deepgram's `UtteranceEnd` is not used yet).
 
 ## Problem
 
