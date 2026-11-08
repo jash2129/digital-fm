@@ -138,3 +138,14 @@ describe("one long-running server (your PC, Render)", () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe("Upstash settings from Vercel's integration", () => {
+  it("are found under any custom prefix (STORAGE_REST_API_URL / STORAGE_REST_API_TOKEN)", () => {
+    vi.stubEnv("UPSTASH_REDIS_REST_URL", "");
+    vi.stubEnv("KV_REST_API_URL", "");
+    vi.stubEnv("STORAGE_REST_API_URL", "https://x.upstash.io");
+    vi.stubEnv("STORAGE_REST_API_TOKEN", "t");
+    expect(sharedStoreEnabled()).toBe(true);
+    vi.unstubAllEnvs();
+  });
+});

@@ -7,8 +7,18 @@ import "server-only";
 const TIMEOUT_MS = 3000;
 
 function redisConfig(): { url: string; token: string } | null {
-  const url = (process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || "").trim().replace(/\/$/, "");
-  const token = (process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || "").trim();
+  let url = process.env.UPSTASH_REDIS_REST_URL || process.env.KV_REST_API_URL || "";
+  let token = process.env.UPSTASH_REDIS_REST_TOKEN || process.env.KV_REST_API_TOKEN || "";
+  if (!url || !token) {
+    // Vercel's integration lets you pick a custom prefix (STORAGE_REST_API_URL, ...): accept any
+    const prefixed = Object.keys(process.env).find((k) => k.endsWith("_REST_API_URL") && process.env[k.replace(/_URL$/, "_TOKEN")]);
+    if (prefixed) {
+      url = process.env[prefixed] ?? "";
+      token = process.env[prefixed.replace(/_URL$/, "_TOKEN")] ?? "";
+    }
+  }
+  url = url.trim().replace(/\/$/, "");
+  token = token.trim();
   return url && token ? { url, token } : null;
 }
 
