@@ -19,7 +19,9 @@ export default function AuthPage() {
     });
 
     if (res.ok) {
-      window.location.href = "/";
+      // Back to where the tester came from (the Inspector, or the call link with its ?stt=), same site only
+      const next = new URLSearchParams(window.location.search).get("next") ?? "/";
+      window.location.href = next.startsWith("/") && !next.startsWith("//") ? next : "/";
     } else {
       const data = await res.json().catch(() => ({})) as { error?: string };
       setErrorMsg(data.error ?? "Invalid token");

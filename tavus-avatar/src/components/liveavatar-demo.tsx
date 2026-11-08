@@ -1207,7 +1207,7 @@ export function LiveAvatarDemo() {
       const res = await fetch("/api/heygen/session", { method: "POST" });
       // Not signed in yet (DEMO_API_TOKEN): send the tester to the sign-in page, which brings them back
       if (res.status === 401) {
-        window.location.href = "/auth";
+        window.location.href = `/auth?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
         return;
       }
       if (!res.ok) {

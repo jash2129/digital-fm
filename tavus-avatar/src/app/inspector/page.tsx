@@ -54,7 +54,12 @@ export default function CallInspectorPage() {
       try {
         setLoading(true);
         const res = await fetch("/api/heygen/logs");
-        if (!res.ok) throw new Error("Failed to load call session logs");
+        // Not signed in on this address (DEMO_API_TOKEN): sign in, then come back to this same call
+        if (res.status === 401) {
+          window.location.href = `/auth?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+          return;
+        }
+        if (!res.ok) throw new Error(`Failed to load call session logs (HTTP ${res.status})`);
         const data = await res.json();
         const list: SessionSummary[] = data.sessions || [];
         setSessions(list);
