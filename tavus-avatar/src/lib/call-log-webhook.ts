@@ -18,7 +18,8 @@ import { upstashEnabled, upstashPipeline } from "./upstash";
 export const MAX_RECORDING_BYTES = 3 * 1024 * 1024;
 const MAX_TRANSCRIPT_CHARS = 45_000;
 const MAX_LOG_CHARS = 2_000_000;
-const SEND_TIMEOUT_MS = 20_000;
+// Make with two Drive uploads can take over 20 s (a batch call was lost at 20 s)
+const SEND_TIMEOUT_MS = 45_000;
 
 // Calls already sent from this process, so a double "end" never adds two rows
 const globalForCallLog = globalThis as unknown as { sentCallLogs?: Set<string> };

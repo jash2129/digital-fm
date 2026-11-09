@@ -214,7 +214,7 @@ async function sendToSheet(id: string, log: unknown, state: unknown, analysis: u
     inspectorUrl: SHEET_INSPECTOR_NOTE,
     facts,
   });
-  if (!result.sent) realLog(`    (not sent to the sheet: ${result.reason})`);
+  if (!result.sent) realLog(`    (${id} not sent to the sheet: ${result.reason})`);
 }
 
 /** Sends every call of a past batch (its .json report) to the sheet */

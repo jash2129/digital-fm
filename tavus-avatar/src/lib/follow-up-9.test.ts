@@ -285,7 +285,8 @@ const SCRIPTS: Record<string, Turn[]> = {
     { say: "I can't afford that", beat: 8, has: PRICE_LATER_LINE },
     { say: "okay", beat: 9 },
     { say: "can you do better", beat: 9, has: PRICE_LATER_LINE, not: UNKNOWN_QUESTION_LINE },
-    { say: "I'll give you $2 a day", beat: 9, has: PRICE_LATER_LINE, not: /two dollars|three dollars/i },
+    // The third price-later reply in a row is varied ("As I mentioned, I'll go over the price…")
+    { say: "I'll give you $2 a day", beat: 9, has: "I'll go over the price in just a moment", not: /two dollars|three dollars/i },
     { say: "yes", beat: 10 },
   ],
   "confused": [

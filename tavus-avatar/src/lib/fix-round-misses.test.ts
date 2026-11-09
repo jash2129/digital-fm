@@ -70,7 +70,8 @@ describe("misses in a row escalate instead of repeating", () => {
     for (let i = 0; i < 4; i++) {
       const t = await say(sid, "blorp");
       expect(t.beatId).toBe(23);
-      if (i >= 1) expect(t.textToSpeak).toBe(PRICE_DECISION_LINE);
+      // the plain decision question, varied with a short acknowledgement once it repeats
+      if (i >= 1) expect(t.textToSpeak).toContain(PRICE_DECISION_LINE);
     }
   });
 

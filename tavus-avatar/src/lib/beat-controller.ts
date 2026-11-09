@@ -20,6 +20,7 @@ import {
   WHICH_PART_LINE,
   ROLE_EXPLAIN_LINE,
   PRICE_LATER_LINE,
+  UNKNOWN_QUESTION_VARIANTS,
   REPHRASE_LINE,
   MOVE_ON_LINE,
   CONSENT_SHORT_LINE,
@@ -118,6 +119,8 @@ export interface CallState {
   paused_beat?: number;
   /** Step 0: the last reply was the "I'm listening" pause line */
   step0_paused?: boolean;
+  /** How many times each reply was said this call (normalized text), for varyRepeat */
+  said_counts?: Record<string, number>;
   /** Replies in a row that did not move the call on, at `miss_beat` (see processControllerTurn) */
   miss_count?: number;
   miss_beat?: number;
@@ -2601,6 +2604,7 @@ export async function processControllerTurn(
   const metrics: TurnMetrics = { classifierMs: 0, usedLLM: false, classifierTimedOut: false };
   let decision = await runControllerTurn(sessionId, customerTranscript, dealConfig, mockClassification, metrics);
   decision = await handleMisses(sessionId, customerTranscript, dealConfig, decision, beatBefore, snapshot, metrics);
+  varyRepeat(decision, beatBefore);
   if (decision.state.vehicle_disputed) {
     decision.textToSpeak = scrubDisputedVehicle(decision.textToSpeak, decision.state);
     decision.state.last_spoken_text = decision.textToSpeak;
@@ -2616,6 +2620,47 @@ export async function processControllerTurn(
 }
 
 // Replies that did not move the call on: Max did not understand, or answered with a canned line
+// Short acknowledgements for a reply Max has already given twice this call
+const REPEAT_ACKS = ["Understood.", "Got it.", "Okay."];
+const firstSentenceOf = (t: string) => (t.match(/^[^.!?]+[.!?]/)?.[0] ?? t).trim();
+
+/**
+ * Second automated batch (2026-11-10): the same canned answer every time a customer pushed the same
+ * way ("No pressure at all…", the tire and wheel recap, "let's skip straight to your bottom line…"),
+ * 3 to 4 times a call. Saying something twice is normal; from the 3rd time on the same beat a reply
+ * already given is varied: "As I mentioned, <its first sentence>" plus its question, then a short
+ * acknowledgement and the question Max is waiting on. The honest "I don't have that detail" answer
+ * (often to different questions) rotates through equivalent wordings instead. Moving to a new beat is
+ * never changed.
+ */
+function varyRepeat(decision: ControllerDecision, beatBefore: number): void {
+  const state = decision.state;
+  const key = normLine(decision.textToSpeak);
+  if (!key) return;
+  const counts = (state.said_counts ??= {});
+  const before = counts[key] ?? 0;
+  counts[key] = before + 1;
+  if (before < 2 || decision.beatId !== beatBefore || decision.isScriptComplete || key.length < 40) return;
+
+  let text: string;
+  if (decision.textToSpeak.includes(UNKNOWN_QUESTION_LINE)) {
+    const alt = UNKNOWN_QUESTION_VARIANTS[(before - 2) % UNKNOWN_QUESTION_VARIANTS.length];
+    text = decision.textToSpeak.replace(UNKNOWN_QUESTION_LINE, alt);
+  } else {
+    const question = lastQuestionOf(decision.textToSpeak);
+    const first = firstSentenceOf(decision.textToSpeak);
+    if (before === 2 && first !== question) {
+      // "I'll …" / "I'm …" keep their capital I
+      const lead = /^I\b/.test(first) ? first : first.charAt(0).toLowerCase() + first.slice(1);
+      text = `As I mentioned, ${lead}${question ? ` ${question}` : ""}`;
+    } else {
+      text = `${REPEAT_ACKS[(before - 2) % REPEAT_ACKS.length]} ${question || pendingQuestion(state)}`;
+    }
+  }
+  decision.textToSpeak = text;
+  state.last_spoken_text = text;
+}
+
 // Max did not understand the customer: a fragment, his own voice echoed back, or "say that again"
 const MISS_INTENTS = new Set(["garbled", "avatar_echo", "repeat_request"]);
 // Beats Max must never move past without an answer: consent to recording, the price and the close
@@ -3147,7 +3192,8 @@ async function runControllerTurn(
         norm.includes("twenty dollars") ||
         norm.includes("20 a month");
 
-      if (hasOfferBelowThree) {
+      // Once the floor was stated, a lowball goes through the floor choice below instead of repeating it
+      if (hasOfferBelowThree && (state.concession_stage || 1) < 4) {
         state.concession_stage = 4;
         state.dealConfig.per_day_price = "three dollars";
         textToSpeak = FLOOR_PRICE_LINE;
