@@ -59,6 +59,8 @@ tavus-avatar/public/window.svg
 *.mp3
 *.zip
 testing-skill/reports/
+# Real call transcripts (what testers and customers said): stays on this machine
+testing-skill/real-calls/
 tavus-avatar/logs/
 tavus-avatar/logs-heygen/
 tavus-avatar/public/logs-heygen/
