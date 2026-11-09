@@ -409,7 +409,14 @@ export function commitTurn(
  */
 export function repromptText(sessionId: string, kind: "resume" | "still_with_me" | "clarify"): string {
   const state = getOrCreateCallState(sessionId);
-  if (!state.step0_completed) return STEP_0_GREETING;
+  if (!state.step0_completed && !(kind === "resume" && state.interrupted)) {
+    // Test calls: after "How has your experience been?" a silence re-asked "Can you hear and see me
+    // alright?", two or three times in a row. Re-ask what Max last asked instead.
+    const question = lastQuestionOf(state.last_spoken_text) || STEP_0_GREETING;
+    const text = kind === "still_with_me" ? `${STILL_WITH_ME_LINE} ${question}` : question;
+    state.last_spoken_text = text;
+    return text;
+  }
   if (kind === "resume" && state.interrupted) {
     const { remaining, after } = state.interrupted;
     state.interrupted = undefined;
@@ -909,6 +916,18 @@ export function isEarlyPriceObjection(norm: string): boolean {
   );
 }
 
+// Words that can be a whole answer on their own. Any other lone word is treated as a fragment.
+const ONE_WORD_ANSWERS = new Set(
+  ("yes yeah yep yup ya yea yah aye ok okay k sure fine right correct true absolutely definitely certainly " +
+    "alright good great perfect awesome cool nice excellent no nope nah never maybe proceed continue next " +
+    "go understood understand gotcha agreed agree deal done ready mhm hmm hm uh um thanks thank").split(" ")
+);
+
+// A plain refusal with nothing else in it ("no", "nope", "no thanks", "not interested")
+export function isPlainNo(norm: string): boolean {
+  return /^(no|nope|nah|no thanks|no thank you|not really|not interested|i m not interested|im not interested|i don t think so|i dont think so|that doesn t work|that doesnt work|doesn t work for me|not for me|i ll pass|ill pass|pass)( (max|sir|man|thanks|thank you))?$/.test(norm);
+}
+
 // Deterministic rule-based classification fallback (also used for unit/simulation tests)
 export function classifyCustomerInputRuleBased(
   transcript: string,
@@ -1231,6 +1250,12 @@ export function classifyCustomerInputRuleBased(
   }
 
   // 5.5. Contextual Progression & Negotiation at Beats 22-25 (Evaluate BEFORE generic topic keywords!)
+  // A plain "no" to the offer or to a lower price ("no", "nope", "not interested"): the next step
+  // down the approved ladder, not the same $4 pitch again (test call 888ec8fb)
+  if ((currentBeatId === 22 || currentBeatId === 23) && isPlainNo(norm)) {
+    return { intent: "negotiate_price", topic_beat_ids: [] };
+  }
+
   if (currentBeatId >= 22) {
     const isCloseConfirmation =
       norm.includes("works") ||
@@ -1366,6 +1391,12 @@ export function classifyCustomerInputRuleBased(
     if (currentBeatId === 25) {
       return { intent: "agree", topic_beat_ids: [] };
     }
+  }
+
+  // 5.65. A lone word that is not an answer ("up", "there", "are", "can"): a recognition fragment.
+  // Test calls took these as "yes" and moved on; at Beat 23 "up" confirmed the full package.
+  if (words.length === 1 && !ONE_WORD_ANSWERS.has(words[0])) {
+    return { intent: "garbled", topic_beat_ids: [] };
   }
 
   // 5.7. Never an answer to the beat's own question, whatever words it contains:
@@ -2304,6 +2335,12 @@ export async function generateStep0Turn(
   const isPositive =
     /\b(good|great|fine|ok|okay|alright|all right|nice|smooth|easy|excellent|wonderful|fantastic|amazing|awesome|perfect|love|loved|happy|pleasant|helpful|friendly|decent|cool|went well|so far so good|yes|yeah|yep)\b/.test(softened);
 
+  // A lone word that says nothing about the experience ("There", "Can", "Are"): a recognition
+  // fragment. Ask again once, like a filler, instead of "Thanks for sharing that" and moving on.
+  if (!opts.fillerReasked && norm.split(" ").length === 1 && !isPositive && !isHostile && !isUnhappy) {
+    return { text: STEP_0_CHECKIN_LINE, moveToBeat1: false, reasked: true };
+  }
+
   // Explicit hurry about THIS call. "The drive over took forever because of the traffic" is not one.
   const isHurry =
     /\b(in a hurry|hurry up|hurry this up|how long (is|will) this (going to |gonna )?take|how long does this take|i don t have (much )?time|i dont have (much )?time|no time for this|get to the point|cut to the chase|make it (brief|quick|fast)|get this over)\b/.test(norm);
@@ -3085,8 +3122,9 @@ async function runControllerTurn(
     }
 
     case "garbled": {
-      // Speak GARBLED_LINE once, listen again
-      textToSpeak = GARBLED_LINE;
+      // Not understood: say so, then ask the pending question again so the customer knows what to
+      // answer (test calls looped "Sorry, I didn't catch that." on its own until they hung up)
+      textToSpeak = `${GARBLED_LINE} ${pendingQuestion(state)}`;
       beatType = "wait";
       break;
     }

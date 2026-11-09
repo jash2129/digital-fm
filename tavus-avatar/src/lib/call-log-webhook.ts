@@ -5,6 +5,7 @@ import { getHeygenAudio, type HeygenCallLog } from "./heygen-logger";
 import { loadCallLog, saveCallLog } from "./call-log-store";
 import { UNKNOWN_QUESTION_LINE } from "./max-lines";
 import { analyzeFinishedCall, type PostCallAnalysis } from "./post-call-analysis";
+import { upstashEnabled, upstashPipeline } from "./upstash";
 
 // Sends each finished call to the call log sheet (a Make.com webhook, see docs/MAKE-CALL-LOG.md).
 // Needs CALL_LOG_WEBHOOK_URL; CALL_LOG_SECRET is checked by the scenario's filter. With no URL set
@@ -136,6 +137,28 @@ async function rememberRecordingLink(res: Response, log: HeygenCallLog): Promise
   }
 }
 
+// Claims a call for sending, across every server instance when the shared store is set up (Vercel
+// ran two instances that each sent the same call: duplicate rows). Local memory otherwise.
+const SENT_TTL_SECONDS = 24 * 60 * 60;
+async function claimSend(sessionId: string): Promise<boolean> {
+  if (sent.has(sessionId)) return false;
+  sent.add(sessionId);
+  if (!upstashEnabled()) return true;
+  try {
+    const [claimed] = await upstashPipeline([["SET", `max:sent:${sessionId}`, "1", "NX", "EX", SENT_TTL_SECONDS]]);
+    return claimed === "OK";
+  } catch {
+    return true; // the store is down: better a possible duplicate row than a lost call
+  }
+}
+async function releaseSend(sessionId: string): Promise<void> {
+  sent.delete(sessionId);
+  if (!upstashEnabled()) return;
+  try {
+    await upstashPipeline([["DEL", `max:sent:${sessionId}`]]);
+  } catch {}
+}
+
 export type SendResult = { sent: true; status: number } | { sent: false; reason: string };
 
 /**
@@ -160,7 +183,8 @@ export async function sendCallLog(
     state: activeStates.get(sessionId),
     recording: provided.recording ?? getHeygenAudio(sessionId),
   };
-  sent.add(sessionId); // claimed before the slow AI review, so a second "end" cannot race it
+  // Claimed before the slow AI review, so a second "end" (on any server) cannot race it
+  if (!(await claimSend(sessionId))) return { sent: false, reason: "already sent" };
 
   // Post-call analysis: the facts the reviewer gets are the measured ones, so it does not guess them
   const draft = buildCallLogPayload(log, base);
@@ -182,13 +206,13 @@ export async function sendCallLog(
       signal: controller.signal,
     });
     if (!res.ok) {
-      sent.delete(sessionId); // let a retry go through
+      await releaseSend(sessionId); // let a retry go through
       return { sent: false, reason: `webhook answered ${res.status}` };
     }
     await rememberRecordingLink(res, log);
     return { sent: true, status: res.status };
   } catch (err) {
-    sent.delete(sessionId);
+    await releaseSend(sessionId);
     return { sent: false, reason: err instanceof Error ? err.message : String(err) };
   } finally {
     clearTimeout(timer);

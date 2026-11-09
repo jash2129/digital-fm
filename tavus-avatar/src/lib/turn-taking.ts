@@ -234,7 +234,9 @@ export type RepromptKind = "resume" | "still_with_me" | "clarify";
 // No audio this long after the customer spoke (and nothing in flight): make Max speak
 export const DEAD_MAN_MS = 4000;
 // Customer silence after Max finishes a wait beat before prompting, and the most prompts in a row
-export const SILENCE_PROMPT_MS = 7000;
+// After a long line people pause to think: 7 s made "Are you still with me?" follow almost every
+// line in test calls
+export const SILENCE_PROMPT_MS = 12000;
 export const MAX_SILENCE_PROMPTS = 3;
 
 // -----------------------------------------------------------------------------
