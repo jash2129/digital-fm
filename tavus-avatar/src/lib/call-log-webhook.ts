@@ -168,7 +168,18 @@ export type SendResult = { sent: true; status: number } | { sent: false; reason:
 export async function sendCallLog(
   sessionId: string,
   origin: string,
-  provided: { log?: HeygenCallLog | null; recording?: Buffer | null } = {}
+  provided: {
+    log?: HeygenCallLog | null;
+    recording?: Buffer | null;
+    /** Call state, when it is not in this server's memory (a simulated call being re-sent) */
+    state?: CallState;
+    /** A post-call analysis already made (simulated calls), so it is not paid for twice */
+    analysis?: PostCallAnalysis;
+    /** Overrides the Inspector link (simulated calls have no Inspector page) */
+    inspectorUrl?: string;
+    /** Extra context for the AI review (e.g. "simulated call, AI customer: …") */
+    facts?: string;
+  } = {}
 ): Promise<SendResult> {
   const url = process.env.CALL_LOG_WEBHOOK_URL?.trim();
   if (!url) return { sent: false, reason: "CALL_LOG_WEBHOOK_URL not set" };
@@ -180,7 +191,7 @@ export async function sendCallLog(
     secret: process.env.CALL_LOG_SECRET?.trim() ?? "",
     origin,
     environment: process.env.RENDER ? "render" : process.env.NODE_ENV === "production" ? "production" : "local",
-    state: activeStates.get(sessionId),
+    state: provided.state ?? activeStates.get(sessionId),
     recording: provided.recording ?? getHeygenAudio(sessionId),
   };
   // Claimed before the slow AI review, so a second "end" (on any server) cannot race it
@@ -192,9 +203,12 @@ export async function sendCallLog(
     `Duration: ${draft.durationSec}s, ended: ${draft.endedHow}, furthest script beat: ${draft.furthestBeat || "unknown"} of 25`,
     `Average reply time: ${draft.avgReplyMs || "?"} ms, slowest: ${draft.slowestReplyMs || "?"} ms`,
     `Max was interrupted ${draft.interruptions} times; ${draft.echoDrops} transcripts were dropped as Max's own voice (speaker echo)`,
-  ].join("\n");
-  const analysis = await analyzeFinishedCall(log, base.state, draft.transcriptText, facts);
-  const payload = { ...draft, ...analysis };
+    provided.facts ?? "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  const analysis = provided.analysis ?? (await analyzeFinishedCall(log, base.state, draft.transcriptText, facts));
+  const payload = { ...draft, ...analysis, ...(provided.inspectorUrl !== undefined ? { inspectorUrl: provided.inspectorUrl } : {}) };
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), SEND_TIMEOUT_MS);

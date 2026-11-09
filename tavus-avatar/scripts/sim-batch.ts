@@ -8,9 +8,10 @@
  *     --personas terse_tester,hard_haggler   only these (ids in testing-skill/tester-personas.json)
  *     --noise 0.15     share of customer turns turned into recognition glitches (a cut-off
  *                      fragment, or an echo of Max's own words), as in the real calls; default 0.1
- *     --no-review      skip the AI review (faster, no AI cost for reviewing)
- *     --sheet          also send each call to the call log sheet (Environment "… · simulation";
- *                      about 5 Make operations per call)
+ *     --no-review      skip the AI review in the report (faster); the sheet row still gets one
+ *     --no-sheet       do not send the calls to the call log sheet. By default every call is sent
+ *                      (Environment "local · simulation (<persona>)"; about 5 Make operations per call)
+ *     --resend <file>  send a past batch's calls (its testing-skill/reports/sim-batch-*.json) to the sheet
  *     --parallel 4     calls at once (default 4)
  *
  * Needs XAI_API_KEY or OPENAI_API_KEY in .env.local (the AI customer; Max's classifier also uses it,
@@ -178,19 +179,74 @@ async function simulateCall(persona: Persona, n: number, noise: number, review: 
     seconds: Math.round((Date.now() - started) / 1000),
   };
 
-  if (review) {
+  // One AI review, used for both the report and the sheet row
+  const facts = simFacts(persona.name, call.scorecard.furthestBeat, glitched);
+  let analysis: Awaited<ReturnType<typeof import("../src/lib/post-call-analysis").analyzeFinishedCall>> | undefined;
+  if (review || sheet) {
     const { analyzeFinishedCall } = await import("../src/lib/post-call-analysis");
     const text = transcript.map((t) => `${t.role === "user" ? "Customer" : "Max"}: ${t.text}`).join("\n");
-    const facts = `Simulated call (AI customer: ${persona.name}). Furthest script beat: ${call.scorecard.furthestBeat} of 25. ${glitched} customer turns were turned into recognition glitches on purpose.`;
-    const a = await analyzeFinishedCall(log as never, bc.activeStates.get(id), text, facts);
-    call.review = { aiScore: a.aiScore, callSummary: a.callSummary, problemsFound: a.problemsFound, customerSentiment: a.customerSentiment };
+    analysis = await analyzeFinishedCall(log as never, bc.activeStates.get(id), text, facts);
+    call.review = {
+      aiScore: analysis.aiScore,
+      callSummary: analysis.callSummary,
+      problemsFound: analysis.problemsFound,
+      customerSentiment: analysis.customerSentiment,
+    };
   }
-  if (sheet) {
-    const { sendCallLog } = await import("../src/lib/call-log-webhook");
-    await sendCallLog(id, "http://localhost:3000", { log: log as never });
-  }
+  if (sheet) await sendToSheet(id, log, bc.activeStates.get(id), analysis, facts);
   bc.resetCallState(id);
   return call;
+}
+
+const simFacts = (personaName: string, furthestBeat: number, glitched: number) =>
+  `Simulated call (AI customer: ${personaName}). Furthest script beat: ${furthestBeat} of 25. ` +
+  `${glitched} customer turns were turned into recognition glitches on purpose.`;
+
+const SHEET_INSPECTOR_NOTE = "simulated call: no recording or Inspector; full conversation in testing-skill/reports/sim-batch-*.md";
+
+/** One row in the call log sheet (Environment "… · simulation (<persona>)") */
+async function sendToSheet(id: string, log: unknown, state: unknown, analysis: unknown, facts: string): Promise<void> {
+  const { sendCallLog } = await import("../src/lib/call-log-webhook");
+  const result = await sendCallLog(id, "", {
+    log: log as never,
+    state: state as never,
+    analysis: analysis as never,
+    inspectorUrl: SHEET_INSPECTOR_NOTE,
+    facts,
+  });
+  if (!result.sent) realLog(`    (not sent to the sheet: ${result.reason})`);
+}
+
+/** Sends every call of a past batch (its .json report) to the sheet */
+async function resend(file: string): Promise<void> {
+  const calls: SimCall[] = JSON.parse(readFileSync(file, "utf8"));
+  realLog(`sending ${calls.length} calls from ${path.basename(file)} to the call log sheet...`);
+  for (const c of calls) {
+    const { STEP_0_GREETING } = await import("../src/lib/max-lines");
+    const transcript = [
+      { role: "assistant", text: STEP_0_GREETING, timestamp: "" },
+      ...c.turns.flatMap((t) => [
+        { role: "user", text: t.customer, timestamp: "" },
+        { role: "assistant", text: t.max, timestamp: "" },
+      ]),
+    ];
+    const log = {
+      sessionId: c.id,
+      engine: "heygen-grok",
+      avatarId: "simulation",
+      avatarName: "Max",
+      startTime: new Date().toISOString(),
+      endTime: new Date().toISOString(),
+      durationSeconds: c.seconds,
+      status: "completed",
+      transcript,
+      sttEngine: `simulation (${c.persona})`,
+    };
+    // Rebuilt from the report: how far the call got and whether Max ended it
+    const state = { current_beat: c.scorecard.furthestBeat, delivered_beats: [], is_stopped: c.endedBy === "max" };
+    await sendToSheet(c.id, log, state, undefined, simFacts(c.persona, c.scorecard.furthestBeat, c.glitched));
+    realLog(`  ${c.persona.padEnd(18)} beat ${String(c.scorecard.furthestBeat).padStart(2)}  sent`);
+  }
 }
 
 function report(calls: SimCall[], noise: number): string {
@@ -243,6 +299,8 @@ function report(calls: SimCall[], noise: number): string {
 
 async function main() {
   loadEnvLocal();
+  const resendFile = arg("--resend");
+  if (resendFile) return resend(resendFile);
   const all: Persona[] = JSON.parse(readFileSync(personasFile, "utf8")).personas;
   const wanted = arg("--personas")?.split(",").map((s) => s.trim());
   const personas = wanted ? all.filter((p) => wanted.includes(p.id)) : all;
@@ -251,9 +309,13 @@ async function main() {
   const noise = Number(arg("--noise") ?? 0.1);
   const parallel = Math.max(1, Number(arg("--parallel") ?? 4));
   const review = !args.includes("--no-review");
-  const sheet = args.includes("--sheet");
+  // Every simulated call goes to the call log sheet unless --no-sheet (or no webhook is set up)
+  const sheet = !args.includes("--no-sheet") && Boolean(process.env.CALL_LOG_WEBHOOK_URL?.trim());
 
-  realLog(`running ${total} calls (${personas.length} personas, ${parallel} at a time, glitches ${Math.round(noise * 100)}%)...`);
+  realLog(
+    `running ${total} calls (${personas.length} personas, ${parallel} at a time, glitches ${Math.round(noise * 100)}%)` +
+      `${sheet ? ", each sent to the call log sheet" : ""}...`
+  );
   const jobs = Array.from({ length: total }, (_, i) => () => simulateCall(personas[i % personas.length], i + 1, noise, review, sheet));
   const calls: SimCall[] = [];
   let next = 0;

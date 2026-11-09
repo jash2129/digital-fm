@@ -30,8 +30,12 @@ npx --yes tsx --conditions=react-server scripts/sim-batch.ts --calls 40
 - `--personas terse_tester,hard_haggler` to run only some personas
 - `--noise 0.15` turns 15% of customer turns into recognition glitches (a cut-off fragment or an
   echo of Max's words), as in the real calls; default 10%
-- `--no-review` skips the AI review; `--sheet` also sends each call to the call log sheet
-  (about 5 Make operations per call)
+- **Every simulated call is sent to the call log sheet** (Environment `local · simulation (<persona>)`,
+  with the AI review columns filled). `--no-sheet` skips that for a run. Each call uses about 5 Make
+  operations: a 40-call batch is about 200 of the free plan's 1,000 a month.
+- `--resend testing-skill/reports/sim-batch-<time>.json` sends a past batch to the sheet
+- `--no-review` skips the AI review in the report (the sheet row still gets one)
+- Simulated calls have no recording or Inspector page; the Inspector Link column says so
 
 Report: `testing-skill/reports/sim-batch-<time>.md`. Needs `XAI_API_KEY` or `OPENAI_API_KEY` in
 `.env.local`; a 40-call run costs well under a dollar of AI usage.
