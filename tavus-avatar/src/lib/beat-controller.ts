@@ -20,6 +20,12 @@ import {
   WHICH_PART_LINE,
   ROLE_EXPLAIN_LINE,
   PRICE_LATER_LINE,
+  REPHRASE_LINE,
+  MOVE_ON_LINE,
+  CONSENT_SHORT_LINE,
+  PRICE_DECISION_LINE,
+  FLOOR_DECISION_LINE,
+  DECLINE_LINE,
   BEAT_TRANSITION_BRIDGES,
   PAUSE_LINE,
   LISTENING_LINE,
@@ -112,6 +118,13 @@ export interface CallState {
   paused_beat?: number;
   /** Step 0: the last reply was the "I'm listening" pause line */
   step0_paused?: boolean;
+  /** Replies in a row that did not move the call on, at `miss_beat` (see processControllerTurn) */
+  miss_count?: number;
+  miss_beat?: number;
+  /** After the $3 floor: the customer was asked to choose between $3/day and the factory warranty */
+  floor_decision_asked?: boolean;
+  /** The customer declined the protection package */
+  package_declined?: boolean;
   /** How many times the customer said they were confused at `confusion_beat` */
   confusion_count?: number;
   confusion_beat?: number;
@@ -219,6 +232,8 @@ export type ClassifierIntent =
   | "role_confusion"
   | "confusion"
   | "early_price_objection"
+  /** Not a classifier result: Max moved on after three misses in a row (handleMisses) */
+  | "move_on"
   | "resume_interrupted"
   | "other";
 
@@ -1252,7 +1267,10 @@ export function classifyCustomerInputRuleBased(
   // 5.5. Contextual Progression & Negotiation at Beats 22-25 (Evaluate BEFORE generic topic keywords!)
   // A plain "no" to the offer or to a lower price ("no", "nope", "not interested"): the next step
   // down the approved ladder, not the same $4 pitch again (test call 888ec8fb)
-  if ((currentBeatId === 22 || currentBeatId === 23) && isPlainNo(norm)) {
+  if (
+    (currentBeatId === 22 || currentBeatId === 23) &&
+    (isPlainNo(norm) || /\b(just (the |my )?factory warranty|keep (just )?(the |my )?factory|factory warranty only|not today|no package)\b/.test(norm))
+  ) {
     return { intent: "negotiate_price", topic_beat_ids: [] };
   }
 
@@ -2577,9 +2595,12 @@ export async function processControllerTurn(
   mockClassification?: ClassificationResult
 ): Promise<ControllerDecision> {
   const t0 = Date.now();
-  const beatBefore = getOrCreateCallState(sessionId, dealConfig).current_beat;
+  const stateRef = getOrCreateCallState(sessionId, dealConfig);
+  const beatBefore = stateRef.current_beat;
+  const snapshot = cloneState(stateRef);
   const metrics: TurnMetrics = { classifierMs: 0, usedLLM: false, classifierTimedOut: false };
-  const decision = await runControllerTurn(sessionId, customerTranscript, dealConfig, mockClassification, metrics);
+  let decision = await runControllerTurn(sessionId, customerTranscript, dealConfig, mockClassification, metrics);
+  decision = await handleMisses(sessionId, customerTranscript, dealConfig, decision, beatBefore, snapshot, metrics);
   if (decision.state.vehicle_disputed) {
     decision.textToSpeak = scrubDisputedVehicle(decision.textToSpeak, decision.state);
     decision.state.last_spoken_text = decision.textToSpeak;
@@ -2592,6 +2613,73 @@ export async function processControllerTurn(
     beatAfter: decision.beatId,
   };
   return decision;
+}
+
+// Replies that did not move the call on: Max did not understand, or answered with a canned line
+// Max did not understand the customer: a fragment, his own voice echoed back, or "say that again"
+const MISS_INTENTS = new Set(["garbled", "avatar_echo", "repeat_request"]);
+// Beats Max must never move past without an answer: consent to recording, the price and the close
+const NO_MOVE_ON_BEATS = new Set([1, 22, 23, 24]);
+const normLine = (t: string) => t.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+const isQuestion = (t: string) => t.trim().endsWith("?") || /^(why|what|how|who|when|where|is|are|do|does|can|could|will|would|should)\b/i.test(t.trim());
+
+/**
+ * A reply that did not move the call on because Max did not understand, or that repeats Max's last
+ * line word for word. A new question from the customer is never a miss: it gets its own answer,
+ * even when that answer is the same "I don't have that detail" line.
+ */
+function isMiss(decision: ControllerDecision, beatBefore: number, previousText: string, customerTranscript: string): boolean {
+  if (decision.beatId !== beatBefore || decision.isScriptComplete || beatBefore < 1 || beatBefore >= 25) return false;
+  if (MISS_INTENTS.has(decision.intent)) return true;
+  return !isQuestion(customerTranscript) && normLine(decision.textToSpeak) === normLine(previousText);
+}
+
+/**
+ * Test batch, 2026-11-09: whenever Max did not understand he said the same line again, up to 21
+ * times. Misses in a row at the same beat now escalate: the 1st gets the normal reply, the 2nd a
+ * shorter rephrase, the 3rd moves on to the next beat. At the recording consent and the price /
+ * close (NO_MOVE_ON_BEATS) Max never assumes a yes: he keeps asking a short decision question.
+ */
+async function handleMisses(
+  sessionId: string,
+  customerTranscript: string,
+  dealConfig: DealConfig,
+  decision: ControllerDecision,
+  beatBefore: number,
+  snapshot: CallState,
+  metrics: TurnMetrics
+): Promise<ControllerDecision> {
+  const state = decision.state;
+  if (!isMiss(decision, beatBefore, snapshot.last_spoken_text, customerTranscript)) {
+    state.miss_count = 0;
+    state.miss_beat = undefined;
+    return decision;
+  }
+  const count = state.miss_beat === beatBefore ? (state.miss_count ?? 0) + 1 : 1;
+  state.miss_beat = beatBefore;
+  state.miss_count = count;
+  if (count < 2) return decision;
+
+  const beat = BEATS.find((b) => b.id === beatBefore)!;
+  const decisionQuestion =
+    beatBefore === 1 ? CONSENT_SHORT_LINE : beatBefore === 22 || beatBefore === 23 ? PRICE_DECISION_LINE : pendingQuestion(state);
+
+  if (count === 2 || NO_MOVE_ON_BEATS.has(beatBefore)) {
+    const text = NO_MOVE_ON_BEATS.has(beatBefore) ? decisionQuestion : `${REPHRASE_LINE} ${getBeatCheckInQuestion(beat)}`;
+    state.last_spoken_text = text;
+    return { ...decision, textToSpeak: text, beatType: "wait", toolCalls: [] };
+  }
+
+  // Third miss in a row: move on, as if the customer had said "okay". The state object is restored
+  // in place, so callers holding it (processClientTurn) stay in step.
+  const restored = cloneState(snapshot);
+  for (const k of Object.keys(state)) delete (state as unknown as Record<string, unknown>)[k];
+  Object.assign(state, restored, { miss_count: 0, miss_beat: undefined });
+  const next = await runControllerTurn(sessionId, "okay", dealConfig, { intent: "agree", topic_beat_ids: [] }, metrics);
+  next.textToSpeak = `${MOVE_ON_LINE} ${next.textToSpeak}`;
+  next.state.last_spoken_text = next.textToSpeak;
+  next.intent = "move_on";
+  return next;
 }
 
 async function runControllerTurn(
@@ -3109,14 +3197,24 @@ async function runControllerTurn(
         beatType = "wait";
         toolCalls = [{ name: "show_payment_breakdown", args: { daily_rate: 3.0 } }];
         state.current_beat = 23;
-      } else {
-        // Floor breach / below $3 or pushing past stage 4
+      } else if (!state.floor_decision_asked) {
+        // Pushback after the $3 floor was stated (test batch: the floor line 4 times): let them choose
         state.concession_stage = 4;
         state.dealConfig.per_day_price = "three dollars";
-        textToSpeak = FLOOR_PRICE_LINE;
+        state.floor_decision_asked = true;
+        textToSpeak = FLOOR_DECISION_LINE;
         beatType = "wait";
         toolCalls = [{ name: "show_payment_breakdown", args: { daily_rate: 3.0 } }];
         state.current_beat = 23;
+      } else {
+        // Still no after the choice: accept it, no package, on to the paperwork
+        state.package_declined = true;
+        state.current_beat = 25;
+        if (!state.delivered_beats.includes(25)) state.delivered_beats.push(25);
+        const beat25 = BEATS.find((b) => b.id === 25)!;
+        textToSpeak = `${DECLINE_LINE} ${getFullBeatUtterance(beat25, state.dealConfig, state)}`;
+        beatType = beat25.type;
+        toolCalls = [{ name: "dismiss_content", args: {} }];
       }
       break;
     }

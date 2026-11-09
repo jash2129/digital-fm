@@ -109,6 +109,18 @@ export const NO_PRESSURE_LINE = "No pressure at all. I'll just walk you through 
 // A price objection or counter-offer before the price is quoted (Beats 1-21), then the pending
 // question. The number offered is never treated as a counter. Status: PENDING TXM
 export const PRICE_LATER_LINE = "I'll go over the price in just a moment, and there's no pressure at all. Let me finish the coverage first.";
+// A second miss in a row at the same beat: the question again, shorter. Status: PENDING TXM
+export const REPHRASE_LINE = "Let me put that more simply.";
+// A third miss in a row at a beat Max can safely move past. Status: PENDING TXM
+export const MOVE_ON_LINE = "No problem, let's keep going.";
+// Repeated misses at the recording disclosure: never move on without consent. Status: PENDING TXM
+export const CONSENT_SHORT_LINE = "In short, this call is recorded, and I go over your paperwork with you before you sign. Is it okay if we continue?";
+// Repeated misses at the price: a plain decision, never an assumed yes. Status: PENDING TXM
+export const PRICE_DECISION_LINE = "Would you like to go ahead with the protection package, or not today?";
+// Pushback after the $3 floor was stated: the customer chooses. Status: PENDING TXM
+export const FLOOR_DECISION_LINE = "I understand. Three dollars a day is the lowest I can go. Would you like to go ahead at three dollars a day, or keep just your factory warranty?";
+// The customer declines the package at the floor: accepted, then on to the paperwork. Status: PENDING TXM
+export const DECLINE_LINE = "No problem at all, you'll keep your factory warranty. Let's finish your paperwork.";
 // Asked when the customer is still confused after an explanation. Status: PENDING TXM
 export const WHICH_PART_LINE = "Which part would you like me to explain?";
 // A second "no" at the Beat 1 recording disclosure. Until TXM confirms the two-no rule, Max waits

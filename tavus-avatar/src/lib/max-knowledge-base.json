@@ -11,7 +11,8 @@
       "source_quotes": [
         "Before I start I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay."
       ],
-      "status": "script"
+      "status": "script",
+      "speak": false
     },
     {
       "id": "manufacturer_warranty",
@@ -197,7 +198,8 @@
       "source_quotes": [
         "Under this policy the only thing you have to worry about is just paying for your GAS and guess what we don't have cover for that"
       ],
-      "status": "script"
+      "status": "script",
+      "speak": false
     },
     {
       "id": "price_framing",
@@ -221,7 +223,8 @@
       "source_quotes": [
         "Which two of those do you see the most value in? We want to make sure you get the exact coverage that makes the most sense for your driving habits."
       ],
-      "status": "script"
+      "status": "script",
+      "speak": false
     },
     {
       "id": "confirm",
@@ -233,7 +236,8 @@
       "source_quotes": [
         "Great, so to confirm, we're moving forward with full vehicle protection for four dollars a day on your 2026 Mazda CX-5."
       ],
-      "status": "script"
+      "status": "script",
+      "speak": false
     },
     {
       "id": "verify",
@@ -245,7 +249,8 @@
       "source_quotes": [
         "Now that we've confirmed your paperwork, let me quickly verify your full legal name, spelling, and current mailing address before final signature."
       ],
-      "status": "script"
+      "status": "script",
+      "speak": false
     },
     {
       "id": "seventy_hundred",

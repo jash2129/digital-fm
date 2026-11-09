@@ -19,6 +19,8 @@ interface Fact {
   status: string;
   /** retrieval keywords defined in the JSON itself, merged with KEYWORDS below */
   keywords?: string[];
+  /** false: a note about the call ("The assistant confirms…"), never read out (test batch 2026-11-09) */
+  speak?: boolean;
 }
 interface NeedsEntry {
   question: string;
@@ -83,6 +85,7 @@ function approvedFacts(): Array<{ id: string; topic: string; answer: string; key
   const out: Array<{ id: string; topic: string; answer: string; keywords: string[] }> = [];
   for (const f of (kbData as { facts: Fact[] }).facts) {
     if (f.status !== "script" && f.status !== "approved") continue;
+    if (f.speak === false) continue;
     out.push({ id: f.id, topic: f.topic, answer: cleanAnswer(f.answer), keywords: [...(KEYWORDS[f.id] ?? []), ...(f.keywords ?? [])] });
   }
   for (const n of (kbData as { needs_txm: NeedsEntry[] }).needs_txm) {
