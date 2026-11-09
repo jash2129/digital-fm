@@ -133,3 +133,34 @@ describe("knowledge-base notes are never read aloud", () => {
     expect(facts.map((f) => f.answer).join(" ")).not.toMatch(/the customer is asked|the assistant/i);
   });
 });
+
+describe("polish round after batch 3 (8 of 40 calls still looping)", () => {
+  it("a long friendly story while Max is explaining carries the call on", async () => {
+    const sid = atBeat(9);
+    const t = await say(sid, "oh that reminds me, my old car had the worst potholes on my commute every single morning");
+    expect(t.beatId).toBe(10);
+  });
+
+  it("short remarks and pushback are not treated as a story", async () => {
+    for (const line of ["You sound like a machine.", "I do my own oil changes in my garage every few months anyway"]) {
+      const t = await say(atBeat(9), line);
+      expect(t.beatId, line).toBe(9);
+    }
+  });
+
+  it("a short question said three times in a row is varied", async () => {
+    const sid = atBeat(5);
+    const replies: string[] = [];
+    for (let i = 0; i < 3; i++) replies.push((await say(sid, "blorp")).textToSpeak);
+    expect(new Set(replies).size).toBe(3);
+  });
+
+  it("moving on at a yes/no question does not assume a yes", async () => {
+    const sid = atBeat(2);
+    await say(sid, "blorp");
+    await say(sid, "flarp");
+    const moved = await say(sid, "zzz");
+    expect(moved.textToSpeak.startsWith(MOVE_ON_LINE)).toBe(true);
+    expect(moved.textToSpeak).not.toMatch(/Awesome|when you came back from the test drive/i);
+  });
+});

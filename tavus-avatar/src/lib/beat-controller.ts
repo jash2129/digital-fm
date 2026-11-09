@@ -1962,6 +1962,27 @@ export function classifyCustomerInputRuleBased(
     return { intent: "agree", topic_beat_ids: [] };
   }
 
+  // Not a harmless story: hostility, "you're a robot", an exclusion ("my own oil changes"), or price talk
+  const STORY_EXCLUSIONS =
+    /\b(lying|liar|lie|boring|shut up|machine|robot|bot|scam|fake|my own|myself|without|don t need|dont need|do not need|skip|cheaper|price|cost|money|expensive|afford|pay)\b/;
+  // 9.5. A story or comment while Max is explaining (Beats 6-21, where the customer only has to
+  // follow along): nothing to answer, so carry on. The rambler in the test batches got "continue, or
+  // go over that again?" after every story and never reached the price. Questions, refusals and
+  // pushback are not carried on.
+  const beatDef = BEATS.find((b) => b.id === currentBeatId);
+  if (
+    currentBeatId >= 6 &&
+    currentBeatId <= 21 &&
+    (beatDef?.expects ?? "statement") === "statement" &&
+    // A real story is long; short remarks ("You sound like a machine") and pushback get their own handling
+    words.length >= 10 &&
+    !isQuestion(transcript) &&
+    !STORY_EXCLUSIONS.test(norm) &&
+    !/\b(no|not|don t|dont|didn t|never|can t|cant|won t|wouldn t|isn t|doesn t|stop|wait|but)\b/.test(norm)
+  ) {
+    return { intent: "agree", topic_beat_ids: [] };
+  }
+
   return { intent: "other", topic_beat_ids: [] };
 }
 
@@ -2604,7 +2625,7 @@ export async function processControllerTurn(
   const metrics: TurnMetrics = { classifierMs: 0, usedLLM: false, classifierTimedOut: false };
   let decision = await runControllerTurn(sessionId, customerTranscript, dealConfig, mockClassification, metrics);
   decision = await handleMisses(sessionId, customerTranscript, dealConfig, decision, beatBefore, snapshot, metrics);
-  varyRepeat(decision, beatBefore);
+  varyRepeat(decision, beatBefore, snapshot.last_spoken_text);
   if (decision.state.vehicle_disputed) {
     decision.textToSpeak = scrubDisputedVehicle(decision.textToSpeak, decision.state);
     decision.state.last_spoken_text = decision.textToSpeak;
@@ -2633,14 +2654,22 @@ const firstSentenceOf = (t: string) => (t.match(/^[^.!?]+[.!?]/)?.[0] ?? t).trim
  * (often to different questions) rotates through equivalent wordings instead. Moving to a new beat is
  * never changed.
  */
-function varyRepeat(decision: ControllerDecision, beatBefore: number): void {
+// Replies that are the script moving on: never varied, whatever was said before
+const SCRIPT_ADVANCE_INTENTS = new Set(["agree", "no", "negotiate_price", "move_on", "step0"]);
+
+function varyRepeat(decision: ControllerDecision, beatBefore: number, previousText: string): void {
   const state = decision.state;
   const key = normLine(decision.textToSpeak);
   if (!key) return;
   const counts = (state.said_counts ??= {});
   const before = counts[key] ?? 0;
   counts[key] = before + 1;
-  if (before < 2 || decision.beatId !== beatBefore || decision.isScriptComplete || key.length < 40) return;
+  if (before < 2 || decision.isScriptComplete) return;
+  // The script moving on to a new beat is never varied; a canned reply is, on any beat (the impatient
+  // customer's "bottom line" line came back on different beats)
+  if (decision.beatId !== beatBefore && SCRIPT_ADVANCE_INTENTS.has(decision.intent)) return;
+  // Short lines ("Is that okay?") only when said three times in a row
+  if (key.length < 40 && normLine(previousText) !== key) return;
 
   let text: string;
   if (decision.textToSpeak.includes(UNKNOWN_QUESTION_LINE)) {
@@ -2720,7 +2749,11 @@ async function handleMisses(
   const restored = cloneState(snapshot);
   for (const k of Object.keys(state)) delete (state as unknown as Record<string, unknown>)[k];
   Object.assign(state, restored, { miss_count: 0, miss_beat: undefined });
-  const next = await runControllerTurn(sessionId, "okay", dealConfig, { intent: "agree", topic_beat_ids: [] }, metrics);
+  // At a yes/no question ("did you get a chance to test drive it?") moving on must not assume a yes
+  // ("Awesome! When you came back from the test drive…"): take the "no" path, without its own opener
+  const yesNo = (beat.expects ?? "statement") === "yes_no";
+  const next = await runControllerTurn(sessionId, yesNo ? "no" : "okay", dealConfig, { intent: yesNo ? "no" : "agree", topic_beat_ids: [] }, metrics);
+  if (yesNo) next.textToSpeak = next.textToSpeak.replace(/^No problem, thanks for letting me know\.\s*/, "");
   next.textToSpeak = `${MOVE_ON_LINE} ${next.textToSpeak}`;
   next.state.last_spoken_text = next.textToSpeak;
   next.intent = "move_on";

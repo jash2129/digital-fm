@@ -127,7 +127,9 @@ export function scoreCall(turns: ScoredTurn[]): Scorecard {
     let prevBeat = 0;
     for (const t of turns) {
       const w = norm(t.customer).split(" ").filter(Boolean);
-      if (!detail && prevBeat >= 1 && w.length === 1 && !ONE_WORD_ANSWERS.has(w[0]) && t.beat > prevBeat) {
+      // "No problem, let's keep going." is Max deciding to move on after three misses, by design
+      const deliberateMoveOn = norm(t.max).startsWith("no problem let s keep going");
+      if (!detail && prevBeat >= 1 && w.length === 1 && !ONE_WORD_ANSWERS.has(w[0]) && t.beat > prevBeat && !deliberateMoveOn) {
         detail = `"${t.customer}" moved Beat ${prevBeat} to ${t.beat}`;
       }
       prevBeat = t.beat;
