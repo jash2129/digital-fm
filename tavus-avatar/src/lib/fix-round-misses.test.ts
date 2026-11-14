@@ -135,6 +135,27 @@ describe("closing at the $3 floor", () => {
     expect(scoreCall(turns).checks.find((c) => c.id === "no_confirm_after_refusal")?.pass).toBe(true);
   });
 
+  it("naming the price while refusing it is not an acceptance (batch 2026-11-14 #23)", async () => {
+    const sid = atBeat(23, 4);
+    getOrCreateCallState(sid).floor_decision_asked = true;
+    const t = await say(sid, "Keep just the factory warranty. I'm not paying three dollars a day for anything extra.");
+    expect(t.textToSpeak).not.toMatch(/moving forward with/i);
+    expect(t.textToSpeak.startsWith(DECLINE_LINE)).toBe(true);
+  });
+
+  it("'No… just do the paperwork' at the price is a refusal, not a yes (batch 2026-11-14 #39)", async () => {
+    const t = await say(atBeat(23, 2), "No. I'm not paying for any of it. Just do the paperwork with the basic deal only.");
+    expect(t.textToSpeak).not.toMatch(/moving forward with/i);
+    expect(t.textToSpeak).toContain("three dollars and twenty-five cents");
+  });
+
+  it("real acceptances at the price still go through", async () => {
+    for (const line of ["Three dollars works, let's do it.", "Yes, no problem, let's go ahead."]) {
+      const t = await say(atBeat(23, 4), line);
+      expect(t.beatId, line).toBe(24);
+    }
+  });
+
   it("the scorecard flags a confirmation right after a refusal", () => {
     const bad = scoreCall([
       { customer: "No, I don't want the protection", max: "Great, so to confirm, we're moving forward with full vehicle protection for three dollars a day.", beat: 24 },

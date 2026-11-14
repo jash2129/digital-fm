@@ -958,6 +958,17 @@ export function isPlainNo(norm: string): boolean {
   return /^(no|nope|nah|no thanks|no thank you|not really|not interested|i m not interested|im not interested|i don t think so|i dont think so|that doesn t work|that doesnt work|doesn t work for me|not for me|i ll pass|ill pass|pass)( (max|sir|man|thanks|thank you))?$/.test(norm);
 }
 
+/**
+ * A clear refusal of the package or the price ("No. I'm not paying for any of it", "Keep just the
+ * factory warranty", "no package"). At the price and the close it is never a yes and never accepts a
+ * price the customer names while refusing it (test batch 2026-11-14: both confirmed refused sales).
+ */
+export function isPriceRefusal(transcript: string): boolean {
+  const n = transcript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  if (/^(no|nope|nah)\b/.test(n) && !/^no (problem|worries|doubt)\b/.test(n)) return true;
+  return /\b(not paying|won t pay|wont pay|not buying|not going to buy|don t want (it|the|any|that|this)|dont want (it|the|any|that|this)|do not want|no package|no protection|no extras|nothing extra|anything extra|without (the |any )?(package|protection|coverage)|keep (just |only )?(the |my )?factory|factory warranty only|just the factory|only the factory|not interested|i ll pass|ill pass|no deal)\b/.test(n);
+}
+
 // Deterministic rule-based classification fallback (also used for unit/simulation tests)
 export function classifyCustomerInputRuleBased(
   transcript: string,
@@ -2893,7 +2904,7 @@ async function runControllerTurn(
   // the floor choice, then a decline. Test batch 2026-11-14: "No. I'm not paying for any of it." at
   // $3.25 counted as a generic no, and two of them moved on to Beat 24, "so to confirm, we're moving
   // forward with full vehicle protection" — a sale the customer had just refused.
-  if (intent === "no" && state.current_beat >= 22 && state.current_beat <= 24) {
+  if (state.current_beat >= 22 && state.current_beat <= 24 && (intent === "no" || (intent === "agree" && isPriceRefusal(customerTranscript)))) {
     intent = "negotiate_price";
   }
   // What the turn log records; differs from `intent` only where the reply's role is clearer
@@ -3284,7 +3295,7 @@ async function runControllerTurn(
       const namedPrice = parseNamedDailyPrice(customerTranscript);
       const isPushingLower =
         /too much|too high|too expensive|still|lower|cheaper|\bless\b|come down|do better|can t|cant|can't|\bno\b/.test(norm);
-      if (namedPrice !== null && namedPrice >= currentOffer && !isPushingLower) {
+      if (namedPrice !== null && namedPrice >= currentOffer && !isPushingLower && !isPriceRefusal(customerTranscript)) {
         state.no_count_in_a_row = 0;
         state.current_beat = 24;
         state.delivered_beats.push(24);
