@@ -4,7 +4,7 @@
     {
       "id": "disclosure",
       "topic": "Recording and legal review",
-      "answer": "This transaction is recorded audio and video, and the dealership is required by law to go over everything before the customer signs, so the customer understands.",
+      "answer": "This transaction is recorded audio and video, and I'm required by law to go over everything with you before you sign any paperwork, to make sure you understand.",
       "source_beats": [
         1
       ],
@@ -12,7 +12,7 @@
         "Before I start I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay."
       ],
       "status": "script",
-      "speak": false
+      "speak": true
     },
     {
       "id": "manufacturer_warranty",
