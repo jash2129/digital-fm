@@ -13,6 +13,8 @@
  *                      (Environment "local · simulation (<persona>)"; about 5 Make operations per call)
  *     --resend <file>  send a past batch's calls (its testing-skill/reports/sim-batch-*.json) to the sheet
  *     --parallel 4     calls at once (default 4)
+ *     --ai             AI-first understanding (MAX_UNDERSTANDING=ai) for this batch
+ *     --rules          rules only, even if .env.local turns AI-first on
  *
  * Needs XAI_API_KEY or OPENAI_API_KEY in .env.local (the AI customer; Max's classifier also uses it,
  * like production). Writes testing-skill/reports/sim-batch-<time>.md and .json.
@@ -55,6 +57,8 @@ interface SimCall {
   scorecard: Scorecard;
   review?: { aiScore: number | ""; callSummary: string; problemsFound: string; customerSentiment: string };
   seconds: number;
+  /** AI-first understanding, per turn: who decided, the AI's reason, and the classifier time */
+  understanding?: Array<{ by: "ai" | "rules" | "-"; reason?: string; ms: number }>;
 }
 
 function loadEnvLocal() {
@@ -124,6 +128,7 @@ async function simulateCall(persona: Persona, n: number, noise: number, review: 
     { role: "user", content: STEP_0_GREETING },
   ];
   const turns: ScoredTurn[] = [];
+  const understanding: NonNullable<SimCall["understanding"]> = [];
   let glitched = 0;
   let endedBy: SimCall["endedBy"] = "turn limit";
   let lastMax = STEP_0_GREETING;
@@ -141,6 +146,7 @@ async function simulateCall(persona: Persona, n: number, noise: number, review: 
     }
     const d = await bc.processControllerTurn(id, said, DEFAULT_DEAL_CONFIG);
     turns.push({ customer: said, max: d.textToSpeak, beat: d.beatId });
+    understanding.push({ by: d.metrics?.understanding ?? "-", reason: d.metrics?.aiReason, ms: d.metrics?.classifierMs ?? 0 });
     history.push({ role: "user", content: d.textToSpeak });
     lastMax = d.textToSpeak;
     if (d.isScriptComplete) {
@@ -177,6 +183,7 @@ async function simulateCall(persona: Persona, n: number, noise: number, review: 
     endedBy,
     scorecard: scoreCall(turns),
     seconds: Math.round((Date.now() - started) / 1000),
+    understanding,
   };
 
   // One AI review, used for both the report and the sheet row
@@ -265,6 +272,7 @@ function report(calls: SimCall[], noise: number): string {
     `| Finished the script (Beat 25) | ${pct(calls.filter((c) => c.scorecard.completed).length, calls.length)} |`,
     `| Calls with a hard failure | ${calls.filter((c) => c.scorecard.checks.some((k) => k.severity === "hard" && !k.pass)).length} |`,
     `| Average AI score | ${scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : "-"} / 10 |`,
+    ...understandingRows(calls),
     ``,
     `## Checks`,
     ``,
@@ -291,14 +299,35 @@ function report(calls: SimCall[], noise: number): string {
     for (const f of fails) lines.push(`- **${f.severity === "hard" ? "FAIL" : "flag"} · ${f.label}:** ${f.detail}`);
     if (c.review?.callSummary) lines.push(`- **AI summary:** ${c.review.callSummary}`);
     lines.push("", "<details><summary>Conversation</summary>", "");
-    for (const t of c.turns) lines.push(`- **Customer:** ${t.customer}`, `  - **Max (Beat ${t.beat}):** ${t.max}`);
+    c.turns.forEach((t, i) => {
+      const u = c.understanding?.[i];
+      const tag = u?.by === "ai" ? `, AI: ${u.reason}` : u?.by === "rules" && u.reason ? `, AI not used: ${u.reason}` : "";
+      lines.push(`- **Customer:** ${t.customer}`, `  - **Max (Beat ${t.beat}${tag}):** ${t.max}`);
+    });
     lines.push("", "</details>", "");
   }
   return lines.join("\n");
 }
 
+/** How often the AI decided, how often it fell back to the rules, and what it cost in time */
+function understandingRows(calls: SimCall[]): string[] {
+  const all = calls.flatMap((c) => c.understanding ?? []);
+  const asked = all.filter((u) => u.by !== "-");
+  if (!asked.length) return [`| Understanding | rules only |`];
+  const ai = asked.filter((u) => u.by === "ai");
+  const ms = asked.map((u) => u.ms).sort((a, b) => a - b);
+  const avg = Math.round(ms.reduce((a, b) => a + b, 0) / ms.length);
+  const p90 = ms[Math.min(ms.length - 1, Math.floor(ms.length * 0.9))];
+  return [
+    `| Understanding | AI-first: AI decided ${ai.length} of ${all.length} turns, fell back to the rules ${asked.length - ai.length} times |`,
+    `| AI time per asked turn | avg ${avg} ms · p90 ${p90} ms |`,
+  ];
+}
+
 async function main() {
   loadEnvLocal();
+  if (args.includes("--ai")) process.env.MAX_UNDERSTANDING = "ai";
+  if (args.includes("--rules")) process.env.MAX_UNDERSTANDING = "rules";
   const resendFile = arg("--resend");
   if (resendFile) return resend(resendFile);
   const all: Persona[] = JSON.parse(readFileSync(personasFile, "utf8")).personas;
@@ -314,7 +343,7 @@ async function main() {
 
   realLog(
     `running ${total} calls (${personas.length} personas, ${parallel} at a time, glitches ${Math.round(noise * 100)}%)` +
-      `${sheet ? ", each sent to the call log sheet" : ""}...`
+      `${sheet ? ", each sent to the call log sheet" : ""}, understanding: ${process.env.MAX_UNDERSTANDING === "ai" ? "AI-first" : "rules"}...`
   );
   const jobs = Array.from({ length: total }, (_, i) => () => simulateCall(personas[i % personas.length], i + 1, noise, review, sheet));
   const calls: SimCall[] = [];

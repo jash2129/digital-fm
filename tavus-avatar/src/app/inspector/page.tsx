@@ -632,6 +632,8 @@ export default function CallInspectorPage() {
                             <td className="p-3">
                               {!c ? (
                                 <span className="text-slate-500">-</span>
+                              ) : c.understanding === "ai" ? (
+                                <span title={c.aiReason} className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-violet-500/20 text-violet-300 border border-violet-500/30 cursor-help">AI</span>
                               ) : c.classifierTimedOut ? (
                                 <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-rose-500/20 text-rose-400 border border-rose-500/30">timeout</span>
                               ) : c.usedLLM ? (

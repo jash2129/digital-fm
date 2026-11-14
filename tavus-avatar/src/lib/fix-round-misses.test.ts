@@ -116,6 +116,32 @@ describe("closing at the $3 floor", () => {
     expect(yes.textToSpeak).toContain("three dollars");
   });
 
+  it("a long refusal at the price never becomes a confirmed sale (batch 2026-11-14)", async () => {
+    const sid = atBeat(23, 3);
+    const turns = [];
+    for (const line of [
+      "No. I don't trust this. I'm not paying for any of it. Just the factory numbers with nothing added.",
+      "No that's not what I said. I don't want the protection. Stop trying to add it.",
+      "No. Stop adding it. I don't want the protection. Just the factory warranty only.",
+    ]) {
+      const t = await say(sid, line);
+      turns.push({ customer: line, max: t.textToSpeak, beat: t.beatId });
+      expect(t.textToSpeak, line).not.toMatch(/moving forward with/i);
+    }
+    expect(turns[0].max).toContain("three dollars a day");
+    expect(turns[1].max).toBe(FLOOR_DECISION_LINE);
+    expect(turns[2].max.startsWith(DECLINE_LINE)).toBe(true);
+    expect(getOrCreateCallState(sid).package_declined).toBe(true);
+    expect(scoreCall(turns).checks.find((c) => c.id === "no_confirm_after_refusal")?.pass).toBe(true);
+  });
+
+  it("the scorecard flags a confirmation right after a refusal", () => {
+    const bad = scoreCall([
+      { customer: "No, I don't want the protection", max: "Great, so to confirm, we're moving forward with full vehicle protection for three dollars a day.", beat: 24 },
+    ]);
+    expect(bad.checks.find((c) => c.id === "no_confirm_after_refusal")?.pass).toBe(false);
+  });
+
   it("the floor line is never said four times: a haggling run passes the loop check", async () => {
     const sid = atBeat(22);
     const turns = [];

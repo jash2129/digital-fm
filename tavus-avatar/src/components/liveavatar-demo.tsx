@@ -611,6 +611,8 @@ export function LiveAvatarDemo() {
           controllerMs: data.metrics?.controllerMs,
           usedLLM: data.metrics?.usedLLM,
           classifierTimedOut: data.metrics?.classifierTimedOut,
+          understanding: data.metrics?.understanding,
+          aiReason: data.metrics?.aiReason,
         };
         logTurnEvent(turnLog);
 

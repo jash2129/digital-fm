@@ -17,6 +17,9 @@ export type ControllerTurnMetrics = {
   intent: string;
   beatBefore: number;
   beatAfter: number;
+  /** AI-first understanding: who decided the meaning ("ai" or "rules") and the AI's reason */
+  understanding?: "rules" | "ai";
+  aiReason?: string;
 };
 
 export type TurnTimingLog = {
@@ -98,6 +101,8 @@ export type HeygenCallLog = {
     controllerMs?: number;
     usedLLM?: boolean;
     classifierTimedOut?: boolean;
+    understanding?: "rules" | "ai";
+    aiReason?: string;
   }>;
 };
 

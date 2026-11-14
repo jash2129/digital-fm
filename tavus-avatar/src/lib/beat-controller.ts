@@ -1,5 +1,6 @@
 import beatsData from "./beats.json" with { type: "json" };
 import { DEFAULT_DEAL_CONFIG, type DealConfig } from "./deal-config";
+import { shouldAskAI, understandWithAI } from "./ai-understanding";
 import {
   LEAD_IN_NO,
   GARBLED_LINE,
@@ -144,6 +145,8 @@ export interface CallState {
   /** Beat 25 closed without the details: never claim the paperwork was finalized */
   verification_deferred?: boolean;
   last_check_in_tag?: string;
+  /** the last few exchanges, as context for AI-first understanding */
+  recent_turns?: Array<{ customer: string; max: string }>;
   is_impatient_flow?: boolean;
   sentence_index?: number;
   total_sentences?: number;
@@ -235,6 +238,8 @@ export type ClassifierIntent =
   | "role_confusion"
   | "confusion"
   | "early_price_objection"
+  /** AI-first understanding: a story or remark at a question beat, acknowledged and re-asked */
+  | "acknowledge"
   /** Not a classifier result: Max moved on after three misses in a row (handleMisses) */
   | "move_on"
   | "resume_interrupted"
@@ -247,6 +252,10 @@ export interface ClassificationResult {
   usedLLM?: boolean;
   /** the remote classifier hit LLM_CLASSIFIER_TIMEOUT_MS */
   timedOut?: boolean;
+  /** AI-first understanding (MAX_UNDERSTANDING=ai): who decided, the AI or the rules */
+  source?: "rules" | "ai";
+  /** what the AI understood and why, or why its answer was not used */
+  aiReason?: string;
 }
 
 /** Per-turn latency breakdown, logged by the client and shown in the Inspector. */
@@ -255,6 +264,9 @@ export interface TurnMetrics {
   /** any remote LLM call this turn: the classifier or a knowledge-base rewrite */
   usedLLM: boolean;
   classifierTimedOut: boolean;
+  /** AI-first understanding: who decided this turn's meaning, and the AI's reason */
+  understanding?: "rules" | "ai";
+  aiReason?: string;
 }
 
 export interface ControllerDecision {
@@ -2071,6 +2083,22 @@ export async function classifyWithLLM(
 ): Promise<ClassificationResult> {
   // Ultra-Fast Fast-Path: Deterministically classify common affirmations, objections, and standard requests in <1ms without remote LLM roundtrip lag
   const fastRuleResult = classifyCustomerInputRuleBased(customerTranscript, state.current_beat);
+  // AI-first understanding (MAX_UNDERSTANDING=ai): longer replies during Beats 2-21 are read by the AI
+  // in context; the rules' answer is the fallback (src/lib/ai-understanding.ts)
+  if (state.step0_completed && shouldAskAI(customerTranscript, state.current_beat, fastRuleResult.intent)) {
+    const beat = BEATS.find((b) => b.id === state.current_beat);
+    const expects = beat?.expects ?? "statement";
+    return understandWithAI({
+      transcript: customerTranscript,
+      beatId: state.current_beat,
+      beatExpects: expects === "consent" ? "yes_no" : expects,
+      beatText: beat?.text ?? "",
+      lastSpoken: state.last_spoken_text,
+      pendingQuestion: pendingQuestion(state),
+      recentTurns: state.recent_turns ?? [],
+      ruleResult: fastRuleResult,
+    });
+  }
   if (fastRuleResult.intent !== "other") {
     return fastRuleResult;
   }
@@ -2626,6 +2654,7 @@ export async function processControllerTurn(
   let decision = await runControllerTurn(sessionId, customerTranscript, dealConfig, mockClassification, metrics);
   decision = await handleMisses(sessionId, customerTranscript, dealConfig, decision, beatBefore, snapshot, metrics);
   varyRepeat(decision, beatBefore, snapshot.last_spoken_text);
+  decision.state.recent_turns = [...(decision.state.recent_turns ?? []), { customer: customerTranscript, max: decision.textToSpeak }].slice(-3);
   if (decision.state.vehicle_disputed) {
     decision.textToSpeak = scrubDisputedVehicle(decision.textToSpeak, decision.state);
     decision.state.last_spoken_text = decision.textToSpeak;
@@ -2848,6 +2877,10 @@ async function runControllerTurn(
   metrics.classifierMs = Date.now() - tClassify;
   if (classification.usedLLM) metrics.usedLLM = true;
   if (classification.timedOut) metrics.classifierTimedOut = true;
+  if (classification.source) metrics.understanding = classification.source;
+  if (classification.aiReason) metrics.aiReason = classification.aiReason;
+  // The AI read the whole sentence in context: its yes counts as a yes at a yes/no beat
+  const trustedClassification = Boolean(mockClassification) || classification.source === "ai";
   const { topic_beat_ids } = classification;
   let { intent } = classification;
   // Coming back from a pause at this beat ("hold on" ... "okay, continue")
@@ -2855,6 +2888,13 @@ async function runControllerTurn(
   state.paused_beat = undefined;
   if (intent !== "vehicle_discrepancy" && repeatsVehicleCorrection(customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim(), state)) {
     intent = "vehicle_discrepancy";
+  }
+  // At the price and the close, any "no" is a "no" to the price: it goes down the approved ladder, then
+  // the floor choice, then a decline. Test batch 2026-11-14: "No. I'm not paying for any of it." at
+  // $3.25 counted as a generic no, and two of them moved on to Beat 24, "so to confirm, we're moving
+  // forward with full vehicle protection" — a sale the customer had just refused.
+  if (intent === "no" && state.current_beat >= 22 && state.current_beat <= 24) {
+    intent = "negotiate_price";
   }
   // What the turn log records; differs from `intent` only where the reply's role is clearer
   let reportedIntent: ControllerDecision["intent"] = intent;
@@ -2885,7 +2925,7 @@ async function runControllerTurn(
         // In yes_no beat (Beat 2, 3), a bare "ok" or "sure" without confirmation must NOT advance
         if (expects === "yes_no") {
           const isExplicitDriveOrWalkaround =
-            Boolean(mockClassification) ||
+            trustedClassification ||
             norm.includes("drove") ||
             norm.includes("drive") ||
             norm.includes("walkaround") ||
@@ -3546,6 +3586,14 @@ async function runControllerTurn(
       if (count >= 2) textToSpeak = WHICH_PART_LINE;
       else if (intent === "role_confusion" || state.current_beat === 1) textToSpeak = `${ROLE_EXPLAIN_LINE} ${pendingQuestion(state)}`;
       else textToSpeak = `${LEAD_IN_NO} ${getFullBeatUtterance(currentBeat, state.dealConfig)}`;
+      beatType = "wait";
+      toolCalls = [];
+      break;
+    }
+
+    case "acknowledge": {
+      // AI-first: a story or remark while Max waits on a question. Thank them, ask it again
+      textToSpeak = `${STEP_0_NEUTRAL_ACK_LINE} ${pendingQuestion(state)}`;
       beatType = "wait";
       toolCalls = [];
       break;

@@ -163,6 +163,19 @@ export function scoreCall(turns: ScoredTurn[]): Scorecard {
     checks.push({ id: "ladder_on_no", label: "A 'no' to the price gets a lower price", severity: "hard", pass: !detail, detail });
   }
 
+  // 5b. Never confirms the package right after the customer refused it
+  {
+    let detail: string | undefined;
+    for (const t of turns) {
+      const c = norm(t.customer);
+      const refused = /\b(no|don t want|not paying|not buying|not interested)\b/.test(c) && !/\bno problem\b/.test(c);
+      if (!detail && refused && norm(t.max).includes("we re moving forward with")) {
+        detail = `after "${short(t.customer, 60)}" Max said "${short(t.max)}"`;
+      }
+    }
+    checks.push({ id: "no_confirm_after_refusal", label: "Never confirms the package after a refusal", severity: "hard", pass: !detail, detail });
+  }
+
   // 6. Not stuck: the beat changes within 6 customer turns (Step 0 and the verification beat excepted)
   {
     let detail: string | undefined;
