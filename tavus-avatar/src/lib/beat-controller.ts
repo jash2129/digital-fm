@@ -2910,7 +2910,11 @@ async function runControllerTurn(
   // What the turn log records; differs from `intent` only where the reply's role is clearer
   let reportedIntent: ControllerDecision["intent"] = intent;
 
-  console.log(`[beat-controller] Turn Intent: "${intent}", Current Beat: ${state.current_beat}`);
+  // understanding=ai means the AI read this reply; rules means the AI-first step was skipped or fell back
+  console.log(
+    `[beat-controller] Turn Intent: "${intent}", Current Beat: ${state.current_beat}, understanding=${metrics.understanding ?? "rules"}` +
+      (metrics.aiReason ? ` (${metrics.aiReason})` : "")
+  );
 
   let textToSpeak = "";
   let beatType: "wait" | "continue" | "stop" = "wait";

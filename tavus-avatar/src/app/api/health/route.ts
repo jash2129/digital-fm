@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { storeStatus } from "@/lib/call-log-store";
 import { storeBackend, upstashEnvNames } from "@/lib/upstash";
+import { isAIFirstEnabled } from "@/lib/ai-understanding";
 
 // What this deployment can reach, for setup checks: open /api/health in a signed-in browser, or
 // /api/health?session=<call id> to check one call's log. Yes/no answers and variable NAMES only,
@@ -18,6 +19,8 @@ export async function GET(request: Request) {
     callLogSecret: set("CALL_LOG_SECRET"),
     heygenKey: set("HEYGEN_API_KEY"),
     aiKey: set("XAI_API_KEY") || set("OPENAI_API_KEY"),
+    // "ai" only when MAX_UNDERSTANDING=ai AND an AI key is set; otherwise every turn uses the rules
+    understanding: isAIFirstEnabled() ? (set("XAI_API_KEY") || set("OPENAI_API_KEY") ? "ai" : "ai (no key: rules only)") : "rules",
     eventConfig: process.env.EVENT_CONFIG || null,
   });
 }
