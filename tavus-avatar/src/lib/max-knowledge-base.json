@@ -268,6 +268,133 @@
         "seven thousand"
       ],
       "note": "PENDING TXM confirm. Clarifies a script slip in Beat 15 without editing beats.json."
+    },
+    {
+      "id": "electronics_covered",
+      "topic": "Are electronics covered (touchscreen, cameras, sensors, key fobs)?",
+      "answer": "Yes, electronics like the touchscreen, cameras, sensors and key fobs are covered.",
+      "source_beats": [],
+      "source_quotes": [
+        "TXM answers, 2026-11-22"
+      ],
+      "status": "approved",
+      "keywords": [
+        "touchscreen",
+        "touch screen",
+        "camera",
+        "cameras",
+        "key fob",
+        "fob",
+        "keys",
+        "electronics covered"
+      ]
+    },
+    {
+      "id": "curb_rash",
+      "topic": "Does tire and wheel cover curb rash?",
+      "answer": "Yes, tire and wheel covers curb rash as well as road hazards like potholes and nails.",
+      "source_beats": [],
+      "source_quotes": [
+        "TXM answers, 2026-11-22"
+      ],
+      "status": "approved",
+      "keywords": [
+        "curb rash",
+        "curb",
+        "scraped rim",
+        "scratched rim",
+        "scuffed wheel"
+      ]
+    },
+    {
+      "id": "pre_existing",
+      "topic": "Are pre-existing problems covered?",
+      "answer": "No, problems the car already had before the coverage started aren't covered.",
+      "source_beats": [],
+      "source_quotes": [
+        "TXM answers, 2026-11-22"
+      ],
+      "status": "approved",
+      "keywords": [
+        "pre existing",
+        "pre-existing",
+        "preexisting",
+        "already had",
+        "existing problem"
+      ]
+    },
+    {
+      "id": "out_of_state",
+      "topic": "Is it valid outside Texas or if I move?",
+      "answer": "Yes, it's valid outside Texas, and it stays valid if you move to another state.",
+      "source_beats": [],
+      "source_quotes": [
+        "TXM answers, 2026-11-22"
+      ],
+      "status": "approved",
+      "keywords": [
+        "out of state",
+        "another state",
+        "outside texas",
+        "if i move",
+        "move to another state",
+        "move out of state"
+      ]
+    },
+    {
+      "id": "ev_warranty",
+      "topic": "Does it work for electric or hybrid parts?",
+      "answer": "Yes, we have an EV warranty for electric and hybrid parts.",
+      "source_beats": [],
+      "source_quotes": [
+        "TXM answers, 2026-11-22"
+      ],
+      "status": "approved",
+      "keywords": [
+        "electric",
+        "hybrid",
+        "ev",
+        "battery pack",
+        "electric vehicle"
+      ]
+    },
+    {
+      "id": "loan_cash",
+      "topic": "Is it rolled into the loan, and can I pay cash?",
+      "answer": "It's rolled into your loan, so it's financed with the car and interest applies to it. You can also pay cash upfront if you prefer.",
+      "source_beats": [],
+      "source_quotes": [
+        "TXM answers, 2026-11-22"
+      ],
+      "status": "approved",
+      "keywords": [
+        "rolled into",
+        "roll it into",
+        "pay cash",
+        "upfront",
+        "up front",
+        "interest on",
+        "financed"
+      ]
+    },
+    {
+      "id": "no_fees",
+      "topic": "Are there fees or tax on top?",
+      "answer": "There's no tax and no extra fee on top of the product price.",
+      "source_beats": [],
+      "source_quotes": [
+        "TXM answers, 2026-11-22"
+      ],
+      "status": "approved",
+      "keywords": [
+        "tax",
+        "fees",
+        "fee",
+        "admin fee",
+        "activation",
+        "hidden fees",
+        "on top"
+      ]
     }
   ],
   "conflicts": [
@@ -321,26 +448,65 @@
     {
       "question": "Can I transfer it if I sell the car?",
       "txm_must_provide": "Yes or no, any fee, how.",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "No, it isn't transferable, but you can cancel it and get a pro-rated refund.",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "transfer",
+        "transferable",
+        "sell the car",
+        "selling the car",
+        "next owner",
+        "new owner"
+      ]
     },
     {
       "question": "What if I pay off or trade in the car early?",
       "txm_must_provide": "What happens to the coverage and to any refund.",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "You can still cancel the rest of the product and get a refund for the remaining part.",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "pay off",
+        "pay it off",
+        "payoff",
+        "trade in",
+        "trade it in",
+        "trade in early",
+        "sell it early"
+      ]
     },
     {
       "question": "What exactly is NOT covered?",
       "txm_must_provide": "The list of exclusions (wear items, cosmetic, accident damage, neglect, etc.).",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "It depends on the product. With the package almost everything is covered, except wear items like brake pads, the regular battery and wipers. You usually replace those about once every three years, and they don't cost much.",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "not covered",
+        "isn t covered",
+        "aren t covered",
+        "excluded",
+        "exclusions",
+        "doesn t cover",
+        "does not cover",
+        "what s not covered"
+      ]
     },
     {
       "question": "Does it cover the battery / brakes pads / wipers?",
       "txm_must_provide": "Which wear items are included or excluded.",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "No, the regular battery, brake pads and wipers aren't covered. You usually replace those about once every three years, and they don't cost much.",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "battery",
+        "brake",
+        "brakes",
+        "brake pads",
+        "wiper",
+        "wipers"
+      ]
     },
     {
       "question": "Does it cover accidents, hail, flood, theft?",
@@ -351,14 +517,32 @@
     {
       "question": "Do I need to service at your dealership?",
       "txm_must_provide": "Beat 16 says 'we kindly ask you to come here'. Is it required or only requested? Can they use another shop?",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "You can use any shop you like. It's just better to use our dealership, because we have the right equipment for your car and all our mechanics are certified to work on this brand.",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "service at your",
+        "service here",
+        "have to service",
+        "service it here",
+        "service at the dealership",
+        "bring it back here"
+      ]
     },
     {
       "question": "Can I use my own mechanic or do my own oil changes?",
       "txm_must_provide": "Whether work done elsewhere keeps coverage valid.",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "Yes, you can use your own mechanic. It's just better to use our dealership, because we have the right equipment for your car and all our mechanics are certified to work on this brand.",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "own mechanic",
+        "my mechanic",
+        "my own shop",
+        "independent shop",
+        "local mechanic",
+        "my guy"
+      ]
     },
     {
       "question": "What are the mileage limits / does it expire?",
@@ -381,8 +565,21 @@
     {
       "question": "Can I buy only some of the products?",
       "txm_must_provide": "Which products can be dropped, and how the price changes.",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "Yes, you can pick and choose. Most of our customers prefer the package because it's cheaper, but tell me which products you'd like and I can include them for you.",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "only some",
+        "pick and choose",
+        "just one of",
+        "separately",
+        "individually",
+        "a la carte",
+        "one product",
+        "some of the products",
+        "just the tire",
+        "just the maintenance"
+      ]
     },
     {
       "question": "Will it raise my monthly car payment? By how much?",
@@ -393,8 +590,21 @@
     {
       "question": "Does it affect my loan or my interest rate?",
       "txm_must_provide": "Policy answer, or handoff.",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "No, your interest rate stays the same. The protection is rolled into your loan, so interest applies to that part too.",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "affect my rate",
+        "change my rate",
+        "raise my rate",
+        "affect my interest",
+        "change my interest",
+        "raise my interest",
+        "affect my loan",
+        "affect the loan",
+        "same rate",
+        "rate go up"
+      ]
     },
     {
       "question": "Is this required to get the car or the financing?",
@@ -405,14 +615,38 @@
     {
       "question": "Is this mandatory? Can I decline it?",
       "txm_must_provide": "Whether the protection package is mandatory or optional, and the approved wording for telling the customer they can decline it and still buy the car. Asked in simulated calls (follow-up 9); today it gets the unknown-question line.",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "Of course you can decline, and no, it's not mandatory. I only offer it after explaining what the manufacturer gives you and what you can add for better coverage. In the end, the choice is yours.",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "mandatory",
+        "required",
+        "have to buy",
+        "have to get",
+        "can i decline",
+        "decline",
+        "optional",
+        "say no to it",
+        "forced"
+      ]
     },
     {
       "question": "Why should I buy yours instead of an outside or third-party warranty?",
       "txm_must_provide": "An approved comparison with an outside / third-party extended warranty (what this package does that one does not), with no claims about other companies that TXM has not approved. Asked in simulated calls (follow-up 9); today it gets the unknown-question line.",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "When you buy from the dealership that sold you the car, you have the whole dealership behind you if something happens to the vehicle. We stand behind our product, and we use new, original parts, not third-party or refurbished parts.",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "third party",
+        "outside warranty",
+        "why yours",
+        "buy yours",
+        "buy from you",
+        "somewhere else",
+        "elsewhere",
+        "other company",
+        "online warranty"
+      ]
     },
     {
       "question": "Who is the warranty company? Is it the manufacturer?",
@@ -423,32 +657,77 @@
     {
       "question": "What does zero deductible mean?",
       "txm_must_provide": "One-sentence approved answer.",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "It means that when your vehicle needs a repair or service, you pay nothing at the time it's fixed.",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "zero deductible",
+        "no deductible",
+        "deductible mean",
+        "what is a deductible",
+        "what s a deductible"
+      ]
     },
     {
       "question": "How do I make a claim? Who do I call?",
       "txm_must_provide": "Claim process and phone number.",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "You don't have to. The service department you take the car to takes care of it and calls in the claim for you.",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "claim",
+        "claims",
+        "file a claim",
+        "make a claim",
+        "who do i call",
+        "who to call"
+      ]
     },
     {
       "question": "Does it cover rental car or towing?",
       "txm_must_provide": "Yes or no.",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "Yes. Our vehicle service contract comes with six years of roadside assistance, including towing and up to ten days of rental car. The dealership fixing your car usually gives you a vehicle to drive while they work on it.",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "rental",
+        "rental car",
+        "loaner",
+        "towing",
+        "tow",
+        "roadside"
+      ]
     },
     {
       "question": "Is it valid at any shop or only yours?",
       "txm_must_provide": "Beat 16 says 'anywhere you go'. Confirm.",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "It's valid at any shop. It's just better to use our dealership, because we have the right equipment for your car and all our mechanics are certified to work on this brand.",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "any shop",
+        "other shops",
+        "another shop",
+        "any mechanic",
+        "different shop",
+        "any dealership"
+      ]
     },
     {
       "question": "Does it cover used or aftermarket parts, or modifications?",
       "txm_must_provide": "Policy answer.",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "Any modifications you make to the vehicle are yours to pay for.",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "aftermarket",
+        "modification",
+        "modifications",
+        "lift kit",
+        "tint",
+        "mods",
+        "custom wheels"
+      ]
     },
     {
       "question": "Does it cover commercial or rideshare use (Uber, delivery)?",
@@ -483,14 +762,34 @@
     {
       "question": "Can my spouse look at this first?",
       "txm_must_provide": "Policy answer (current line contains an invented statistic).",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "Of course. Is your spouse here at the dealership with you?",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "spouse",
+        "wife",
+        "husband",
+        "my partner",
+        "show my",
+        "talk to my wife",
+        "talk to my husband"
+      ]
     },
     {
       "question": "Can I get this in writing / see the contract first?",
       "txm_must_provide": "What Max says and where the contract is.",
-      "answer": null,
-      "status": "needs_txm"
+      "answer": "Sure. Once we agree on all the terms, I'll show you the contract before you sign.",
+      "status": "approved",
+      "source": "TXM answers, 2026-11-22",
+      "keywords": [
+        "in writing",
+        "see the contract",
+        "read the contract",
+        "contract first",
+        "written copy",
+        "see it in writing",
+        "look at the contract"
+      ]
     },
     {
       "question": "Can we speak in Spanish (or another language)?",

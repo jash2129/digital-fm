@@ -27,6 +27,8 @@ interface NeedsEntry {
   question: string;
   answer: string | null;
   status: string;
+  /** precise retrieval keywords; without them every word of the question would match */
+  keywords?: string[];
 }
 
 export interface GroundedResult {
@@ -91,7 +93,9 @@ export function approvedFacts(): Array<{ id: string; topic: string; answer: stri
   }
   for (const n of (kbData as { needs_txm: NeedsEntry[] }).needs_txm) {
     if (n.status === "approved" && n.answer) {
-      out.push({ id: `txm:${n.question}`, topic: n.question, answer: n.answer.trim(), keywords: tokens(n.question) });
+      // Every word of the question ("call", "not", "outside") matched unrelated remarks once answers
+      // were approved (2026-11-22): an answered question needs its own keywords
+      out.push({ id: `txm:${n.question}`, topic: n.question, answer: n.answer.trim(), keywords: n.keywords ?? tokens(n.question) });
     }
   }
   return out;

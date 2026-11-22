@@ -95,7 +95,7 @@ import {
   MARKUP_OBJECTION_LINE,
 } from "./max-lines";
 import { normalizeSpeech } from "./echo-guard";
-import { answerFromKnowledgeBase, looksLikeQuestion } from "./grounded-answer";
+import { answerFromKnowledgeBase, looksLikeQuestion, retrieve } from "./grounded-answer";
 
 export interface Beat {
   id: number;
@@ -2689,7 +2689,8 @@ async function handleGroundedTurn(
   }
   const normQ = customerTranscript.toLowerCase();
   const financial = ["rate", "apr", "interest", "monthly payment", "payment", "down payment", "trade in", "trade-in", "credit score", "loan term", "discount", "rebate", "invoice", "msrp"];
-  if (financial.some((kw) => normQ.includes(kw))) {
+  // Financing terms stay on the sales agreement, unless TXM approved an answer (interest rate, trade-in)
+  if (financial.some((kw) => normQ.includes(kw)) && retrieve(customerTranscript).length === 0) {
     return { text: `${OUT_OF_SCRIPT_LINE} ${CLARIFY_LINE}`, beatType: "wait", toolCalls: [] };
   }
   const result = await answerFromKnowledgeBase(customerTranscript);

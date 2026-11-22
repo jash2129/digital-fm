@@ -77,7 +77,7 @@ describe("multi-turn regressions", () => {
   });
 
   it("Fix 2: two unanswerable questions in a row never stop the call", async () => {
-    const turns = await play(9, "is it transferable?", "does it cover my battery?", "okay continue");
+    const turns = await play(9, "can I cancel and get a refund?", "what about hail damage?", "okay continue");
     for (const d of turns) {
       expect(d.stopped).toBe(false);
       expect(showsEscalation(d)).toBe(false);

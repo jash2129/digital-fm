@@ -22,7 +22,8 @@ export const OUT_OF_SCRIPT_LINE = "Those purchase terms are locked in on your pr
 
 // Spoken when customer asks for a human or manager
 // Status: PENDING TXM — stay in character, do not claim "full authority"
-export const HANDOFF_LINE = "I'm Max, your finance manager, and I'll go through everything with you right here. What question can I answer?";
+// Wording approved by TXM, 2026-11-22
+export const HANDOFF_LINE = "I'm Max, your finance manager, and I'll go through everything with you right here. Do you have any questions?";
 
 // Spoken when all beats and paperwork review are complete
 export const SCRIPT_COMPLETE_LINE = "Everything on your paperwork is all set and finalized. Congratulations on your new vehicle, and enjoy the ride!";
@@ -97,7 +98,8 @@ export const STEP_0_INTRO_LINE = "I'm Max, your finance manager, and I'll be han
 // Stage 0: the customer's answer to the check-in was negative or hostile ("I don't trust any of
 // this", "terrible"). Replaces "Glad to hear that!" in the transition into Beat 1.
 // Status: PENDING TXM
-export const STEP_0_SORRY_LINE = "I'm sorry to hear that, I'll do my best to make the rest easy.";
+// Wording approved by TXM, 2026-11-22
+export const STEP_0_SORRY_LINE = "I'm sorry to hear that. I'll do my best to make the rest easy and make sure you're happy with everything.";
 // Stage 0: an answer that is neither clearly good nor bad (a second "hmm", an unrelated remark)
 // Status: PENDING TXM
 export const STEP_0_NEUTRAL_ACK_LINE = "Thanks for sharing that.";
@@ -200,7 +202,8 @@ export const INSURANCE_LINE = "Insurance and this coverage are separate; the pap
 
 // Spoken when customer mentions spouse or wife decision-maker
 // Status: PENDING TXM
-export const SPOUSE_LINE = "I completely respect that! In fact, this package is designed specifically to protect the family budget from surprise multi-thousand dollar repair bills. What questions can I answer for her?";
+// TXM's answer, 2026-11-22, in neutral wording (the old line assumed the spouse is a woman)
+export const SPOUSE_LINE = "Of course. Is your spouse here at the dealership with you?";
 
 // Spoken when customer asks about cancellation or selling the car early
 // Status: PENDING TXM
@@ -244,7 +247,8 @@ export const ANSWER_CHECK_LINE = "Does that answer your question?";
 // Contextual objection and exclusion stand-ins.
 // Status: PENDING TXM APPROVAL.
 export const TIRE_EXCLUSION_LINE = "You can certainly use your own tires, but the tire and wheel package protects your tires and wheels against road hazard damage with zero deductible.";
-export const MAINTENANCE_EXCLUSION_LINE = "I understand you do your own maintenance! The package covers synthetic oil and filter changes so you have zero out-of-pocket expenses.";
+// Wording approved by TXM, 2026-11-22
+export const MAINTENANCE_EXCLUSION_LINE = "I understand you do your own maintenance! The package covers synthetic oil and filter changes and tire rotations, with zero out of pocket and zero deductible.";
 export const DROP_COVERAGE_LINE = "If you'd like to drop the tire and wheel package, we can adjust the coverage options to fit what you need most.";
 export const UNIT_PRICE_LINE = "That's four dollars a day, which works out to about one hundred and twenty dollars a month on your paperwork.";
 export const TOTAL_PRICE_LINE = "The total for full vehicle protection is four dollars a day over your contract term.";

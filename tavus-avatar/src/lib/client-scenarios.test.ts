@@ -150,7 +150,7 @@ describe("Client Scenarios Human Experience Validation", () => {
 
     // Turn 13: Human Escalation Request Test: 'Let me talk to a real person'
     const t13 = await processControllerTurn(sessionId, "I want to speak with a human manager right now.", DEFAULT_DEAL_CONFIG);
-    expect(t13.textToSpeak).toContain("What question can I answer?");
+    expect(t13.textToSpeak).toContain("I'll go through everything with you right here");
     expect(t13.textToSpeak).not.toContain("bring in my colleague");
 
     // Turn 14: Final Agreement at $3.00/day

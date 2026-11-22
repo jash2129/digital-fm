@@ -79,8 +79,9 @@ describe("misses in a row escalate instead of repeating", () => {
     const sid = atBeat(4);
     const a = await say(sid, "Why should I buy yours?");
     const b = await say(sid, "Is this mandatory?");
-    expect(a.textToSpeak).toContain(UNKNOWN_QUESTION_LINE);
-    expect(b.textToSpeak).toContain(UNKNOWN_QUESTION_LINE);
+    // TXM answered both on 2026-11-22
+    expect(a.textToSpeak).toContain("whole dealership behind you");
+    expect(b.textToSpeak).toContain("not mandatory");
     expect(b.textToSpeak.startsWith(REPHRASE_LINE)).toBe(false);
   });
 

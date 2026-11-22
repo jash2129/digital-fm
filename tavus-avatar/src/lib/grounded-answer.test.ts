@@ -21,18 +21,39 @@ describe("grounded answers", () => {
 
   it.each([
     "Can I cancel and get a refund?",
-    "Is it transferable?",
-    "Does it cover the battery?",
     "What about hail?",
-    "Can I use my own mechanic?",
     "Do you cover Uber driving?",
     "Will this void my lease?",
+    "Who is the warranty company?",
+    "Do I have to decide today?",
   ])("hands off %s (no approved answer)", async (q) => {
     nokey();
     const r = await answerFromKnowledgeBase(q);
     expect(r.kind).toBe("handoff");
     expect(r.text).toBe(UNKNOWN_QUESTION_LINE);
   });
+
+  // TXM's answers, 2026-11-22: approved, matched only by their own keywords
+  it.each([
+    ["Is it transferable if I sell the car?", "isn't transferable"],
+    ["Does it cover the battery?", "battery, brake pads and wipers aren't covered"],
+    ["Can I use my own mechanic?", "you can use your own mechanic"],
+    ["Is this mandatory?", "not mandatory"],
+    ["How do I make a claim?", "calls in the claim for you"],
+    ["What does zero deductible mean?", "you pay nothing at the time"],
+  ])("answers %s from TXM's approved answer", async (q, frag) => {
+    nokey();
+    const r = await answerFromKnowledgeBase(q);
+    expect(r.kind).toBe("answer");
+    expect(r.text).toContain(frag);
+  });
+
+  it.each(["What's the weather like outside?", "That's not true at all.", "Is this whole call an automated bot?", "What's my interest rate on the loan?"])(
+    "an answered TXM question never matches the unrelated remark %s",
+    (q) => {
+      expect(retrieve(q).map((f) => f.id).filter((id) => id.startsWith("txm:"))).toEqual([]);
+    }
+  );
 
   it("rejects drafts that add numbers or risky words not in the passages", () => {
     expect(isSupported("It is fully refundable.", ["Zero deductible."])).toBe(false);
@@ -59,10 +80,10 @@ describe("grounded answers", () => {
     nokey();
     const sid = "g2"; resetCallState(sid);
     const st = getOrCreateCallState(sid); st.step0_completed = true; st.current_beat = 9; st.delivered_beats = [1,2,3,4,5,6,7,8,9];
-    const a = await processControllerTurn(sid, "Is it transferable if I sell the car?");
+    const a = await processControllerTurn(sid, "Can I cancel and get a refund?");
     expect(a.state.is_stopped).toBe(false);
     expect(a.textToSpeak).toContain(UNKNOWN_QUESTION_LINE);
-    const b = await processControllerTurn(sid, "Does it cover the battery?");
+    const b = await processControllerTurn(sid, "What about hail damage?");
     expect(b.state.is_stopped).toBe(false);
     expect(b.beatId).toBe(9);
     expect(b.textToSpeak).toContain(UNKNOWN_QUESTION_LINE);

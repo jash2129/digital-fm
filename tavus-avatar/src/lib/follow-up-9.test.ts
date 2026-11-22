@@ -223,21 +223,30 @@ describe("5: 'okay, continue' after a pause resumes, never asks 'continue, or go
   });
 });
 
-describe("6: core objections wait for an approved TXM answer", () => {
-  it("both questions are on the TXM review list with no answer yet", () => {
+describe("6: core objections use TXM's approved answers (2026-11-22)", () => {
+  it("both questions are approved, with an answer", () => {
     const needs = (kb as { needs_txm: Array<{ question: string; status: string; answer: string | null }> }).needs_txm;
     for (const q of ["Is this mandatory? Can I decline it?", "Why should I buy yours instead of an outside or third-party warranty?"]) {
       const entry = needs.find((n) => n.question === q);
       expect(entry, q).toBeDefined();
-      expect(entry!.status).toBe("needs_txm");
-      expect(entry!.answer).toBeNull();
+      expect(entry!.status).toBe("approved");
+      expect(entry!.answer).toBeTruthy();
     }
   });
 
-  it.each(["Why should I buy yours?", "Is this mandatory?"])("until then, '%s' gets the unknown-question line, never an invented answer", async (q) => {
+  it.each([
+    ["Why should I buy yours?", "whole dealership behind you"],
+    ["Is this mandatory?", "not mandatory"],
+  ])("'%s' gets TXM's answer and the beat holds", async (q, frag) => {
     const t = await say(atBeat(7), q);
-    expect(t.textToSpeak).toContain(UNKNOWN_QUESTION_LINE);
+    expect(t.textToSpeak).toContain(frag);
+    expect(t.textToSpeak).not.toContain(UNKNOWN_QUESTION_LINE);
     expect(t.beatId).toBe(7);
+  });
+
+  it("a question TXM has not answered still gets the unknown-question line", async () => {
+    const t = await say(atBeat(7), "Who is the warranty company?");
+    expect(t.textToSpeak).toContain(UNKNOWN_QUESTION_LINE);
   });
 });
 
@@ -314,8 +323,9 @@ const SCRIPTS: Record<string, Turn[]> = {
     { say: "okay", beat: 2 },
     { say: "yes", beat: 3 },
     { say: "yes", beat: 4 },
-    { say: "Why should I buy yours?", beat: 4, has: UNKNOWN_QUESTION_LINE },
-    { say: "Is this mandatory?", beat: 4, has: UNKNOWN_QUESTION_LINE },
+    // TXM's approved answers (2026-11-22); the beat still holds
+    { say: "Why should I buy yours?", beat: 4, has: "whole dealership behind you" },
+    { say: "Is this mandatory?", beat: 4, has: "not mandatory" },
     { say: "I already have a warranty", beat: 5 },
   ],
 };
