@@ -23,6 +23,7 @@ import {
   type ChatMessage,
 } from "./free-ai";
 import { approvedFacts } from "./grounded-answer";
+import { factoryWarranty } from "./factory-warranty";
 import {
   LEAD_IN_NO,
   GARBLED_LINE,
@@ -542,8 +543,26 @@ export function resetCallState(sessionId: string): void {
 }
 
 // Render raw beat text with placeholders replaced by deal variables
+/**
+ * Beat 6's approved text says "Mazda is like any other manufacturer" and gives Hyundai's figures
+ * (5 yr / 60k basic, 10 yr / 100k powertrain), so a Mazda buyer heard the wrong warranty. The brand
+ * and the two figures now come from the deal's make and TXM's brand table (factory-warranty.ts);
+ * every other word stays as approved. A make the table has no single figure for keeps the approved text.
+ */
+export function renderFactoryWarranty(text: string, make: string | undefined): string {
+  const w = factoryWarranty(make);
+  if (!w || !make) {
+    console.warn(JSON.stringify({ event: "factory_warranty_unknown", make: make ?? null }));
+    return text;
+  }
+  return text
+    .replace("Mazda is like any other manufacturer", `${make.trim()} is like any other manufacturer`)
+    .replace("five years sixty thousand mile Base limited warranty", `${w.basic} Base limited warranty`)
+    .replace("ten years hundred thousand mile powertrain", `${w.powertrain} powertrain`);
+}
+
 export function renderBeatText(beat: Beat, dealConfig: DealConfig, state?: CallState): string {
-  let rendered = beat.text;
+  let rendered = beat.id === 6 ? renderFactoryWarranty(beat.text, dealConfig.vehicle_make) : beat.text;
   if (beat.id === 24) {
     const yearMakeModel = `${dealConfig.vehicle_year} ${dealConfig.vehicle_make} ${dealConfig.vehicle_model}`.trim();
     const chosen = state?.chosen_coverages ?? [];
