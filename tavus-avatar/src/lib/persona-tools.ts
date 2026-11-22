@@ -254,24 +254,6 @@ function buildFinancePersonaToolPatch() {
         {
           type: "function",
           function: {
-            name: "escalate_to_human",
-            description:
-              `Call this when a customer needs a real team member instead of you — most importantly when they ask for a price below the $${floorRate}/day floor, but also for anything else you cannot resolve yourself. Displays a panel confirming a team member has been notified. Say the hand-off line out loud in the same turn as calling this.`,
-            parameters: {
-              type: "object",
-              properties: {
-                reason: {
-                  type: "string",
-                  description: "Brief internal note on why you escalated, e.g. \"customer requested below price floor\". Not shown to the customer.",
-                },
-              },
-              required: [],
-            },
-          },
-        },
-        {
-          type: "function",
-          function: {
             name: "dismiss_content",
             description:
               "Dismisses the currently displayed panel or grid and returns the video conversation to full screen. Use when the customer is done looking at it or asks to go back.",

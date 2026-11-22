@@ -50,13 +50,13 @@ export function handleToolExecution(
       const result = stateManager.executeConcession(stage);
 
       if (!result.success) {
-        // Feed violation back into LLM so it executes the manager escalation line
+        // Feed the violation back into the LLM: it offers the floor as a choice (no handoff exists)
         return {
           status: "rejected",
           reason: result.message,
           directive:
             result.directive ||
-            'Refuse concession. Say: "I can\'t adjust the price myself past this point — let me get you connected with a team member who can look at that with you." and call escalate_to_human.',
+            'Refuse concession. Say: "Three dollars a day is the lowest I can go. Would you like to go ahead at three dollars a day, or keep just your factory warranty?"',
         };
       }
 

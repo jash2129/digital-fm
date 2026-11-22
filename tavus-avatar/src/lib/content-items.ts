@@ -24,10 +24,6 @@ export const FINANCE_CONTENT_ITEMS = {
     url: "/content/deal-summary",
     label: "Deal Summary & Agreement",
   },
-  escalate_to_human: {
-    url: "/content/escalate",
-    label: "Connecting You With a Team Member",
-  },
 } as const;
 
 export type ContentItemKey = keyof typeof FINANCE_CONTENT_ITEMS;
@@ -110,17 +106,6 @@ export const FINANCE_CONTENT_ITEM_ALIASES: Record<ContentItemKey, string[]> = {
     "agreement",
     "verbal close summary",
     "closed deal",
-  ],
-  escalate_to_human: [
-    "escalate_to_human",
-    "connect me with a team member",
-    "get a team member",
-    "talk to a human",
-    "talk to someone else",
-    "manager",
-    "speak to a person",
-    "escalate",
-    "floor breach",
   ],
 };
 

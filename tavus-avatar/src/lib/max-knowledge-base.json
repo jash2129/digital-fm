@@ -1,5 +1,5 @@
 {
-  "_readme": "Approved knowledge base for Max's out-of-script answers. The AI may answer ONLY from entries with status 'script' (taken from TXM's own script) or 'approved' (TXM filled in). Anything else must trigger the handoff line. Entries with TERM_CONFLICT placeholders must not be used until TXM resolves the numbers.",
+  "_readme": "Approved knowledge base for Max's out-of-script answers. The AI may answer ONLY from entries with status 'script' (taken from TXM's own script) or 'approved' (TXM filled in). Anything else gets the unknown-question line (no human handoff exists). Entries with TERM_CONFLICT placeholders must not be used until TXM resolves the numbers.",
   "facts": [
     {
       "id": "disclosure",
@@ -805,10 +805,10 @@
     }
   ],
   "hard_rules": [
-    "AI answers only from facts with status script or approved. If nothing matches, say the approved handoff line and log the question.",
+    "AI answers only from facts with status script or approved. If nothing matches, say the unknown-question line and log the question.",
     "AI never states a price, discount, refund, transfer, exclusion, legal or insurance fact from general knowledge.",
     "Prices come only from the pricing controller.",
-    "Recording objection, request for a human, anger or legal threat: stop and hand off. No generated answer.",
+    "Recording objection: end the call politely. Request for a human: the fixed line, and the call continues (no human handoff exists, client decision). Anger or a legal threat: stay calm and continue, PENDING TXM (question 71). No generated answer.",
     "After any answer, return to the current beat and repeat its check-in.",
     "Do not use any fact that contains an unresolved TERM_CONFLICT placeholder."
   ]

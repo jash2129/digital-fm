@@ -24,7 +24,8 @@ describe("handleToolExecution", () => {
 
     expect(result.status).toBe("rejected");
     expect(result.reason).toContain("Floor breach");
-    expect(result.directive).toContain("escalate_to_human");
+    expect(result.directive).toContain("lowest I can go");
+    expect(result.directive).not.toMatch(/escalate|team member/);
     expect(mockRoom.sendAppMessage).not.toHaveBeenCalled();
   });
 

@@ -54,7 +54,7 @@ describe("NegotiationStateManager", () => {
       expect(payload.systemPrompt).toContain("$3.25/day");
     });
 
-    it("rejects concessions below the $3.00 hard floor and issues escalation directive", () => {
+    it("rejects concessions below the $3.00 hard floor and offers the floor as a choice (no handoff)", () => {
       const manager = new NegotiationStateManager();
 
       const r5 = manager.executeConcession(5); // Attempt below floor

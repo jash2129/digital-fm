@@ -71,8 +71,7 @@ export type CanvasView =
   | "pricing_ladder"
   | "deal_summary"
   | "warranty_terms"
-  | "cost_breakdown"
-  | "escalate";
+  | "cost_breakdown";
 
 export interface CallState {
   current_step: PipelineStep;
@@ -243,9 +242,10 @@ export class NegotiationStateManager {
         success: false,
         newPriceDaily: this.state.financial_state.current_quote_daily,
         newPriceMonthly: this.state.financial_state.current_quote_monthly,
-        message: "Floor breach: Price below $3.00/day requires manager escalation.",
+        message: "Floor breach: Price below $3.00/day is not allowed.",
+        // No human handoff exists (client decision): the floor is offered as the customer's choice
         directive:
-          'Refuse concession. Say: "I can\'t adjust the price myself past this point — let me get you connected with a team member who can look at that with you." and call escalate_to_human.',
+          'Refuse concession. Say: "Three dollars a day is the lowest I can go. Would you like to go ahead at three dollars a day, or keep just your factory warranty?"',
       };
     }
 

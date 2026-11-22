@@ -7,7 +7,6 @@ import WarrantyTermsPage from "@/app/content/warranty-terms/page";
 import CostBreakdownPage from "@/app/content/cost-breakdown/page";
 import PricingLadderPage from "@/app/content/pricing-ladder/page";
 import DealSummaryPage from "@/app/content/deal-summary/page";
-import EscalatePage from "@/app/content/escalate/page";
 import { CallSummaryScreen } from "@/components/CallSummaryScreen";
 import type { ControllerTurnMetrics } from "@/lib/heygen-logger";
 import {
@@ -218,7 +217,7 @@ export function LiveAvatarDemo() {
 
   // Presentation & Overlay State
   const [activeOverlay, setActiveOverlay] = useState<
-    "warranty_terms" | "cost_breakdown" | "four_square" | "pricing_ladder" | "deal_summary" | "escalate" | null
+    "warranty_terms" | "cost_breakdown" | "four_square" | "pricing_ladder" | "deal_summary" | null
   >(null);
   const [shownProducts, setShownProducts] = useState<string[]>([]);
   const [activeProduct, setActiveProduct] = useState<string | null>(null);
@@ -722,8 +721,6 @@ export function LiveAvatarDemo() {
                 setActiveOverlay("pricing_ladder");
               } else if (tc.args.item === "deal_summary") {
                 setActiveOverlay("deal_summary");
-              } else if (tc.args.item === "escalate") {
-                setActiveOverlay("escalate");
               } else if (tc.args.item === "welcome") {
                 setActiveOverlay(null);
               }
@@ -746,8 +743,6 @@ export function LiveAvatarDemo() {
                 const stageRates: Record<number, number> = { 1: 4.0, 2: 3.5, 3: 3.25, 4: 3.0 };
                 setDailyRate(stageRates[tc.args.stage] || 3.5);
               }
-            } else if (tc.name === "escalate_to_human") {
-              setActiveOverlay("escalate");
             } else if (tc.name === "dismiss_content" || tc.name === "clear_canvas") {
               setActiveOverlay(null);
             }
@@ -2356,13 +2351,11 @@ export function LiveAvatarDemo() {
                   )}
                   {activeOverlay === "pricing_ladder" && <PricingLadderPage />}
                   {activeOverlay === "deal_summary" && <DealSummaryPage />}
-                  {activeOverlay === "escalate" && <EscalatePage />}
                   {activeOverlay !== "warranty_terms" &&
                     activeOverlay !== "cost_breakdown" &&
                     activeOverlay !== "four_square" &&
                     activeOverlay !== "pricing_ladder" &&
-                    activeOverlay !== "deal_summary" &&
-                    activeOverlay !== "escalate" && (
+                    activeOverlay !== "deal_summary" && (
                       <div className="p-8">
                         <div className="rounded-3xl border border-white/15 bg-slate-900/70 p-6 sm:p-8 shadow-2xl backdrop-blur-xl">
                           <h2 className="text-2xl font-extrabold text-white">2026 Mazda CX-5 Consultation</h2>
@@ -2579,17 +2572,6 @@ export function LiveAvatarDemo() {
                 }`}
               >
                 5. Close
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveOverlay("escalate")}
-                className={`rounded-full px-3 py-1 border transition ${
-                  activeOverlay === "escalate"
-                    ? "bg-sky-500/30 border-sky-400 text-sky-200 shadow-[0_0_12px_rgba(56,189,248,0.3)]"
-                    : "border-white/10 bg-slate-900/60 hover:bg-slate-800 text-slate-300"
-                }`}
-              >
-                6. Escalate
               </button>
               {activeOverlay && (
                 <button

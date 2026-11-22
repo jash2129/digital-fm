@@ -17,7 +17,6 @@ import WarrantyTermsPage from "@/app/content/warranty-terms/page";
 import CostBreakdownPage from "@/app/content/cost-breakdown/page";
 import PricingLadderPage from "@/app/content/pricing-ladder/page";
 import DealSummaryPage from "@/app/content/deal-summary/page";
-import EscalatePage from "@/app/content/escalate/page";
 import type { CanvasElementSkeleton } from "@/lib/canvas-elements";
 import {
   CONTENT_ITEMS,
@@ -826,8 +825,6 @@ function TavusSession({
               <PricingLadderPage />
             ) : activeContentItemKey === "deal_summary" ? (
               <DealSummaryPage />
-            ) : activeContentItemKey === "escalate_to_human" ? (
-              <EscalatePage />
             ) : (
               <PresentationCanvas
                 elements={activeCanvas?.elements}
@@ -1559,30 +1556,6 @@ export function TavusDemo() {
             },
           });
           responseText = "Displaying the protection plan menu.";
-          break;
-        }
-        case "escalate_to_human": {
-          const nextContentItemKey = resolveContentItemKey("escalate_to_human");
-          if (!nextContentItemKey) {
-            responseText = "I could not find the hand-off screen.";
-            break;
-          }
-
-          const reason = (parsedArguments as { reason?: string }).reason;
-          fetch("/api/escalation", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ conversationId: payload.conversation_id, reason }),
-            keepalive: true,
-          }).catch(() => {
-            // Best-effort logging only — never block the hand-off panel on this.
-          });
-
-          dispatch({
-            type: "SET_OVERLAY",
-            overlay: { kind: "content", contentItemKey: nextContentItemKey },
-          });
-          responseText = "Connecting the customer with a team member.";
           break;
         }
         case "dismiss_content": {
@@ -2761,8 +2734,6 @@ function MockSession({
               <PricingLadderPage />
             ) : activeContentItemKey === "deal_summary" ? (
               <DealSummaryPage />
-            ) : activeContentItemKey === "escalate_to_human" ? (
-              <EscalatePage />
             ) : (
               <PresentationCanvas
                 elements={activeCanvas?.elements}
