@@ -3,6 +3,7 @@ import { processClientTurn, commitTurn, repromptText, type ControllerDecision } 
 import { DEFAULT_DEAL_CONFIG } from "@/lib/deal-config";
 import { loadSession, saveSession } from "@/lib/session-store";
 import { streamingEnabled } from "@/lib/llm-stream";
+import { reportError } from "@/lib/error-report";
 
 function replyBody(decision: ControllerDecision, clientBeatId: unknown, routeStart: number) {
   return {
@@ -86,6 +87,7 @@ export async function POST(request: Request) {
             send({ type: "final", ...replyBody(decision, clientBeatId, routeStart) });
           } catch (error) {
             console.error("[api/chat/grok stream error, returning safe fallback]:", error);
+            void reportError(error, { source: "server", where: "/api/chat/grok (stream)", sessionId });
             send({ type: "final", ...SAFE_FALLBACK });
           } finally {
             controller.close();
@@ -106,6 +108,8 @@ export async function POST(request: Request) {
     return NextResponse.json(replyBody(decision, clientBeatId, routeStart));
   } catch (error: any) {
     console.error("[api/chat/grok error, returning safe fallback]:", error);
+    // The customer hears "Sorry, I didn't catch that"; the team must still hear about it
+    void reportError(error, { source: "server", where: "/api/chat/grok" });
     return NextResponse.json(SAFE_FALLBACK);
   }
 }

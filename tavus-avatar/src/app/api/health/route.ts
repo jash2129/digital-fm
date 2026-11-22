@@ -26,6 +26,8 @@ export async function GET(request: Request) {
     callLogSecret: set("CALL_LOG_SECRET"),
     heygenKey: set("HEYGEN_API_KEY"),
     aiKey: set("XAI_API_KEY") || set("OPENAI_API_KEY"),
+    // Errors always go to the logs as JSON lines; with SENTRY_DSN set, to Sentry too
+    errorTracking: set("SENTRY_DSN") ? "sentry" : "logs only",
     // "free": the AI runs the whole call (MAX_MODE=free); "script": the beat controller does
     mode: isFreeAIEnabled() ? (set("XAI_API_KEY") || set("OPENAI_API_KEY") ? "free" : "free (no key: script only)") : "script",
     // "ai": Max's replies in Beats 2-21 are worded by the AI and checked (MAX_SPEECH=ai)

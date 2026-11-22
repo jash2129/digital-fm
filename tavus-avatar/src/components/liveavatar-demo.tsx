@@ -882,6 +882,35 @@ export function LiveAvatarDemo() {
   }
 
   // ---------------------------------------------------------------------------
+  // Errors on the call screen go to the server's error reporter (at most 10 per page load)
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    let sent = 0;
+    const send = (kind: string, message: string, stack?: string) => {
+      if (sent >= 10) return;
+      sent++;
+      void fetch("/api/client-error", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind, message, stack, where: window.location.pathname, sessionId: sessionIdRef.current || undefined }),
+        keepalive: true,
+      }).catch(() => {});
+    };
+    const onError = (e: ErrorEvent) => send("error", e.message || "window error", e.error instanceof Error ? e.error.stack : undefined);
+    const onRejection = (e: PromiseRejectionEvent) => {
+      const r = e.reason;
+      send("unhandledrejection", r instanceof Error ? r.message : String(r), r instanceof Error ? r.stack : undefined);
+    };
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onRejection);
+    };
+  }, []);
+
+  // ---------------------------------------------------------------------------
   // Speech Recognition (Web Speech API) with Auto-Recovery & Echo Guard
   // ---------------------------------------------------------------------------
   useEffect(() => {

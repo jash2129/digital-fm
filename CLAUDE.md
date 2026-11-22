@@ -61,6 +61,10 @@ Next.js app (`tavus-avatar/`) for an AWS Summit Sydney booth demo. Real-time con
     claims, and the word-for-word recording disclosure; a reply that fails twice, times out
     (`FREE_AI_TIMEOUT_MS`, default 4 s) or errors is taken by the scripted controller for that turn.
     Overrides the other two switches. Not approved by TXM for real customers.
+- `SENTRY_DSN` - optional. Every error (uncaught route errors via `src/instrumentation.ts`
+  `onRequestError`, the turn API's caught failures, and call-screen errors sent to `/api/client-error`)
+  goes through `src/lib/error-report.ts`: always one JSON `"event":"error"` log line, and with this set,
+  also to Sentry (no SDK, one HTTP request per error). `/api/health` shows `errorTracking`.
 - `DEMO_API_TOKEN` - gates every `/api/*` route (except `/api/auth`) behind a shared login token, checked in `src/proxy.ts`. Unset → auth is skipped in dev, but **fails closed with 503** if `NODE_ENV=production` and it's still unset — a missing token in production means the deployment is misconfigured, not that auth should be silently disabled. Required for any deployment reachable outside your own machine.
 
 ## Digital Finance Manager event (`EVENT_CONFIG=digital-finance-manager`)
