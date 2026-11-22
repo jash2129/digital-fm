@@ -267,6 +267,47 @@ export const BARGE_IN_CUTOFF_WORDS = [
     "hold up",
 ];
 
+// -----------------------------------------------------------------------------
+// End of the customer's turn: how long a silence means they have finished.
+// Tester feedback 2026-11-23 ("he doesn't let me finish my sentence"): 0.4 s after a final result
+// (Deepgram finalises after 0.3 s of quiet) ended turns on a normal thinking pause. Quick answers stay
+// fast; a sentence that is clearly unfinished, or a long story, gets more room.
+// -----------------------------------------------------------------------------
+export const END_OF_TURN_MS = {
+  /** "yes", "okay", "sounds good" */
+  quick: 300,
+  /** a final result that ends a sentence ("…the tire coverage.", "…how much?") */
+  finishedSentence: 900,
+  /** no clear sentence end yet */
+  default: 1100,
+  /** just interrupted Max: give them the floor */
+  afterBargeIn: 1200,
+  /** a long reply (15+ words): storytellers pause more */
+  longTurn: 1300,
+  /** ends on "and", "but", "so", "um", a comma or a dash: they are mid-thought */
+  unfinished: 2000,
+};
+
+const QUICK_ANSWERS = new Set([
+  "yes", "yeah", "yep", "yup", "no", "nope", "ok", "okay", "sure", "fine",
+  "i did", "we did", "he did", "makes sense", "sounds good",
+  "are you there", "you there", "why aren t you responding", "why arent you responding",
+]);
+
+/** Milliseconds of silence before the customer's words are sent as their turn */
+export function endOfTurnWaitMs(spoken: string, opts: { final: boolean; incomplete: boolean; recentBargeIn: boolean }): number {
+  const text = spoken.trim();
+  const n = norm(text);
+  if (opts.incomplete || /[,;:\-–—]$|\.\.\.$/.test(text)) return END_OF_TURN_MS.unfinished;
+  if (QUICK_ANSWERS.has(n)) return END_OF_TURN_MS.quick;
+  if (opts.recentBargeIn) return END_OF_TURN_MS.afterBargeIn;
+  if (n.split(" ").filter(Boolean).length >= 15) return END_OF_TURN_MS.longTurn;
+  // A final with a sentence ending: the recognizer heard the sentence close (Deepgram punctuates;
+  // the browser's recognizer does not, so its finals use the default)
+  if (opts.final && /[.?!]$/.test(text)) return END_OF_TURN_MS.finishedSentence;
+  return END_OF_TURN_MS.default;
+}
+
 // No barge-in this early in a line unless a stop word is said
 export const BARGE_IN_GRACE_MS = 1500;
 const GRACE_STOP_WORDS = /\b(stop|wait|hold on|excuse me|who is this|who s this)\b/;

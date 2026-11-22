@@ -6,7 +6,7 @@
  * No values are changed here.
  */
 import { describe, it, expect } from "vitest";
-import { bargeInDecision, BARGE_IN_GRACE_MS, BARGE_IN_MIN_WORDS, InterimBuffer } from "./turn-taking";
+import { bargeInDecision, BARGE_IN_GRACE_MS, BARGE_IN_MIN_WORDS, InterimBuffer, endOfTurnWaitMs, END_OF_TURN_MS } from "./turn-taking";
 import { ResultAssembler, type RecognizerEvent } from "./deepgram-stt";
 
 // A Deepgram event as the call screen reads it
@@ -64,5 +64,39 @@ describe("Deepgram results through the call screen's interim buffer", () => {
     e = a.add("Okay", false)!;
     const r = buf.update(rows(e), 0);
     expect(r).toEqual({ interim: " Okay", final: "" });
+  });
+});
+
+describe("Max waits until the customer has finished (tester feedback 2026-11-23)", () => {
+  const wait = (t: string, o: Partial<{ final: boolean; incomplete: boolean; recentBargeIn: boolean }> = {}) =>
+    endOfTurnWaitMs(t, { final: true, incomplete: false, recentBargeIn: false, ...o });
+
+  it("quick answers stay fast", () => {
+    for (const t of ["Yes.", "Okay.", "Sounds good."]) expect(wait(t), t).toBe(END_OF_TURN_MS.quick);
+  });
+
+  it("a finished sentence waits 0.9 s, not the old 0.4 s", () => {
+    expect(wait("I want to know about the tire coverage.")).toBe(900);
+    expect(wait("How much is it?")).toBe(900);
+  });
+
+  it("a sentence cut mid-thought waits 2 s", () => {
+    for (const t of ["I was wondering,", "I drove it and", "So the thing is, um", "My last car had a problem with the -"]) {
+      expect(wait(t, { incomplete: t.endsWith("and") || t.endsWith("um") }), t).toBe(END_OF_TURN_MS.unfinished);
+    }
+  });
+
+  it("no sentence ending yet (or the browser's unpunctuated text) waits 1.1 s", () => {
+    expect(wait("I want to know about the tire coverage", { final: false })).toBe(END_OF_TURN_MS.default);
+    expect(wait("i want to know about the tire coverage", { final: true })).toBe(END_OF_TURN_MS.default);
+  });
+
+  it("a long story gets 1.3 s; right after interrupting Max, 1.2 s", () => {
+    expect(wait("My last car blew a transmission two months after the warranty ended and it cost me a fortune.")).toBe(END_OF_TURN_MS.longTurn);
+    expect(wait("Hang on, I have a question about that.", { recentBargeIn: true })).toBe(END_OF_TURN_MS.afterBargeIn);
+  });
+
+  it("every wait is longer than Deepgram's 300 ms finalisation, so one pause never ends a sentence", () => {
+    for (const ms of Object.values(END_OF_TURN_MS).filter((v) => v !== END_OF_TURN_MS.quick)) expect(ms).toBeGreaterThanOrEqual(900);
   });
 });

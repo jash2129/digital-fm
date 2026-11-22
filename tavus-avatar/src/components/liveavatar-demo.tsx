@@ -14,6 +14,8 @@ import {
   AvatarVoice,
   BARGE_IN_CUTOFF_WORDS,
   bargeInDecision,
+  endOfTurnWaitMs,
+  END_OF_TURN_MS,
   InterimBuffer,
   type RecognizerResult,
   type AvatarCommand,
@@ -31,14 +33,11 @@ export { shouldCutMaxOff } from "@/lib/turn-taking";
 // All thresholds in one central object for easy tuning without hunting
 // =============================================================================
 export const SPEED_AND_BARGE_IN_CONFIG = {
-  // End of speech silence threshold in milliseconds (natural human conversational pause ~750ms)
-  END_OF_SPEECH_MS: 750,
-
-  // Fast-path silence threshold when browser Web Speech API has already emitted final transcript
-  FINAL_TRANSCRIPT_SILENCE_MS: 400,
-
-  // Ultra-fast threshold for short definitive answers ("yes", "no", "ok", "i did", etc.)
-  QUICK_ANSWER_SILENCE_MS: 300,
+  // End-of-turn waits live in turn-taking.ts (END_OF_TURN_MS / endOfTurnWaitMs): quick answer 0.3 s,
+  // finished sentence 0.9 s, default 1.1 s, long reply 1.3 s, unfinished sentence 2 s (2026-11-23)
+  END_OF_SPEECH_MS: END_OF_TURN_MS.default,
+  FINAL_TRANSCRIPT_SILENCE_MS: END_OF_TURN_MS.finishedSentence,
+  QUICK_ANSWER_SILENCE_MS: END_OF_TURN_MS.quick,
 
   // Single words / short phrases that immediately cut Max off (after the first 1.5 s of a line):
   BARGE_IN_CUTOFF_WORDS,
@@ -1021,27 +1020,13 @@ export function LiveAvatarDemo() {
 
       const timeSinceInterrupted = Date.now() - (lastInterruptedAtRef.current || 0);
       const isRecentBargeIn = timeSinceInterrupted < 4000;
-      const isIncomplete = isIncompleteUtterance(currentSpoken);
-
-      const normSpoken = currentSpoken.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
-      const isQuickAnswer = [
-        "yes", "yeah", "yep", "yup", "no", "nope", "ok", "okay", "sure", "fine",
-        "i did", "we did", "he did", "makes sense", "sounds good",
-        "are you there", "you there", "why aren t you responding", "why arent you responding"
-      ].includes(normSpoken);
-
-      let delayMs = SPEED_AND_BARGE_IN_CONFIG.END_OF_SPEECH_MS;
-      if (isIncomplete) {
-        // User is mid-sentence pausing before finishing clause: hold 1500ms
-        delayMs = Math.max(delayMs, 1500);
-      } else if (isRecentBargeIn) {
-        // Just interrupted Max: give full floor to speak without rushing to cut them off
-        delayMs = Math.max(delayMs, 1200);
-      } else if (isQuickAnswer) {
-        delayMs = SPEED_AND_BARGE_IN_CONFIG.QUICK_ANSWER_SILENCE_MS;
-      } else if (finalTranscript.trim()) {
-        delayMs = SPEED_AND_BARGE_IN_CONFIG.FINAL_TRANSCRIPT_SILENCE_MS;
-      }
+      // How long a silence means the customer has finished (turn-taking.ts endOfTurnWaitMs): quick answers
+      // stay fast, a finished sentence waits 0.9 s, an unfinished one ("…and", "…um,") 2 s
+      const delayMs = endOfTurnWaitMs(currentSpoken, {
+        final: Boolean(finalTranscript.trim()),
+        incomplete: isIncompleteUtterance(currentSpoken),
+        recentBargeIn: isRecentBargeIn,
+      });
 
       silenceEndTimerRef.current = setTimeout(() => {
         const spoken = (finalTranscript || interimText || currentSpoken).trim();
