@@ -6,7 +6,7 @@
 |---|---|---|---|---|
 | PASS | P2 | B5 "Yes" | CONTROL: a plain yes advances one beat | [agree -> B6] Right on. Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warr |
 | PASS | P2 | B5 "Yes, that makes sense" | CONTROL: agreement advances one beat | [agree -> B6] Right on. Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warr |
-| PASS | P2 | B9 "What's the price?" | CONTROL: early price ask gets the defer line | [price_ask -> B10] I'm going to cover that in just a moment. And finally the Driving habits the way i drive the way you drive in fact the way everyone |
+| PASS | P2 | B9 "What's the price?" | CONTROL: early price ask gets the defer line | [price_ask -> B10] I'm going to cover that in just a moment. And finally the Driving habits the way I drive the way you drive in fact the way everyone |
 | PASS | P0 | B1 "I don't want to be recorded." | Recording objection must stop the call or hand off, never continue to Beat 2 | [human_request -> B1] I understand. I'll end this session now. |
 | PASS | P1 | B1 "Wait, it's recorded? Why?" | Answer from the disclosure, do not advance | [other -> B1] This transaction is recorded audio and video, and I'm required by law to go over everything with you before you sign any paperwork, to m |
 | PASS | P0 | B9 "Is this a sales call?" | Must not deny that Max offers protection products | [sales_question -> B9] I'm Max, your finance manager. My job is to go over your paperwork and the coverage options with you before you sign. Also Road |
@@ -40,7 +40,7 @@
 | PASS | P1 | B22 "What if I drop the tires?" | Exclusion then reprice: must not recap the tire coverage | [other -> B22] If you'd like to drop the tire and wheel package, we can adjust the coverage options to fit what you need most. |
 | PASS | P1 | B22 "Is that per day or per month?" | Answer the unit question, do not ask 'which two' | [other -> B22] That's four dollars a day, which works out to about one hundred and twenty dollars a month on your paperwork. |
 | PASS | P1 | B22 "What's the total?" | Do not ignore a price question at the price beat | [other -> B22] The total for full vehicle protection is four dollars a day over your contract term. |
-| PASS | P1 | B22 "That works for me." | Acceptance goes to the confirmation beat, not back to 'which two' | [agree -> B24] Great, so to confirm, we're moving forward with full vehicle protection for four dollars a day on your 2026 Mazda CX five.... Are you r |
+| PASS | P1 | B22 "That works for me." | Acceptance goes to the confirmation beat, not back to 'which two' | [agree -> B24] Great, so to confirm, we're moving forward with full vehicle protection for four dollars a day on your 2026 Mazda CX five... Are you re |
 | PASS | P2 | B22 "I have 2 kids and I need to think about it." | 'I need to think' needs its own handling, not 'which two' | [other -> B22] I completely understand taking time to think about it. Protecting your family budget from sudden repair bills is important. What part o |
 | PASS | P1 | B22 "I can only do about 20 dollars a month." | Below the floor must reach the floor or a handoff | [negotiate_price -> B22] Three dollars a day is our absolute hard floor for full vehicle protection — at less than the cost of a cup of coffee, it's t |
 | PASS | P2 | B19 "That's not funny." | Not 'I love that energy' | [other -> B19] I understand. Let's focus on the protection options for your vehicle. |

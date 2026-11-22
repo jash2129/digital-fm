@@ -627,7 +627,37 @@ export function formatSpeechText(text: string): string {
   clean = clean.replace(/\bhundred thirty dollar per hour up to hundred sixty dollar per hour\b/gi, "one hundred thirty to one hundred sixty dollars per hour");
   clean = clean.replace(/\bpage number 4\b/gi, "page number four");
 
-  return clean.trim();
+  return polishSpeech(clean.trim());
+}
+
+/**
+ * The last touch on every line Max speaks, from the script or the AI: capitals, punctuation and
+ * spelling only, never the wording (beats.json stays as TXM approved it). Simulated batch 2026-11-21:
+ * a lowercase "i", "....", shouted all-caps runs and "bumber" reached the voice.
+ */
+export function polishSpeech(text: string): string {
+  let t = text;
+  // Shouted runs of three or more all-caps words read as normal speech (single acronyms like GAP stay);
+  // first, so a spelling fix below never breaks a run into mixed case
+  t = t.replace(/\b[A-Z]{2,}(?:[\s,]+[A-Z]{2,}){2,}\b/g, (m) => m.toLowerCase());
+  // Spelling slips in the script, read aloud as written
+  t = t.replace(/\bbumber\b/gi, (m) => (m[0] === "B" ? "Bumper" : "bumper"));
+  t = t.replace(/\bware and tear\b/gi, "wear and tear");
+  t = t.replace(/\b(less|more) then\b/gi, "$1 than");
+  t = t.replace(/\bnow days\b/gi, "nowadays");
+  t = t.replace(/\btexas\b/g, "Texas");
+  // "i", "i'm", "i'll" -> "I", "I'm", "I'll"
+  t = t.replace(/(^|[^\w'’])i(?=$|[^\w]|['’](m|ll|ve|d)\b)/g, "$1I");
+  t = t.replace(/\bim\b/g, "I'm");
+  // Punctuation: four or more dots -> an ellipsis; ". ." -> "."; no space before a full stop or comma
+  t = t.replace(/\.{4,}/g, "...");
+  t = t.replace(/(?<!\.)\.\.(?!\.)/g, ".");
+  t = t.replace(/\.\s+\.(?!\.)/g, ".");
+  t = t.replace(/\s+([.,!?])/g, "$1");
+  // Capital letter at the start and after a full stop, question or exclamation mark (not after "...")
+  t = t.replace(/^(\s*)([a-z])/, (_m, sp, c) => sp + c.toUpperCase());
+  t = t.replace(/(?<!\.)([.!?])(\s+)([a-z])/g, (_m, p, sp, c) => p + sp + c.toUpperCase());
+  return t.replace(/\s+/g, " ").trim();
 }
 
 // Formats full utterance for a beat: beat text + check-in line with natural conversational pause
@@ -648,7 +678,8 @@ export function getFullBeatUtterance(beat: Beat, dealConfig: DealConfig, state?:
       state.last_check_in_tag = cleanCheckIn;
     }
     // Ellipsis introduces a human 250ms conversational pause before the check-in question
-    return `${cleanBody}... ${cleanCheckIn}`;
+    // polishSpeech folds "everything.... Is that okay?" (full stop + pause) into one ellipsis
+    return polishSpeech(`${cleanBody}... ${cleanCheckIn}`);
   }
   return cleanBody;
 }
@@ -2752,11 +2783,13 @@ export async function processControllerTurn(
   opts: TurnOptions = {}
 ): Promise<ControllerDecision> {
   let early: string | undefined;
+  let polishedEarly: string | undefined;
   const onEarly = opts.onEarly
     ? (t: string) => {
         if (early) return;
         early = t;
-        opts.onEarly!(t);
+        polishedEarly = polishSpeech(t);
+        opts.onEarly!(polishedEarly);
       }
     : undefined;
   let decision: ControllerDecision;
@@ -2784,9 +2817,23 @@ export async function processControllerTurn(
   } else {
     decision = await processScriptedTurn(sessionId, customerTranscript, dealConfig, mockClassification, { onEarly });
   }
-  if (early) {
-    keepEarlyPrefix(decision, early);
-    decision.earlyText = early;
+  if (early) keepEarlyPrefix(decision, early);
+  // Polish what is spoken; a part already sent stays exactly as sent, so the reply still starts with it
+  const unpolished = decision.textToSpeak;
+  if (early && polishedEarly) {
+    const rest = unpolished.slice(early.length).trim();
+    decision.textToSpeak = rest ? `${polishedEarly} ${polishSpeech(rest)}` : polishedEarly;
+    decision.earlyText = polishedEarly;
+  } else {
+    decision.textToSpeak = polishSpeech(unpolished);
+  }
+  if (decision.textToSpeak !== unpolished) {
+    const st = decision.state;
+    const last = st.recent_turns?.at(-1);
+    if (last && last.max === unpolished) last.max = decision.textToSpeak;
+    if (st.last_said && st.last_said.said === unpolished) st.last_said.said = decision.textToSpeak;
+    const lastFree = st.free_history?.at(-1);
+    if (lastFree && lastFree.role === "assistant" && lastFree.content === unpolished) lastFree.content = decision.textToSpeak;
   }
   return decision;
 }

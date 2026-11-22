@@ -4,7 +4,7 @@
  * aloud ("The customer is asked which two coverages…").
  */
 import { describe, it, expect } from "vitest";
-import { processControllerTurn, processClientTurn, commitTurn, getOrCreateCallState, resetCallState, BEATS, asksForPrice } from "./beat-controller";
+import { processControllerTurn, processClientTurn, commitTurn, getOrCreateCallState, resetCallState, BEATS, asksForPrice, polishSpeech } from "./beat-controller";
 import { DEFAULT_DEAL_CONFIG } from "./deal-config";
 import {
   REPHRASE_LINE,
@@ -207,6 +207,29 @@ describe("price asks wrapped in a yes (simulated batch 2026-11-21)", () => {
     expect(replies[1].startsWith(PRICE_SOON_LINE)).toBe(true);
     expect(replies[2].startsWith(PRICE_SOON_LINE)).toBe(false);
     expect(getOrCreateCallState(sid).current_beat).toBe(9);
+  });
+});
+
+describe("speech polish: capitals, punctuation and spelling, never the wording (2026-11-22)", () => {
+  it("fixes what reached the voice in the simulated calls", () => {
+    expect(polishSpeech("the warranty i need to go over.... Is that okay?")).toBe("The warranty I need to go over... Is that okay?");
+    expect(polishSpeech("ten years hundred thousand mile BUMBER TO BUMBER WARRANTY THAT COVERS ALL the parts")).toBe(
+      "Ten years hundred thousand mile bumper to bumper warranty that covers all the parts"
+    );
+    expect(polishSpeech("im sure you heard that. it costs less then half a cup, especially here in texas.. Climate")).toBe(
+      "I'm sure you heard that. It costs less than half a cup, especially here in Texas. Climate"
+    );
+  });
+  it("leaves acronyms, ellipsis pauses, prices and correct text alone", () => {
+    for (const ok of ["GAP covers the loan.", "Climate... especially in summer.", "It's four dollars a day.", FLOOR_DECISION_LINE, DECLINE_LINE]) {
+      expect(polishSpeech(ok)).toBe(ok);
+    }
+  });
+  it("is stable: polishing twice changes nothing", () => {
+    for (const b of BEATS) {
+      const once = polishSpeech(b.text);
+      expect(polishSpeech(once), `beat ${b.id}`).toBe(once);
+    }
   });
 });
 
