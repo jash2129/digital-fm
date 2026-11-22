@@ -3,7 +3,7 @@
  * checker falls back to the approved line on anything new, dropped or risky. The AI is mocked.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { shouldSpeakWithAI, checkGenerated, speakWithAI, factsFor, numberTokens, type SpeechTurn } from "./ai-speech";
+import { shouldSpeakWithAI, checkGenerated, echoesCustomer, speakWithAI, factsFor, numberTokens, type SpeechTurn } from "./ai-speech";
 import { processControllerTurn, getOrCreateCallState, resetCallState, lastSaid, BEATS } from "./beat-controller";
 import { DEFAULT_DEAL_CONFIG } from "./deal-config";
 import { MOVE_ON_LINE, UNKNOWN_QUESTION_LINE } from "./max-lines";
@@ -116,6 +116,21 @@ describe("the checker", () => {
   it("keeps the coverage terms the draft names", () => {
     const d = "The tire and wheel package protects your tires and wheels against road hazard damage. Okay?";
     expect(checkGenerated("It protects against road hazard damage. Okay?", d).reason).toMatch(/dropped "tire"/);
+  });
+
+  it("rejects Max saying the customer's own question as his (simulated batch 2026-11-21)", () => {
+    const d = "Awesome! When you came back from the test drive, the sales person did the walkaround and showed you all the features, bells, and whistles in the car.";
+    const customer = "Yes I drove it, it was good. Can we move on to the numbers please?";
+    expect(checkGenerated(`${d} Can we move on to the numbers please?`, d, "", customer).reason).toBe("repeats the customer's words");
+    // A short echo ("it was good") is a normal reaction, not a repeat
+    expect(checkGenerated(`Glad it was good! ${d}`, d, "", customer).ok).toBe(true);
+    expect(echoesCustomer("Sure, can we move on to the numbers please?", customer)).toBe(true);
+  });
+
+  it("rejects a 'later' promise the approved line does not make", () => {
+    expect(checkGenerated(`I'm going to cover that in just a moment. ${draft}`, draft).reason).toBe("adds a 'later' promise");
+    const deferring = "I'm going to cover that in just a moment. Right?";
+    expect(checkGenerated("Fair question, I'll cover that in just a moment. Right?", deferring).ok).toBe(true);
   });
 
   it("counts 'one' as a number only before a unit", () => {

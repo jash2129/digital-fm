@@ -148,10 +148,29 @@ export interface CheckResult {
  * "Adds nothing": formatting, numbers, risky claims and car brands the approved text does not have.
  * Safe to run on the first sentence of a reply while the rest is still being written (streaming).
  */
-export function checkAdditions(text: string, draft: string, factsText = ""): CheckResult {
+/**
+ * Max says one of the customer's own sentences (4+ words) that the approved line does not contain.
+ * Simulated batch 2026-11-21: "Can we move on to the numbers please?" came back as Max's own question.
+ */
+export function echoesCustomer(text: string, customer: string, draft = ""): boolean {
+  const said = norm(text);
+  const approved = norm(draft);
+  return customer
+    .split(/(?<=[.!?])\s+/)
+    .map((s) => words(s).join(" "))
+    .filter((s) => s.split(" ").length >= 4)
+    .some((s) => said.includes(` ${s} `) && !approved.includes(` ${s} `));
+}
+
+export function checkAdditions(text: string, draft: string, factsText = "", customer = ""): CheckResult {
   const fail = (reason: string): CheckResult => ({ ok: false, reason });
   const t = text.trim();
   if (!t) return fail("empty");
+  if (customer && echoesCustomer(t, customer, draft)) return fail("repeats the customer's words");
+  // A promise to come back to something later that the approved line does not make
+  if (/\b(in just a moment|in a moment|in a minute|in just a minute|cover that (shortly|soon|later)|get to (that|the price) (shortly|soon|later))\b/i.test(t) && !/\b(moment|minute|shortly|soon|later)\b/i.test(draft)) {
+    return fail("adds a 'later' promise");
+  }
   if (/[*#_`{}<>\[\]]|^["']|\n\s*[-•]/.test(t)) return fail("formatting");
   if (/^(max|assistant)\s*:/i.test(t)) return fail("speaker label");
   const allowedSource = `${draft} ${factsText}`;
@@ -162,10 +181,10 @@ export function checkAdditions(text: string, draft: string, factsText = ""): Che
   return { ok: true };
 }
 
-export function checkGenerated(text: string, draft: string, factsText = ""): CheckResult {
+export function checkGenerated(text: string, draft: string, factsText = "", customer = ""): CheckResult {
   const fail = (reason: string): CheckResult => ({ ok: false, reason });
   const t = text.trim();
-  const added = checkAdditions(t, draft, factsText);
+  const added = checkAdditions(t, draft, factsText, customer);
   if (!added.ok) return added;
 
   const genWords = words(t).length;
@@ -201,6 +220,7 @@ How:
 - If the customer shared something (a story, a worry, a remark), start with ONE short, genuine reaction to it, in your own words. Vary it; never "Great question" or "Absolutely" every time. If they only said yes / okay, skip the reaction or keep it to two or three words.
 - Then say ALL of APPROVED_REPLY's content: every fact, every number, every coverage name. Plain spoken English, contractions, short sentences. Keep every number exactly, written in words as APPROVED_REPLY writes it.
 - If APPROVED_REPLY asks a question, end with that question (light rewording is fine) and nothing after it.
+- Never repeat the customer's own words or question back as if they were yours.
 - If the customer asked a question and APPROVED_FACTS answers it, you may answer it in one or two sentences using ONLY those facts, then continue with APPROVED_REPLY. If APPROVED_REPLY says Max does not have that detail and the facts do not answer it, keep that meaning.
 
 Never:
@@ -287,7 +307,7 @@ export async function speakWithAI(
       raw += delta;
       if (onEarly && !early) {
         const lead = takeLeadSentences(raw.replace(/^\s*"/, ""));
-        if (lead && checkAdditions(lead.lead, ctx.draft, facts).ok) {
+        if (lead && checkAdditions(lead.lead, ctx.draft, facts, ctx.customer).ok) {
           early = lead.lead;
           onEarly(early);
         }
@@ -299,7 +319,7 @@ export async function speakWithAI(
     clearTimeout(timer);
   }
   const text = tidy(raw.trim().replace(/^"([\s\S]*)"$/, "$1"));
-  const check = checkGenerated(text, ctx.draft, facts);
+  const check = checkGenerated(text, ctx.draft, facts, ctx.customer);
   if (!check.ok) return keep(`rejected: ${check.reason}`);
   if (early && !text.startsWith(early)) return keep("rejected: early part changed");
   return { text, source: "ai", reason: "ok", early };

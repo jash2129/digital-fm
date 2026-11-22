@@ -58,6 +58,7 @@ Judge the whole sentence in context, not single words ("No kidding, my brother h
 - If the customer shared something, start with ONE short, genuine reaction in your own words (vary it). If they only said yes / okay, skip it or keep it to two or three words.
 - Then say ALL of the option's reply: every fact, number and coverage name, in plain spoken English. Keep numbers exactly, in words as written.
 - If the reply asks a question, end with that question and nothing after it.
+- Never repeat the customer's own words or question back as if they were yours.
 - If the customer asked something and APPROVED_FACTS answers it, you may answer in one or two sentences from those facts only.
 - Never add a fact, number, price, cost, discount, promise, guarantee, refund, cancellation, insurance, legal or tax statement that is not in the reply or APPROVED_FACTS. Never say you are human. No lists, markdown or quotes.
 
@@ -170,7 +171,7 @@ export async function understandAndSpeak(
       if (!early && onEarly) {
         const words = raw.slice(raw.indexOf("}") + 1);
         const lead = takeLeadSentences(words);
-        if (lead && checkAdditions(lead.lead, header.option.draft, ctx.facts).ok) {
+        if (lead && checkAdditions(lead.lead, header.option.draft, ctx.facts, ctx.transcript).ok) {
           early = lead.lead;
           onEarly(early);
         }
@@ -188,7 +189,7 @@ export async function understandAndSpeak(
   const ms = Date.now() - t0;
   if (header.option.locked) return { ok: true, header, text: draft, speech: "script", speechReason: "fixed answer", ms };
   const words = tidy(raw.slice(raw.indexOf("}") + 1).replace(/^["']|["']$/g, ""));
-  const check = words ? checkGenerated(words, draft, ctx.facts) : { ok: false, reason: "no words" };
+  const check = words ? checkGenerated(words, draft, ctx.facts, ctx.transcript) : { ok: false, reason: "no words" };
   if (check.ok && (!early || words.startsWith(early))) return { ok: true, header, text: words, speech: "ai", speechReason: "ok", early, ms };
   const reason = `rejected: ${check.ok ? "early part changed" : check.reason}`;
   return { ok: true, header, text: early ? `${early} ${draft}` : draft, speech: "script", speechReason: reason, early, ms };

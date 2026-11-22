@@ -2967,6 +2967,7 @@ async function processFreeTurn(
       lowestOffered: state.free_lowest_offer,
       refusedPrice: pushback,
       customerSaid: [...freeHistory(state).filter((m) => m.role === "user").map((m) => m.content), customerTranscript].join(" "),
+      customerNow: customerTranscript,
       recentMax: freeHistory(state).filter((m) => m.role === "assistant").slice(-2).map((m) => m.content),
     },
     where: callStateNote({ beat: beatBefore, disclosureGiven: Boolean(state.free_disclosure_given), lowestOffered: state.free_lowest_offer }),

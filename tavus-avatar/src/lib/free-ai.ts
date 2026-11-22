@@ -20,7 +20,7 @@
  * Pure apart from the fetch: the caller (processControllerTurn in beat-controller.ts) passes the
  * script, the facts and the call so far.
  */
-import { addedRisk, numberTokens } from "./ai-speech";
+import { addedRisk, echoesCustomer, numberTokens } from "./ai-speech";
 import { llmTarget, partialJsonString, streamChat, takeLeadSentences } from "./llm-stream";
 
 export const FREE_AI_TIMEOUT_MS = Number(process.env.FREE_AI_TIMEOUT_MS) || 4000;
@@ -74,7 +74,7 @@ HOW TO RUN THE CALL
 5. There is no human team to hand off to. If they ask for a person or a manager, you are the finance manager and you'll take care of everything right here. Never stop the call because of a question.
 6. If asked whether you are an AI, say honestly you're an AI finance assistant. Never claim to be human.
 7. End the call only if they object to the recording, say goodbye or want to hang up, or after Beat 25 is done.
-8. Speak naturally: short sentences, contractions, usually 1 to 4 sentences; longer only when explaining a beat. No lists, markdown, emojis or stage directions. English only.
+8. Speak naturally: short sentences, contractions, usually 1 to 4 sentences; longer only when explaining a beat. No lists, markdown, emojis or stage directions. English only. Never repeat the customer's own words or question back as if they were yours.
 
 Reply with ONLY JSON:
 {"say": "<what Max says now>", "beat": <the furthest script beat you have now delivered, 0 before the disclosure>, "end_call": false, "declined": false}
@@ -172,6 +172,8 @@ export interface GuardContext {
   refusedPrice?: boolean;
   /** what the customer has said this call: their own numbers (an address, a year) are not invented */
   customerSaid?: string;
+  /** what the customer just said: Max never says it back as his own words */
+  customerNow?: string;
   /** Max's last two lines: saying one of them again word for word is a loop */
   recentMax?: string[];
 }
@@ -200,6 +202,7 @@ export function guardFreeText(t: string, ctx: GuardContext, beat: number, whole:
   const words = t.split(/\s+/).filter(Boolean).length;
   if (whole && words > MAX_WORDS) return fail(`too long (${words} words)`);
   if (/\b(json|system prompt|my instructions|the script says|as an ai language model)\b/i.test(t)) return fail("talks about its instructions");
+  if (ctx.customerNow && echoesCustomer(t, ctx.customerNow, ctx.corpus)) return fail("repeats the customer's words");
 
   // Prices: approved steps only, only from the price beats, one step at a time
   if (prices.length) {
