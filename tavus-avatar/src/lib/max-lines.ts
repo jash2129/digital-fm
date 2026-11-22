@@ -111,6 +111,8 @@ export const NO_PRESSURE_LINE = "No pressure at all. I'll just walk you through 
 // A price objection or counter-offer before the price is quoted (Beats 1-21), then the pending
 // question. The number offered is never treated as a counter. Status: PENDING TXM
 export const PRICE_LATER_LINE = "I'll go over the price in just a moment, and there's no pressure at all. Let me finish the coverage first.";
+// The second price worry before the price: not the same sentence again. Status: PENDING TXM
+export const PRICE_SOON_LINE = "Totally fair. We're almost at the price, just a few more points first.";
 // UNKNOWN_QUESTION_LINE in other words, for the 3rd and later unanswerable question in one call
 // (the same sentence every time sounded like a loop). Status: PENDING TXM
 export const UNKNOWN_QUESTION_VARIANTS = [

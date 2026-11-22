@@ -4,7 +4,7 @@
  * aloud ("The customer is asked which two coverages…").
  */
 import { describe, it, expect } from "vitest";
-import { processControllerTurn, processClientTurn, commitTurn, getOrCreateCallState, resetCallState, BEATS } from "./beat-controller";
+import { processControllerTurn, processClientTurn, commitTurn, getOrCreateCallState, resetCallState, BEATS, asksForPrice } from "./beat-controller";
 import { DEFAULT_DEAL_CONFIG } from "./deal-config";
 import {
   REPHRASE_LINE,
@@ -14,6 +14,8 @@ import {
   FLOOR_DECISION_LINE,
   DECLINE_LINE,
   UNKNOWN_QUESTION_LINE,
+  PRICE_LATER_LINE,
+  PRICE_SOON_LINE,
 } from "./max-lines";
 import { retrieve } from "./grounded-answer";
 import { scoreCall } from "./call-scorecard";
@@ -176,6 +178,35 @@ describe("closing at the $3 floor", () => {
       turns.push({ customer: line, max: t.textToSpeak, beat: t.beatId });
     }
     expect(scoreCall(turns).checks.find((c) => c.id === "no_loop")?.pass).toBe(true);
+  });
+});
+
+describe("price asks wrapped in a yes (simulated batch 2026-11-21)", () => {
+  it("'Yes … what's the price?' twice: the second goes straight to the price, never a second 'in a moment'", async () => {
+    const sid = atBeat(7);
+    const first = await say(sid, "Yes I understand. Can we please move on to the protection package and its daily price?");
+    expect(first.intent).toBe("price_ask");
+    const second = await say(sid, "Yeah I get it. What's the daily price on the protection package?");
+    expect(second.beatId).toBe(22);
+    expect(second.textToSpeak).toContain("four dollars a day");
+    expect(second.textToSpeak).not.toContain("in just a moment");
+  });
+
+  it("a plain yes that mentions repairs costing money is still a yes", async () => {
+    const t = await say(atBeat(13), "Yes, repairs cost a fortune these days");
+    expect(t.intent).not.toBe("price_ask");
+    expect(asksForPrice("how much longer is this going to take")).toBe(false);
+    expect(asksForPrice("Let's talk price on the protection package")).toBe(true);
+  });
+
+  it("price worries before the price: the two 'later' lines take turns, never the same twice in a row", async () => {
+    const sid = atBeat(9);
+    const replies: string[] = [];
+    for (const line of ["That's too much", "I can't afford that", "can you do better"]) replies.push((await say(sid, line)).textToSpeak);
+    expect(replies[0].startsWith(PRICE_LATER_LINE)).toBe(true);
+    expect(replies[1].startsWith(PRICE_SOON_LINE)).toBe(true);
+    expect(replies[2].startsWith(PRICE_SOON_LINE)).toBe(false);
+    expect(getOrCreateCallState(sid).current_beat).toBe(9);
   });
 });
 

@@ -6,7 +6,7 @@ import { describe, it, expect } from "vitest";
 import { processControllerTurn, getOrCreateCallState, resetCallState, BEATS } from "./beat-controller";
 import { DEFAULT_DEAL_CONFIG } from "./deal-config";
 import kb from "./max-knowledge-base.json";
-import { STEP_0_CHECKIN_LINE, VEHICLE_NOTED_LINE, ROLE_EXPLAIN_LINE, WHICH_PART_LINE, UNKNOWN_QUESTION_LINE, PRICE_LATER_LINE, FLOOR_PRICE_LINE, CLARIFY_LINE } from "./max-lines";
+import { STEP_0_CHECKIN_LINE, VEHICLE_NOTED_LINE, ROLE_EXPLAIN_LINE, WHICH_PART_LINE, UNKNOWN_QUESTION_LINE, PRICE_LATER_LINE, PRICE_SOON_LINE, FLOOR_PRICE_LINE, CLARIFY_LINE } from "./max-lines";
 
 const GLAD = "so glad to hear that";
 
@@ -156,9 +156,10 @@ describe("4: price objections before the price is quoted", () => {
     expect(d.beatId).toBe(19);
 
     // Beat 19: before the price
-    for (const line of ["That's too much", "I'll give you $2 a day"]) {
+    // The two "later" lines take turns (2026-11-22: the same sentence twice sounded robotic)
+    for (const [line, said] of [["That's too much", PRICE_LATER_LINE], ["I'll give you $2 a day", PRICE_SOON_LINE]] as const) {
       const early = await say(sid, line);
-      expect(early.textToSpeak.startsWith(PRICE_LATER_LINE)).toBe(true);
+      expect(early.textToSpeak.startsWith(said)).toBe(true);
       expect(early.beatId).toBe(19);
     }
     expect(getOrCreateCallState(sid).concession_stage ?? 1).toBe(1);
@@ -291,11 +292,11 @@ const SCRIPTS: Record<string, Turn[]> = {
     { say: "yes", beat: 7 },
     { say: "That's too much", beat: 7, has: PRICE_LATER_LINE },
     { say: "yes", beat: 8 },
-    { say: "I can't afford that", beat: 8, has: PRICE_LATER_LINE },
+    // The two "later" lines take turns, never the same one twice in a row (2026-11-22)
+    { say: "I can't afford that", beat: 8, has: PRICE_SOON_LINE },
     { say: "okay", beat: 9 },
     { say: "can you do better", beat: 9, has: PRICE_LATER_LINE, not: UNKNOWN_QUESTION_LINE },
-    // The third price-later reply in a row is varied ("As I mentioned, I'll go over the price…")
-    { say: "I'll give you $2 a day", beat: 9, has: "I'll go over the price in just a moment", not: /two dollars|three dollars/i },
+    { say: "I'll give you $2 a day", beat: 9, has: PRICE_SOON_LINE, not: /two dollars|three dollars/i },
     { say: "yes", beat: 10 },
   ],
   "confused": [

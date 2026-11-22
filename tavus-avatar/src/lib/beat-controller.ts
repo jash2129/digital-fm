@@ -43,6 +43,7 @@ import {
   WHICH_PART_LINE,
   ROLE_EXPLAIN_LINE,
   PRICE_LATER_LINE,
+  PRICE_SOON_LINE,
   UNKNOWN_QUESTION_VARIANTS,
   REPHRASE_LINE,
   MOVE_ON_LINE,
@@ -119,6 +120,8 @@ export interface CallState {
   dealConfig: DealConfig;
   is_stopped: boolean;
   price_defer_count?: number;
+  /** price worries before the price (early_price_objection): PRICE_LATER_LINE and PRICE_SOON_LINE take turns */
+  price_later_count?: number;
   /** consecutive questions the knowledge base could not answer */
   ungrounded_count?: number;
   /** customer already said yes to a finalize question, so Beat 24 must not ask again */
@@ -1021,6 +1024,17 @@ export function isPricePushback(transcript: string): boolean {
     isPlainNo(n) ||
     /\b(too (much|expensive|high|pricey)|lower|cheaper|lowest|best (price|you can do)|final offer|discount|can t afford|cant afford|bring it down|come down|that s a lot|thats a lot)\b/.test(n)
   );
+}
+
+/**
+ * The customer asks to get to the price ("Yes I understand. Can we move on to the price?").
+ * Simulated batch 2026-11-21: wrapped in a yes it counted as a plain yes, so the "second price ask
+ * goes straight to the price" rule never fired and Max said "in just a moment" turn after turn.
+ */
+export function asksForPrice(transcript: string): boolean {
+  const n = transcript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  if (/\bhow much\b/.test(n) && !/\bhow much (longer|time|more)\b/.test(n)) return true;
+  return /\b(can we|let s|lets|let us|tell me|what s|what is|get to|move on to|talk about|talk|give me|just tell|show me|skip to)\b.{0,40}\b(price|pricing|prices|cost|costs|numbers|bottom line|daily rate)\b/.test(n);
 }
 
 // A plain refusal with nothing else in it ("no", "nope", "no thanks", "not interested")
@@ -3368,6 +3382,15 @@ async function runControllerTurn(
   if (state.current_beat >= 22 && state.current_beat <= 24 && (intent === "no" || (intent === "agree" && isPriceRefusal(customerTranscript)))) {
     intent = "negotiate_price";
   }
+  // "Yes, got it. What's the daily price?" before the price: a price ask, so the second one goes
+  // straight to the price instead of another "in just a moment"
+  if ((intent === "agree" || intent === "other" || intent === "acknowledge") && state.current_beat >= 2 && state.current_beat < 22 && asksForPrice(customerTranscript)) {
+    intent = "price_ask";
+  }
+  // Price worries before the price: the two "later" lines take turns, never the same one twice in a row
+  if (intent === "early_price_objection" && state.current_beat < 22) {
+    state.price_later_count = (state.price_later_count ?? 0) + 1;
+  }
   // What the turn log records; differs from `intent` only where the reply's role is clearer
   let reportedIntent: ControllerDecision["intent"] = intent;
 
@@ -4078,7 +4101,7 @@ async function runControllerTurn(
     }
 
     case "early_price_objection": {
-      textToSpeak = `${PRICE_LATER_LINE} ${pendingQuestion(state)}`;
+      textToSpeak = `${(state.price_later_count ?? 1) % 2 === 0 ? PRICE_SOON_LINE : PRICE_LATER_LINE} ${pendingQuestion(state)}`;
       beatType = "wait";
       toolCalls = [];
       break;
