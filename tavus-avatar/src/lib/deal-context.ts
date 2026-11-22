@@ -1,6 +1,7 @@
 import "server-only";
 
 import { randomUUID } from "crypto";
+import { upstashEnabled, upstashPipeline } from "./upstash";
 
 // Short-lived intake for real deal data (customer + vehicle + financing terms) from an
 // external system (CRM, DMS, etc). Nothing calls the write side yet — this is the seam a
@@ -9,9 +10,9 @@ import { randomUUID } from "crypto";
 // conversational_context so the AI doesn't have to ask for information the dealership
 // already has.
 //
-// In-memory, process-local — same constraint as active-conversations.ts: correct on a
-// single persistent Node process, not on multi-instance/serverless hosting without a
-// shared store.
+// Stored in Upstash Redis when it is set up (Vercel: each request may land on a different
+// server, so a deal written on one must be readable on another), with Redis expiring it.
+// Without Upstash (one long-running server, local runs, tests) it stays in memory.
 
 export type DealContext = {
   customerName?: string;
@@ -42,13 +43,28 @@ function getStore() {
   return globalThis.__dealContextStore__;
 }
 
-export function createDeal(context: DealContext): string {
+const dealKey = (dealId: string) => `max:deal:${dealId}`;
+
+export async function createDeal(context: DealContext): Promise<string> {
   const dealId = randomUUID();
+  if (upstashEnabled()) {
+    await upstashPipeline([["SET", dealKey(dealId), JSON.stringify(context), "EX", Math.round(DEAL_TTL_MS / 1000)]]);
+    return dealId;
+  }
   getStore().set(dealId, { context, expiresAt: Date.now() + DEAL_TTL_MS });
   return dealId;
 }
 
-export function getDeal(dealId: string): DealContext | undefined {
+export async function getDeal(dealId: string): Promise<DealContext | undefined> {
+  if (upstashEnabled()) {
+    try {
+      const [raw] = await upstashPipeline([["GET", dealKey(dealId)]]);
+      return typeof raw === "string" ? (JSON.parse(raw) as DealContext) : undefined;
+    } catch (err) {
+      console.warn("[deal-context] could not read the deal from Upstash:", err);
+      return undefined;
+    }
+  }
   const store = getStore();
   const stored = store.get(dealId);
 

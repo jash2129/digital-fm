@@ -105,8 +105,9 @@ project planning thread, not in this repo. Below is what's actually landed in co
   Exception, Max's call state only: `src/lib/session-store.ts` loads/saves each call's beat-controller
   state and pending commit in Upstash Redis around every `/api/chat/grok` request when
   `UPSTASH_REDIS_REST_URL`/`KV_REST_API_URL` is set, so Max can run on Vercel's free plan
-  (`docs/DEPLOY-VERCEL.md`). The other maps above (visitors, Tavus conversations, deal context) are
-  still per-instance, and Vercel keeps no files: there, the call log sheet is the only lasting record.
+  (`docs/DEPLOY-VERCEL.md`). Call logs (`src/lib/call-log-store.ts`, read by the Inspector) and deal
+  context (`src/lib/deal-context.ts`, 2-hour Redis expiry) use the same store. The Tavus-path maps above
+  (active conversations, rate limits) are still per-instance; the visitor id is a cookie, so it needs none.
 - **Deal-context intake**: `src/lib/deal-context.ts` + `POST /api/deal-context` — short-lived (2hr
   TTL) storage for real customer/vehicle/financing data from an external system (CRM/DMS), returns a
   `deal_id`. `POST /api/conversation?deal=<deal_id>` folds it into Tavus's `conversational_context`

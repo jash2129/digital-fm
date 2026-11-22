@@ -121,7 +121,7 @@ export async function POST(request: Request) {
     // see src/lib/deal-context.ts. Falls back to nothing (AI asks conversationally)
     // when no ?deal= param is given or the deal has expired.
     const dealId = params.get("deal");
-    const dealContext = dealId ? getDeal(dealId) : undefined;
+    const dealContext = dealId ? await getDeal(dealId) : undefined;
     let conversationalContext = dealContext ? formatDealContext(dealContext) : null;
 
     if (isFinanceEvent()) {

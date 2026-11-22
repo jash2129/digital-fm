@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const dealId = createDeal(context);
+  const dealId = await createDeal(context);
 
   return NextResponse.json(
     { deal_id: dealId },
