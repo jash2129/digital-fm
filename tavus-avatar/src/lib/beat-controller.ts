@@ -95,6 +95,7 @@ import {
   NOT_FUNNY_LINE,
   TECH_ISSUE_LINE,
   MARKUP_OBJECTION_LINE,
+  COACH_ACK_LINE,
 } from "./max-lines";
 import { normalizeSpeech } from "./echo-guard";
 import { answerFromKnowledgeBase, looksLikeQuestion, retrieve } from "./grounded-answer";
@@ -187,6 +188,15 @@ export interface CallState {
   is_impatient_flow?: boolean;
   sentence_index?: number;
   total_sentences?: number;
+  /** In-call trainer coaching feedback captured during testing */
+  trainer_feedback?: Array<{
+    timestampMs?: number;
+    timeOffsetSec?: number;
+    beat: number;
+    last_spoken: string;
+    feedback: string;
+    category?: string;
+  }>;
 }
 
 export function splitIntoSentences(text: string): string[] {
@@ -275,6 +285,7 @@ export type ClassifierIntent =
   | "role_confusion"
   | "confusion"
   | "early_price_objection"
+  | "coach_feedback"
   /** AI-first understanding: a story or remark at a question beat, acknowledged and re-asked */
   | "acknowledge"
   /** Not a classifier result: Max moved on after three misses in a row (handleMisses) */
@@ -1103,6 +1114,93 @@ export function isPriceRefusal(transcript: string): boolean {
   return /\b(not paying|won t pay|wont pay|not buying|not going to buy|don t want (it|the|any|that|this)|dont want (it|the|any|that|this)|do not want|no package|no protection|no extras|nothing extra|anything extra|without (the |any )?(package|protection|coverage)|keep (just |only )?(the |my )?factory|factory warranty only|just the factory|only the factory|not interested|i ll pass|ill pass|no deal)\b/.test(n);
 }
 
+/**
+ * Detects live training / coaching feedback given by the client or tester mid-call.
+ * Includes explicit prefixes like [COACH]: or [FEEDBACK]:, voice triggers like "coach mode",
+ * "note for max", "training note", "feedback for max", and direct coaching phrasing like
+ * "don't say that, say...", "instead of that, say...", "you should say...", etc.
+ */
+export function isCoachFeedback(transcript: string): boolean {
+  const norm = transcript
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9 ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!norm) return false;
+
+  // Tag prefixes (UI buttons or typed messages)
+  if (/^\[(coach|feedback|trainer|training)\]/i.test(transcript.trim())) {
+    return true;
+  }
+
+  // Voice cues & introductory feedback statements
+  if (
+    norm.startsWith("coach mode") ||
+    norm.startsWith("trainer mode") ||
+    norm.startsWith("training mode") ||
+    norm.startsWith("note for max") ||
+    norm.startsWith("note to max") ||
+    norm.startsWith("note for the agent") ||
+    norm.startsWith("training note") ||
+    norm.startsWith("training feedback") ||
+    norm.startsWith("trainer feedback") ||
+    norm.startsWith("feedback for max") ||
+    norm.startsWith("feedback to max") ||
+    norm.startsWith("quick feedback") ||
+    norm.startsWith("heres some feedback") ||
+    norm.startsWith("here is some feedback") ||
+    norm.startsWith("my feedback is") ||
+    norm.startsWith("feedback note") ||
+    norm.startsWith("feedback ")
+  ) {
+    return true;
+  }
+
+  // Direct coaching phrasing instructing Max on what to say
+  if (
+    norm.includes("dont say that say") ||
+    norm.includes("dont say that you should") ||
+    norm.includes("dont say that but say") ||
+    norm.includes("dont say that") ||
+    norm.includes("instead of that say") ||
+    norm.includes("instead of saying that say") ||
+    norm.includes("instead of that you should") ||
+    norm.includes("you should have said") ||
+    norm.includes("you should say") ||
+    norm.includes("you shouldnt say that") ||
+    norm.includes("change that line to") ||
+    norm.includes("change that wording to") ||
+    norm.includes("rephrase that as") ||
+    norm.includes("next time say") ||
+    norm.includes("speak more warmly") ||
+    norm.includes("speak slower here") ||
+    norm.includes("pause before giving the price") ||
+    norm.includes("dont rush into the price")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+export function categorizeTrainerFeedback(feedback: string): string {
+  const n = feedback.toLowerCase();
+  if (n.includes("warm") || n.includes("friendly") || n.includes("tone") || n.includes("robotic") || n.includes("natural")) {
+    return "tone";
+  }
+  if (n.includes("slow") || n.includes("fast") || n.includes("speed") || n.includes("pause") || n.includes("rush") || n.includes("timing")) {
+    return "pacing";
+  }
+  if (n.includes("warranty") || n.includes("price") || n.includes("rate") || n.includes("dollar") || n.includes("contract") || n.includes("policy") || n.includes("covered")) {
+    return "policy_fact";
+  }
+  if (n.includes("say") || n.includes("phrase") || n.includes("wording") || n.includes("line") || n.includes("word") || n.includes("rephrase")) {
+    return "phrasing";
+  }
+  return "general";
+}
+
 // Deterministic rule-based classification fallback (also used for unit/simulation tests)
 export function classifyCustomerInputRuleBased(
   transcript: string,
@@ -1113,6 +1211,11 @@ export function classifyCustomerInputRuleBased(
 
   if (words.length === 0) {
     return { intent: "garbled", topic_beat_ids: [] };
+  }
+
+  // 0. Trainer Coaching Feedback
+  if (isCoachFeedback(transcript)) {
+    return { intent: "coach_feedback", topic_beat_ids: [] };
   }
 
   // 0. Avatar Script Echo Protection: Never treat Max's own script echoed from laptop speakers as user progression
@@ -3245,7 +3348,7 @@ function varyRepeat(decision: ControllerDecision, beatBefore: number, previousTe
   const counts = (state.said_counts ??= {});
   const before = counts[key] ?? 0;
   counts[key] = before + 1;
-  if (before < 2 || decision.isScriptComplete) return;
+  if (before < 2 || decision.isScriptComplete || decision.intent === "coach_feedback") return;
   // The script moving on to a new beat is never varied; a canned reply is, on any beat (the impatient
   // customer's "bottom line" line came back on different beats)
   if (decision.beatId !== beatBefore && SCRIPT_ADVANCE_INTENTS.has(decision.intent)) return;
@@ -3284,6 +3387,7 @@ const isQuestion = (t: string) => t.trim().endsWith("?") || /^(why|what|how|who|
  * even when that answer is the same "I don't have that detail" line.
  */
 function isMiss(decision: ControllerDecision, beatBefore: number, previousText: string, customerTranscript: string): boolean {
+  if (decision.intent === "coach_feedback") return false;
   if (decision.beatId !== beatBefore || decision.isScriptComplete || beatBefore < 1 || beatBefore >= 25) return false;
   if (MISS_INTENTS.has(decision.intent)) return true;
   return !isQuestion(customerTranscript) && normLine(decision.textToSpeak) === normLine(previousText);
@@ -3369,6 +3473,25 @@ async function runControllerTurn(
   // 3.6 Step 0 (Before Beat 1)
   // ===========================================================================
   if (!state.step0_completed) {
+    if (isCoachFeedback(customerTranscript)) {
+      if (!state.trainer_feedback) state.trainer_feedback = [];
+      state.trainer_feedback.push({
+        timestampMs: Date.now(),
+        beat: 0,
+        last_spoken: state.last_spoken_text || STEP_0_GREETING,
+        feedback: customerTranscript,
+        category: categorizeTrainerFeedback(customerTranscript),
+      });
+      state.last_spoken_text = COACH_ACK_LINE;
+      return {
+        textToSpeak: COACH_ACK_LINE,
+        beatId: 0,
+        beatType: "wait",
+        toolCalls: [],
+        state,
+        intent: "coach_feedback",
+      };
+    }
     state.step0_turns++;
     const step0Norm = customerTranscript.toLowerCase().replace(/[^a-z0-9 ]/g, " ").trim();
     // "okay, continue" after a Step 0 pause is not an answer to the check-in: ask it again
@@ -3990,6 +4113,23 @@ async function runControllerTurn(
       textToSpeak = "I understand. I'll end this session now.";
       beatType = "stop";
       onScriptComplete(state);
+      break;
+    }
+
+    case "coach_feedback": {
+      if (!state.trainer_feedback) {
+        state.trainer_feedback = [];
+      }
+      state.trainer_feedback.push({
+        timestampMs: Date.now(),
+        beat: state.current_beat,
+        last_spoken: state.last_spoken_text,
+        feedback: customerTranscript,
+        category: categorizeTrainerFeedback(customerTranscript),
+      });
+      textToSpeak = COACH_ACK_LINE;
+      beatType = "wait";
+      toolCalls = [];
       break;
     }
 

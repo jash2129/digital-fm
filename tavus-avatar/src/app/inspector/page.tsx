@@ -574,6 +574,77 @@ export default function CallInspectorPage() {
               )}
             </div>
 
+            {/* In-Call Trainer Feedback & Coaching Stream */}
+            <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-bold text-white flex items-center gap-2">
+                    🎓 In-Call Trainer Feedback &amp; Coaching Stream ({analysis.trainerFeedback?.length || 0} notes)
+                  </h2>
+                  <p className="text-xs text-slate-400">
+                    Direct feedback given by the client/tester during the call to train Max&apos;s phrasing, tone, and script
+                  </p>
+                </div>
+              </div>
+
+              {!analysis.trainerFeedback || analysis.trainerFeedback.length === 0 ? (
+                <div className="py-6 px-4 rounded-xl border border-dashed border-slate-800 text-center text-xs text-slate-500">
+                  No in-call coaching notes logged for this session. Testers can train Max live during a call by speaking &quot;Coach mode: ...&quot;, &quot;Feedback: ...&quot;, or clicking the &quot;Coach Max&quot; button.
+                </div>
+              ) : (
+                <div className="overflow-x-auto max-h-96 overflow-y-auto rounded-xl border border-slate-800">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="bg-slate-950 text-slate-400 font-semibold sticky top-0 border-b border-slate-800">
+                      <tr>
+                        <th className="p-3 w-20">Time</th>
+                        <th className="p-3 w-24">Beat</th>
+                        <th className="p-3 w-32">Category</th>
+                        <th className="p-3">Max Spoke Prior</th>
+                        <th className="p-3">Trainer Coaching / Instruction</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/60 font-mono">
+                      {analysis.trainerFeedback.map((fb, idx) => {
+                        const callStart = Date.parse(analysis.startTime) || 0;
+                        const offsetSec =
+                          fb.timeOffsetSec !== undefined
+                            ? fb.timeOffsetSec
+                            : fb.timestampMs && callStart > 0
+                            ? Math.max(0, Math.floor((fb.timestampMs - callStart) / 1000))
+                            : 0;
+
+                        return (
+                          <tr
+                            key={idx}
+                            className="hover:bg-purple-950/20 cursor-pointer transition"
+                            onClick={() => seekToSecond(offsetSec)}
+                          >
+                            <td className="p-3 font-bold text-purple-400">
+                              [{formatMinSec(offsetSec)}]
+                            </td>
+                            <td className="p-3 text-slate-300">
+                              {fb.beat === 0 ? "Step 0" : `Beat ${fb.beat}`}
+                            </td>
+                            <td className="p-3">
+                              <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                {fb.category || "general"}
+                              </span>
+                            </td>
+                            <td className="p-3 text-slate-400 font-sans max-w-xs truncate" title={fb.lastSpoken}>
+                              &quot;{fb.lastSpoken}&quot;
+                            </td>
+                            <td className="p-3 text-white font-sans font-medium" title={fb.feedback}>
+                              {fb.feedback}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
             {/* Per-turn latency breakdown */}
             <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
               <div>

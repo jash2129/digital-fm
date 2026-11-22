@@ -8,7 +8,7 @@ import CostBreakdownPage from "@/app/content/cost-breakdown/page";
 import PricingLadderPage from "@/app/content/pricing-ladder/page";
 import DealSummaryPage from "@/app/content/deal-summary/page";
 import { CallSummaryScreen } from "@/components/CallSummaryScreen";
-import type { ControllerTurnMetrics } from "@/lib/heygen-logger";
+import type { ControllerTurnMetrics, TrainerFeedbackLog } from "@/lib/heygen-logger";
 import {
   TurnController,
   AvatarVoice,
@@ -213,6 +213,8 @@ export function LiveAvatarDemo() {
   const [currentReplicaText, setCurrentReplicaText] = useState("");
   const [latestUserTranscript, setLatestUserTranscript] = useState("");
   const [textInput, setTextInput] = useState("");
+  const [isCoachMode, setIsCoachMode] = useState(false);
+  const trainerFeedbackRef = useRef<TrainerFeedbackLog[]>([]);
 
   // Presentation & Overlay State
   const [activeOverlay, setActiveOverlay] = useState<
@@ -703,6 +705,10 @@ export function LiveAvatarDemo() {
             id: data.currentBeatId,
             label: data.beatLabel || `Beat ${data.currentBeatId}`,
           });
+        }
+
+        if (Array.isArray(data.trainerFeedback)) {
+          trainerFeedbackRef.current = data.trainerFeedback;
         }
 
         // Process function calls
@@ -1639,6 +1645,7 @@ export function LiveAvatarDemo() {
         timingLogs: timingLogsRef.current,
         bargeIns: bargeInsRef.current,
         turnLogs: turnLogsRef.current,
+        trainerFeedback: trainerFeedbackRef.current,
       };
       try {
         await fetch(`/api/heygen/logs/${currentSessionId}`, {
@@ -1865,7 +1872,10 @@ export function LiveAvatarDemo() {
   const handleManualTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!textInput.trim()) return;
-    const txt = textInput.trim();
+    const raw = textInput.trim();
+    const txt = isCoachMode && !raw.toLowerCase().startsWith("[coach]") && !raw.toLowerCase().startsWith("coach mode")
+      ? `[COACH]: ${raw}`
+      : raw;
     setTextInput("");
     setLatestUserTranscript(txt);
     if (isAvatarSpeakingRef.current) {
@@ -2620,14 +2630,35 @@ export function LiveAvatarDemo() {
                 </button>
               )}
 
+              {/* Trainer / Coach Max Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setIsCoachMode(!isCoachMode)}
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-2.5 sm:py-1.5 text-xs font-bold transition shadow-lg shrink-0 ${
+                  isCoachMode
+                    ? "border-purple-400 bg-purple-600/30 text-purple-200 animate-pulse ring-2 ring-purple-400/50"
+                    : "border-slate-700 bg-slate-800/80 text-slate-300 hover:bg-slate-700/80 hover:text-white"
+                }`}
+                title="Toggle Trainer Coaching Mode (or speak: 'Coach mode: ...' / 'Feedback: ...')"
+              >
+                <span>🎓</span>
+                <span className="hidden sm:inline">{isCoachMode ? "Coach Mode (ON)" : "Coach Max"}</span>
+              </button>
+
               {/* Input Message Form */}
               <form onSubmit={handleManualTextSubmit} className="flex-1 min-w-0 flex items-center gap-2">
                 <input
                   type="text"
                   value={textInput}
                   onChange={(e) => setTextInput(e.target.value)}
-                  placeholder="Speak or type to Max..."
-                  className="flex-1 min-w-0 rounded-full border border-white/15 bg-slate-900/90 px-4 py-2 text-base sm:text-xs text-white placeholder-slate-400 focus:border-sky-400 focus:outline-none transition"
+                  placeholder={
+                    isCoachMode
+                      ? "Coach Max: instruct how to speak or what to say..."
+                      : "Speak or type to Max..."
+                  }
+                  className={`flex-1 min-w-0 rounded-full border bg-slate-900/90 px-4 py-2 text-base sm:text-xs text-white placeholder-slate-400 focus:outline-none transition ${
+                    isCoachMode ? "border-purple-500/60 focus:border-purple-400" : "border-white/15 focus:border-sky-400"
+                  }`}
                 />
                 <button
                   type="submit"

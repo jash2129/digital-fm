@@ -20,6 +20,7 @@ function replyBody(decision: ControllerDecision, clientBeatId: unknown, routeSta
     // classifierMs, controllerMs, usedLLM, classifierTimedOut, intent, beatBefore, beatAfter
     metrics: decision.metrics,
     timing: { routeStart, routeEnd: Date.now() },
+    trainerFeedback: decision.state.trainer_feedback,
   };
 }
 

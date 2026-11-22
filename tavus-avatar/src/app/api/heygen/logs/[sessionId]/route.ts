@@ -38,6 +38,7 @@ export async function POST(
       timingLogs: body.timingLogs || existingLog.timingLogs || [],
       bargeIns: body.bargeIns || existingLog.bargeIns || [],
       turnLogs: body.turnLogs || existingLog.turnLogs || [],
+      trainerFeedback: body.trainerFeedback || existingLog.trainerFeedback || [],
       sttEngine: body.sttEngine || existingLog.sttEngine,
       // Why Deepgram fell back to the browser recognizer, if it did (was dropped here before 2026-11-22)
       ...(body.sttFallbackReason || existingLog.sttFallbackReason ? { sttFallbackReason: body.sttFallbackReason || existingLog.sttFallbackReason } : {}),

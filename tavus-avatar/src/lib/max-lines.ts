@@ -234,6 +234,10 @@ export const UNKNOWN_QUESTION_LINE = "I don't have that detail in front of me an
 // Status: PENDING TXM
 export const LANGUAGE_LINE = "I'm sorry, I can only continue in English.";
 
+// Spoken when the tester or client provides direct coaching / training feedback mid-call.
+// Status: PENDING TXM
+export const COACH_ACK_LINE = "Understood, I've noted that feedback for this step. What would you like to do next?";
+
 // Spoken on every turn after the call has stopped (recording objection or hang-up).
 // Status: PENDING TXM / LEGAL — confirm wording for the recording-objection case.
 export const CLOSING_LINE = "Thank you, take care.";

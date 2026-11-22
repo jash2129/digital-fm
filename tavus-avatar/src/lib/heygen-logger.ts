@@ -85,6 +85,15 @@ export type BargeInLog = {
   msIntoLine?: number;
 };
 
+export type TrainerFeedbackLog = {
+  timestampMs: number;
+  timeOffsetSec?: number;
+  beat: number;
+  lastSpoken: string;
+  feedback: string;
+  category: string;
+};
+
 export type HeygenCallLog = {
   sessionId: string;
   engine: "heygen-grok";
@@ -103,6 +112,7 @@ export type HeygenCallLog = {
   transcript: HeygenUtteranceEntry[];
   timingLogs?: TurnTimingLog[];
   bargeIns?: BargeInLog[];
+  trainerFeedback?: TrainerFeedbackLog[];
   turnLogs?: Array<{
     ts: string;
     rawTranscript: string;

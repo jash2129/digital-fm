@@ -1,5 +1,5 @@
 import { isAvatarScriptEcho } from "./beat-controller";
-import type { HeygenCallLog, TurnTimingLog, BargeInLog } from "./heygen-logger";
+import type { HeygenCallLog, TurnTimingLog, BargeInLog, TrainerFeedbackLog } from "./heygen-logger";
 
 export interface TimelineBlock {
   id: string;
@@ -55,6 +55,7 @@ export interface CallExperienceAnalysis {
   timelineBlocks: TimelineBlock[];
   secondBySecond: SecondBySecondPoint[];
   experienceFlaws: ExperienceFlaw[];
+  trainerFeedback?: TrainerFeedbackLog[];
   summaryRating: "Poor" | "Needs Improvement" | "Good" | "Excellent";
   summaryVerdict: string;
 }
@@ -329,6 +330,7 @@ export function analyzeCallExperience(log: HeygenCallLog): CallExperienceAnalysi
     timelineBlocks,
     secondBySecond,
     experienceFlaws,
+    trainerFeedback: log.trainerFeedback || [],
     summaryRating,
     summaryVerdict,
   };
