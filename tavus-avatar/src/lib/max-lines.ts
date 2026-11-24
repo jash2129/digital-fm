@@ -244,6 +244,8 @@ export const COACH_ACK_LINE = "Understood, I've noted that feedback for this ste
 export const COACH_START_LINE = "Go ahead, I'm listening.";
 export const COACH_MORE_LINE = "Got it. Anything else? Say done when you're finished.";
 export const COACH_DONE_LINE = "Got it, thank you.";
+// A coached rewording was taken on (learned-phrasing.ts): Max uses it from his next line
+export const COACH_APPLIED_LINE = "Got it, I'll say it that way from now on.";
 
 // Spoken on every turn after the call has stopped (recording objection or hang-up).
 // Status: PENDING TXM / LEGAL — confirm wording for the recording-objection case.

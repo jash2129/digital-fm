@@ -142,6 +142,13 @@ project planning thread, not in this repo. Below is what's actually landed in co
   written): labor $180-$200/hour (Beat 15, TXM-confirmed 2026-11-24), "premature wear and tear"
   (Beat 8). `scriptFactAnswer` answers warranty / defect / labor questions during the explanation
   from Beats 6, 7 and 15. No "I hear you" / "long day" lines. `src/lib/script-facts.test.ts`.
+- **Coached rewordings, no approval** (`src/lib/learned-phrasing.ts`): a rewording in a coaching note
+  ("instead of X say Y", "don't say X, say Y", "say Y instead of X", "change X to Y", "don't say X")
+  is used at once, from Max's next line and in every later call (Upstash key `max:rephrase`; memory
+  without Upstash), applied to every line Max speaks. Only words Max really says; never the price
+  ladder or the recording disclosure. Max confirms with `COACH_APPLIED_LINE`; the Inspector's coaching
+  table shows "Applied" / "Not applied". `GET /api/learned` lists them, `DELETE /api/learned?id=`
+  removes one.
 - **Tests**: `npm test` (Vitest) covers the concurrency fix (including a real concurrent-HTTP-request
   integration test against a mocked Tavus API, so it doesn't need live Tavus credits), visitor cookie
   handling, the auth middleware's fail-closed behavior, and deal-context/usage-logging. `server-only`

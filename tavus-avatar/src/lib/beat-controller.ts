@@ -99,9 +99,12 @@ import {
   COACH_START_LINE,
   COACH_MORE_LINE,
   COACH_DONE_LINE,
+  COACH_APPLIED_LINE,
   STRAIGHT_TO_NUMBERS_LINE,
 } from "./max-lines";
 import { normalizeSpeech } from "./echo-guard";
+import * as AllLines from "./max-lines";
+import { addRephrasing, applyRephrasings, findMaxWords, loadRephrasings, lockedReason, parseRephrase } from "./learned-phrasing";
 import { answerFromKnowledgeBase, looksLikeQuestion, retrieve } from "./grounded-answer";
 
 export interface Beat {
@@ -202,6 +205,10 @@ export interface CallState {
     category?: string;
     /** how many spoken pieces the note was joined from */
     parts?: number;
+    /** the rewording this note taught Max (used at once, learned-phrasing.ts) */
+    applied?: { id: string; from: string; to: string };
+    /** why a rewording in this note could not be used */
+    notApplied?: string;
   }>;
   /**
    * An open coaching session: everything the trainer says is one note until they say "done" (or type
@@ -623,6 +630,10 @@ export function commitTurn(
  * Never advances the script except to re-apply a reply the customer is about to hear.
  */
 export function repromptText(sessionId: string, kind: "resume" | "still_with_me" | "clarify"): string {
+  return applyRephrasings(repromptTextRaw(sessionId, kind));
+}
+
+function repromptTextRaw(sessionId: string, kind: "resume" | "still_with_me" | "clarify"): string {
   const state = getOrCreateCallState(sessionId);
   // The trainer is mid-note: no "Are you still with me?" (the call screen speaks nothing for "")
   if (state.coaching) return "";
@@ -2977,10 +2988,15 @@ export async function processControllerTurn(
   mockClassification?: ClassificationResult,
   opts: TurnOptions = {}
 ): Promise<ControllerDecision> {
+  // Rewordings TXM coached (learned-phrasing.ts), shared by every call
+  await loadRephrasings();
   // In-call coaching (trainer notes) is handled before the conversation sees the words
   if (!mockClassification) {
     const coached = await coachingTurn(sessionId, customerTranscript, dealConfig);
-    if (coached) return coached;
+    if (coached) {
+      coached.textToSpeak = applyRephrasings(coached.textToSpeak);
+      return coached;
+    }
   }
   let early: string | undefined;
   let polishedEarly: string | undefined;
@@ -2988,7 +3004,7 @@ export async function processControllerTurn(
     ? (t: string) => {
         if (early) return;
         early = t;
-        polishedEarly = polishSpeech(t);
+        polishedEarly = polishSpeech(applyRephrasings(t));
         opts.onEarly!(polishedEarly);
       }
     : undefined;
@@ -3028,10 +3044,10 @@ export async function processControllerTurn(
   const unpolished = decision.textToSpeak;
   if (early && polishedEarly) {
     const rest = unpolished.slice(early.length).trim();
-    decision.textToSpeak = rest ? `${polishedEarly} ${polishSpeech(rest)}` : polishedEarly;
+    decision.textToSpeak = rest ? `${polishedEarly} ${polishSpeech(applyRephrasings(rest))}` : polishedEarly;
     decision.earlyText = polishedEarly;
   } else {
-    decision.textToSpeak = polishSpeech(unpolished);
+    decision.textToSpeak = polishSpeech(applyRephrasings(unpolished));
   }
   if (decision.textToSpeak !== unpolished) {
     const st = decision.state;
@@ -3215,21 +3231,66 @@ function silentDecision(state: CallState, text: string, beatBefore: number, t0: 
 }
 
 /** Closes the open note: one entry with all of the trainer's words (dropped if they said nothing) */
-function closeCoaching(state: CallState): void {
+type FeedbackEntry = NonNullable<CallState["trainer_feedback"]>[number];
+
+function closeCoaching(state: CallState): { entry: FeedbackEntry; lastSpoken: string } | null {
   const c = state.coaching;
-  if (!c) return;
+  if (!c) return null;
   state.coaching = undefined;
   const list = state.trainer_feedback ?? [];
   const entry = list[c.entry];
   const note = c.parts.join(" ").replace(/\s+/g, " ").trim();
-  if (!entry) return;
+  if (!entry) return null;
   if (!note) {
     list.splice(c.entry, 1);
-    return;
+    return null;
   }
   entry.feedback = note;
   entry.category = categorizeTrainerFeedback(note);
   entry.parts = c.parts.length;
+  return { entry, lastSpoken: c.lastSpoken };
+}
+
+let maxCorpus: string | null = null;
+/** Everything Max can say, to find the words a trainer asks to change */
+function everythingMaxSays(): string {
+  if (maxCorpus) return maxCorpus;
+  const parts: string[] = [];
+  for (const b of BEATS) {
+    parts.push(getFullBeatUtterance(b, DEFAULT_DEAL_CONFIG));
+    parts.push(formatSpeechText(b.text));
+  }
+  for (const v of Object.values(AllLines)) if (typeof v === "string") parts.push(v);
+  for (const v of Object.values(BEAT_RECAPS)) parts.push(v);
+  parts.push(LABOR_ANSWER, DEFECT_ANSWER);
+  maxCorpus = parts.join(" \n ");
+  return maxCorpus;
+}
+
+/**
+ * A rewording in the trainer's note ("instead of X say Y", "don't say X", "change X to Y") is used at
+ * once, no approval: from Max's next line and in every later call. Only when Max really says those
+ * words (his last line first), and never for the price ladder or the recording disclosure.
+ */
+async function learnFromNote(sessionId: string, state: CallState, closed: { entry: FeedbackEntry; lastSpoken: string }): Promise<boolean> {
+  const wanted = parseRephrase(closed.entry.feedback);
+  if (!wanted) return false;
+  const from = findMaxWords(wanted.from, closed.lastSpoken) ?? findMaxWords(wanted.from, everythingMaxSays());
+  if (!from) {
+    closed.entry.notApplied = `Max never says "${wanted.from}"`;
+    console.log(JSON.stringify({ event: "rephrasing_not_applied", sessionId, reason: closed.entry.notApplied }));
+    return false;
+  }
+  const locked = lockedReason(from, wanted.to);
+  if (locked) {
+    closed.entry.notApplied = locked;
+    console.log(JSON.stringify({ event: "rephrasing_not_applied", sessionId, reason: locked, from }));
+    return false;
+  }
+  const rule = await addRephrasing({ from, to: wanted.to, sessionId, beat: closed.entry.beat, note: closed.entry.feedback });
+  closed.entry.applied = { id: rule.id, from: rule.from, to: rule.to };
+  closed.entry.category = "phrasing";
+  return true;
 }
 
 async function coachingTurn(sessionId: string, transcript: string, dealConfig: DealConfig): Promise<ControllerDecision | null> {
@@ -3244,12 +3305,18 @@ async function coachingTurn(sessionId: string, transcript: string, dealConfig: D
     // A typed session ends at the first untagged message; a spoken one after 30 s of nothing more.
     // Either way that message is then an ordinary turn.
     if ((open.typed && !tagged) || Date.now() - open.lastAt > COACHING_IDLE_MS) {
-      closeCoaching(state);
+      const closed = closeCoaching(state);
+      if (closed) await learnFromNote(sessionId, state, closed);
       return null;
     }
     if (isCoachingEnd(text)) {
-      closeCoaching(state);
-      return resumeAfterCoaching(sessionId, state, dealConfig, beatBefore, t0);
+      const closed = closeCoaching(state);
+      const learned = closed ? await learnFromNote(sessionId, state, closed) : false;
+      const resumed = await resumeAfterCoaching(sessionId, state, dealConfig, beatBefore, t0);
+      if (learned && resumed.textToSpeak.startsWith(COACH_DONE_LINE)) {
+        resumed.textToSpeak = COACH_APPLIED_LINE + resumed.textToSpeak.slice(COACH_DONE_LINE.length);
+      }
+      return resumed;
     }
     const piece = tagged ? text.replace(COACH_TAG, "").trim() : text;
     if (piece) open.parts.push(piece);

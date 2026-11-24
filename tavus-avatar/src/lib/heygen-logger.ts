@@ -92,6 +92,10 @@ export type TrainerFeedbackLog = {
   lastSpoken: string;
   feedback: string;
   category: string;
+  /** a coached rewording Max now uses in every call (learned-phrasing.ts) */
+  applied?: { id: string; from: string; to: string };
+  /** why a rewording in the note could not be used */
+  notApplied?: string;
 };
 
 export type HeygenCallLog = {

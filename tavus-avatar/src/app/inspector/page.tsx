@@ -635,6 +635,14 @@ export default function CallInspectorPage() {
                             </td>
                             <td className="p-3 text-white font-sans font-medium" title={fb.feedback}>
                               {fb.feedback}
+                              {fb.applied && (
+                                <div className="mt-1 text-[11px] text-emerald-300">
+                                  Applied in every call: &quot;{fb.applied.from}&quot; → {fb.applied.to ? `"${fb.applied.to}"` : "(left out)"}
+                                </div>
+                              )}
+                              {!fb.applied && fb.notApplied && (
+                                <div className="mt-1 text-[11px] text-amber-300">Not applied: {fb.notApplied}</div>
+                              )}
                             </td>
                           </tr>
                         );
