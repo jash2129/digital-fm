@@ -226,6 +226,8 @@ export interface CallState {
   pending_fragment?: { text: string; at: number };
   /** turns after the call closed (the closing line is said once) */
   closing_count?: number;
+  /** the Beat 1 recording disclosure has been said in this call (ensureDisclosure) */
+  disclosure_said?: boolean;
 }
 
 export function splitIntoSentences(text: string): string[] {
@@ -299,6 +301,78 @@ export function beatRecap(beatId: number, state?: CallState): string {
 // -----------------------------------------------------------------------------
 /** How long a held lone word waits to be joined to the customer's next words */
 export const FRAGMENT_JOIN_MS = 10_000;
+
+// -----------------------------------------------------------------------------
+// WHO IS MAX (2026-11-25). "What's your name?", "and you are?", "What do you do?" and "Are you a real
+// person?" were not recognised in the greeting, and at the disclosure turn "and you are?" got "I don't
+// have that detail". One set of phrasings, used in the greeting and in the call.
+// -----------------------------------------------------------------------------
+const WHO_AI_RE =
+  /\b(?:are you (?:a |an )?(?:real|human|person|robot|bot|ai|computer|machine|live person|real person)|is this (?:a |an )?(?:real person|human|robot|bot|ai|computer|machine)|am i (?:talking|speaking) (?:to|with) (?:a |an )?(?:real|human|person|robot|bot|ai|computer|machine))\b/;
+const WHO_ROLE_RE = /\b(?:what do you do|what is your (?:role|job)|whats your (?:role|job)|what s your (?:role|job)|what are you here for)\b/;
+const WHO_NAME_RE =
+  /\b(?:who s this|whos this|who is this|who are you|who am i (?:talking|speaking) (?:to|with)|who is speaking|who s speaking|whats your name|what s your name|what is your name|and you are|who is that|whos that|who s that)\b/;
+
+/** Max's answer when the customer asks who he is (name, role, or "are you real?"), else null */
+export function whoIsMaxAnswer(transcript: string): string | null {
+  const n = transcript.toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  if (!n) return null;
+  if (WHO_AI_RE.test(n)) return AI_DISCLOSURE_LINE;
+  if (WHO_ROLE_RE.test(n)) return ROLE_EXPLAIN_LINE;
+  if (WHO_NAME_RE.test(n) || n === "who") return IDENTITY_LINE;
+  return null;
+}
+
+// -----------------------------------------------------------------------------
+// DISCLOSURE GUARD (2026-11-25). At the turn the recording disclosure was due, "Are you a real
+// person?" got "I'm an AI finance assistant. Is that okay with you?": consent was asked for a
+// disclosure Max never said. Whatever the path (script, AI, free mode), a reply at Beat 1 before the
+// disclosure has been said now ends with the full disclosure instead of a bare consent question.
+// -----------------------------------------------------------------------------
+const DISCLOSURE_KEY = "recorded audio and video";
+const hasDisclosure = (t: string | undefined) => !!t && t.toLowerCase().replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").includes(DISCLOSURE_KEY);
+const CONSENT_TAILS = ["Is that okay with you?", "Is that okay?", "Is that alright with you?", "Is that all right with you?"];
+
+/** The customer asked who Max is and the reply does not say: Max's answer goes first */
+export function ensureWhoAnswered(decision: ControllerDecision, transcript: string): void {
+  const st = decision.state;
+  const answer = whoIsMaxAnswer(transcript);
+  if (!answer || st.is_stopped || st.coaching || !decision.textToSpeak.trim()) return;
+  if (/\b(?:I'm Max|I am Max|I'm an AI|I am an AI|Max, (?:your|the) (?:digital )?finance manager)\b/i.test(decision.textToSpeak)) return;
+  const old = decision.textToSpeak;
+  decision.textToSpeak = `${answer} ${old}`;
+  if (st.last_spoken_text === old) st.last_spoken_text = decision.textToSpeak;
+  const last = st.recent_turns?.at(-1);
+  if (last && last.max === old) last.max = decision.textToSpeak;
+  console.log(JSON.stringify({ event: "who_answer_guard", beat: decision.beatId, intent: decision.intent }));
+}
+
+export function ensureDisclosure(decision: ControllerDecision): void {
+  const st = decision.state;
+  if (decision.beatId !== 1 || !st.step0_completed || st.is_stopped || st.disclosure_said) return;
+  // Beat 1 is marked delivered in the same turn the disclosure is spoken (the Step 0 transition)
+  if (
+    st.delivered_beats?.includes(1) ||
+    hasDisclosure(decision.textToSpeak) ||
+    hasDisclosure(st.last_spoken_text) ||
+    (st.recent_turns ?? []).some((t) => hasDisclosure(t.max))
+  ) {
+    st.disclosure_said = true;
+    return;
+  }
+  if (!decision.textToSpeak.trim()) return; // silent turns (coaching) add nothing
+  let text = decision.textToSpeak.trim();
+  for (const tail of CONSENT_TAILS) if (text.endsWith(tail)) text = text.slice(0, -tail.length).trim();
+  const disclosure = getFullBeatUtterance(BEATS.find((b) => b.id === 1)!, st.dealConfig);
+  const old = decision.textToSpeak;
+  decision.textToSpeak = text ? `${text} ${disclosure}` : disclosure;
+  decision.beatType = "wait";
+  st.disclosure_said = true;
+  if (st.last_spoken_text === old) st.last_spoken_text = decision.textToSpeak;
+  const last = st.recent_turns?.at(-1);
+  if (last && last.max === old) last.max = decision.textToSpeak;
+  console.log(JSON.stringify({ event: "disclosure_guard", beat: 1, added: true }));
+}
 
 export function isPresentationBeat(id: number): boolean {
   return id >= 6 && id <= 21;
@@ -1497,7 +1571,8 @@ export function classifyCustomerInputRuleBased(
     norm.includes("who s that") ||
     norm.includes("who that") ||
     norm.includes("who this") ||
-    norm === "who"
+    norm === "who" ||
+    whoIsMaxAnswer(norm) === IDENTITY_LINE
   ) {
     return { intent: "identity_question", topic_beat_ids: [] };
   }
@@ -2652,14 +2727,9 @@ export async function generateStep0Turn(
   // Turn 1, live call 1ee5181b: "Who's this?" got the congratulations script with no identification.
   // Answer who Max is first, then continue with the Step 0 line (without its own "I'm Max" sentence).
   if (step0Turns <= 1) {
-    const asksWho =
-      /\b(who s this|whos this|who is this|who are you|who am i talking to|who is speaking)\b/.test(norm) ||
-      norm === "what is this" ||
-      norm === "what s this" ||
-      norm === "whats this" ||
-      norm === "who";
-    if (asksWho) {
-      return { text: `${IDENTITY_LINE} ${STEP_0_OPENING.replace(/^Awesome, great/, "Great")}`, moveToBeat1: false };
+    const who = whoIsMaxAnswer(norm) ?? (norm === "what is this" || norm === "what s this" || norm === "whats this" ? IDENTITY_LINE : null);
+    if (who) {
+      return { text: `${who} ${STEP_0_OPENING.replace(/^Awesome, great/, "Great")}`, moveToBeat1: false };
     }
     // "Can you hear me?" before answering: acknowledge, then repeat the tech check
     if (/\bcan you (hear|see) me\b/.test(norm)) {
@@ -2682,15 +2752,27 @@ export async function generateStep0Turn(
     norm.includes("whats your name") ||
     norm.includes("what is your name") ||
     norm.includes("who you") ||
-    norm === "who";
+    norm === "who" ||
+    whoIsMaxAnswer(norm) === IDENTITY_LINE;
 
+  // "Wait, who are you again?" is not a complaint about waiting (it got the long-wait apology)
   const isWaitingOrRushed =
-    norm.includes("wait") ||
+    /\b(?:waiting|waited|long wait|wait(?:ed|ing)? (?:for|so long|too long|forever|a while)|been here)\b/.test(norm) ||
     norm.includes("hour") ||
     norm.includes("hurry") ||
     norm.includes("waste") ||
     norm.includes("rush") ||
     norm.includes("appointment");
+
+  // "Good, who are you?" answers the experience question AND asks who Max is: say who he is and go
+  // on to the disclosure, instead of asking "How has your experience been?" a second time
+  const answeredRapport =
+    /^(?:(?:its|it s|it has|it was|its been|it s been|been|all|im|i m|pretty|really|very|so far|honestly|yeah|yes|oh|so|it)\s+)*(?:good|great|fine|okay|ok|well|amazing|awesome|excellent|not bad|alright|all right|all good|nice|smooth|fantastic|wonderful)\b/.test(norm);
+  if (isIdentityAsk && answeredRapport && !isWaitingOrRushed) {
+    const glad = /\b(?:good|great|amazing|awesome|excellent|nice|smooth|fantastic|wonderful)\b/.test(norm);
+    const transition = glad ? STEP_0_TRANSITION_LINE : STEP_0_TRANSITION_LINE.replace("Glad to hear that!", STEP_0_NEUTRAL_ACK_LINE);
+    return { text: formatSpeechText(`${IDENTITY_LINE} ${transition}`), moveToBeat1: true };
+  }
 
   if (isIdentityAsk) {
     if (isWaitingOrRushed) {
@@ -3080,6 +3162,10 @@ export async function processControllerTurn(
     decision = await processScriptedTurn(sessionId, customerTranscript, dealConfig, mockClassification, { onEarly });
   }
   if (early) keepEarlyPrefix(decision, early);
+  // Never a consent question for a disclosure that was not said (any path: script, AI, free mode)
+  ensureDisclosure(decision);
+  // "Who are you?" is always answered, whatever the path (the AI-worded paths skipped it ~1 in 4)
+  if (!early) ensureWhoAnswered(decision, customerTranscript);
   // Polish what is spoken; a part already sent stays exactly as sent, so the reply still starts with it
   const unpolished = decision.textToSpeak;
   if (early && polishedEarly) {
