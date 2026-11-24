@@ -237,6 +237,11 @@ export const LANGUAGE_LINE = "I'm sorry, I can only continue in English.";
 // Spoken when the tester or client provides direct coaching / training feedback mid-call.
 // Status: PENDING TXM
 export const COACH_ACK_LINE = "Understood, I've noted that feedback for this step. What would you like to do next?";
+// Coaching session (2026-11-24): Max opens the floor once, stays silent while the trainer talks, and
+// thanks them when they say "done". Status: PENDING TXM
+export const COACH_START_LINE = "Go ahead, I'm listening.";
+export const COACH_MORE_LINE = "Got it. Anything else? Say done when you're finished.";
+export const COACH_DONE_LINE = "Got it, thank you.";
 
 // Spoken on every turn after the call has stopped (recording objection or hang-up).
 // Status: PENDING TXM / LEGAL — confirm wording for the recording-objection case.

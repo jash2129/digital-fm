@@ -96,6 +96,9 @@ import {
   TECH_ISSUE_LINE,
   MARKUP_OBJECTION_LINE,
   COACH_ACK_LINE,
+  COACH_START_LINE,
+  COACH_MORE_LINE,
+  COACH_DONE_LINE,
 } from "./max-lines";
 import { normalizeSpeech } from "./echo-guard";
 import { answerFromKnowledgeBase, looksLikeQuestion, retrieve } from "./grounded-answer";
@@ -196,7 +199,14 @@ export interface CallState {
     last_spoken: string;
     feedback: string;
     category?: string;
+    /** how many spoken pieces the note was joined from */
+    parts?: number;
   }>;
+  /**
+   * An open coaching session: everything the trainer says is one note until they say "done" (or type
+   * an untagged message, or 30 s pass). Max stays silent meanwhile; the call's own state is untouched.
+   */
+  coaching?: { beat: number; lastSpoken: string; parts: string[]; startedAt: number; lastAt: number; typed: boolean; entry: number };
 }
 
 export function splitIntoSentences(text: string): string[] {
@@ -507,6 +517,8 @@ export function commitTurn(
  */
 export function repromptText(sessionId: string, kind: "resume" | "still_with_me" | "clarify"): string {
   const state = getOrCreateCallState(sessionId);
+  // The trainer is mid-note: no "Are you still with me?" (the call screen speaks nothing for "")
+  if (state.coaching) return "";
   if (!state.step0_completed && !(kind === "resume" && state.interrupted)) {
     // Test calls: after "How has your experience been?" a silence re-asked "Can you hear and see me
     // alright?", two or three times in a row. Re-ask what Max last asked instead.
@@ -1121,71 +1133,20 @@ export function isPriceRefusal(transcript: string): boolean {
  * "don't say that, say...", "instead of that, say...", "you should say...", etc.
  */
 export function isCoachFeedback(transcript: string): boolean {
-  const norm = transcript
-    .toLowerCase()
-    .replace(/['’]/g, "")
-    .replace(/[^a-z0-9 ]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-  if (!norm) return false;
-
-  // Tag prefixes (UI buttons or typed messages)
-  if (/^\[(coach|feedback|trainer|training)\]/i.test(transcript.trim())) {
-    return true;
-  }
-
-  // Voice cues & introductory feedback statements
-  if (
-    norm.startsWith("coach mode") ||
-    norm.startsWith("trainer mode") ||
-    norm.startsWith("training mode") ||
-    norm.startsWith("note for max") ||
-    norm.startsWith("note to max") ||
-    norm.startsWith("note for the agent") ||
-    norm.startsWith("training note") ||
-    norm.startsWith("training feedback") ||
-    norm.startsWith("trainer feedback") ||
-    norm.startsWith("feedback for max") ||
-    norm.startsWith("feedback to max") ||
-    norm.startsWith("quick feedback") ||
-    norm.startsWith("heres some feedback") ||
-    norm.startsWith("here is some feedback") ||
-    norm.startsWith("my feedback is") ||
-    norm.startsWith("feedback note") ||
-    norm.startsWith("feedback ")
-  ) {
-    return true;
-  }
-
-  // Direct coaching phrasing instructing Max on what to say
-  if (
-    norm.includes("dont say that say") ||
-    norm.includes("dont say that you should") ||
-    norm.includes("dont say that but say") ||
-    norm.includes("dont say that") ||
-    norm.includes("instead of that say") ||
-    norm.includes("instead of saying that say") ||
-    norm.includes("instead of that you should") ||
-    norm.includes("you should have said") ||
-    norm.includes("you should say") ||
-    norm.includes("you shouldnt say that") ||
-    norm.includes("change that line to") ||
-    norm.includes("change that wording to") ||
-    norm.includes("rephrase that as") ||
-    norm.includes("next time say") ||
-    norm.includes("speak more warmly") ||
-    norm.includes("speak slower here") ||
-    norm.includes("pause before giving the price") ||
-    norm.includes("dont rush into the price")
-  ) {
-    return true;
-  }
-
-  return false;
+  // One definition of "this is coaching": the coaching session's trigger (coachingStart)
+  return coachingStart(transcript) !== null;
 }
 
 export function categorizeTrainerFeedback(feedback: string): string {
   const n = feedback.toLowerCase();
+  // How the call flows: TXM's most common note ("don't ask if I understand", "keep going", "stop repeating")
+  if (/\b(understand|keep going|continue|repeat|repeating|stop asking|don'?t ask|do not ask|listen|be quiet|interrupt|check in)\b/.test(n)) {
+    return "flow";
+  }
+  // Facts and figures, including what things cost ("labor is 180 an hour", "explain the GAP")
+  if (/\b(cost|costs|labor|labour|per hour|an hour|gap|coverage|deductible|miles|years|\$?\d[\d,]*)\b/.test(n)) {
+    return "policy_fact";
+  }
   if (n.includes("warm") || n.includes("friendly") || n.includes("tone") || n.includes("robotic") || n.includes("natural")) {
     return "tone";
   }
@@ -2904,6 +2865,11 @@ export async function processControllerTurn(
   mockClassification?: ClassificationResult,
   opts: TurnOptions = {}
 ): Promise<ControllerDecision> {
+  // In-call coaching (trainer notes) is handled before the conversation sees the words
+  if (!mockClassification) {
+    const coached = await coachingTurn(sessionId, customerTranscript, dealConfig);
+    if (coached) return coached;
+  }
   let early: string | undefined;
   let polishedEarly: string | undefined;
   const onEarly = opts.onEarly
@@ -3076,6 +3042,155 @@ async function planReplyOptions(
     }
   }
   return [...byDraft.values()].map((o, i) => ({ ...o, id: String.fromCharCode(65 + (i % 26)) + (i >= 26 ? String(i) : "") }));
+}
+
+// -----------------------------------------------------------------------------
+// IN-CALL COACHING SESSION (2026-11-24). TXM's notes came in pieces: "Coach mode." was saved as the
+// whole note, the instruction after it was answered as customer speech ("I don't have that detail…"),
+// and "coach mood / moon / moved" were not recognised at all. Now a trigger opens a session: Max says
+// one short line and stays silent, every piece joins one note, and "done" (or 30 s, or an untagged
+// typed message after typed coaching) closes it and resumes the call.
+// -----------------------------------------------------------------------------
+export const COACHING_IDLE_MS = 30_000;
+
+const coachNorm = (t: string) =>
+  t.toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+
+const COACH_PREFIX =
+  /^(?:(?:hey|okay|ok|so|alright) )?(?:(?:coach|couch|coaching|trainer|training)(?: (?:mode|mood|moon|moved|move|max|marks|mac|note|notes|feedback|on))?|note (?:for|to) (?:max|the agent)|(?:feedback|feedbacks)(?: (?:for|to) max)?|my feedback is|quick feedback|heres some feedback|here is some feedback|trainer feedback|training feedback|training note|feedback note)\b/;
+const COACH_DIRECT = /^(?:dont|do not) say\b|\b(?:you should (?:have said|say)|instead of (?:that|saying that) (?:say|you should)|next time say|change that (?:line|wording) to|rephrase that as)\b/;
+const COACH_TAG = /^\[(?:coach|feedback|trainer|training)\]\s*:?\s*/i;
+
+/** A coaching trigger, and what was said after it in the same breath; null when it is not coaching */
+export function coachingStart(transcript: string): { rest: string; typed: boolean } | null {
+  const raw = transcript.trim();
+  const tag = raw.match(COACH_TAG);
+  if (tag) return { rest: raw.slice(tag[0].length).trim(), typed: true };
+  const n = coachNorm(raw);
+  if (!n) return null;
+  const prefix = n.match(COACH_PREFIX);
+  if (prefix) {
+    const words = prefix[0].split(" ").length;
+    const rest = raw.split(/\s+/).slice(words).join(" ").replace(/^[\s,.:;\-–—!]+/, "").trim();
+    return { rest, typed: false };
+  }
+  if (COACH_DIRECT.test(n)) return { rest: raw, typed: false };
+  return null;
+}
+
+/** "done", "that's it", "end coaching", "back to the call", "continue", "keep going" */
+export function isCoachingEnd(transcript: string): boolean {
+  const n = coachNorm(transcript);
+  return /^(?:(?:okay|ok|alright|so) )?(?:done|im done|i am done|thats it|that is it|thats all|that is all|all done|finished|end coach(?:ing)?|stop coach(?:ing)?|exit coach(?:ing)?|coach(?:ing)? (?:done|off|over|end|ended)|(?:go )?back to the call|continue the call|resume(?: the call)?|you can (?:continue|go on)|go ahead and continue|continue|carry on|keep going)(?: (?:please|max|now))?$/.test(n);
+}
+
+function silentDecision(state: CallState, text: string, beatBefore: number, t0: number): ControllerDecision {
+  return {
+    textToSpeak: text,
+    beatId: state.current_beat,
+    beatType: "wait",
+    toolCalls: [],
+    state,
+    intent: "coach_feedback",
+    metrics: { classifierMs: 0, usedLLM: false, classifierTimedOut: false, controllerMs: Date.now() - t0, intent: "coach_feedback", beatBefore, beatAfter: state.current_beat },
+  };
+}
+
+/** Closes the open note: one entry with all of the trainer's words (dropped if they said nothing) */
+function closeCoaching(state: CallState): void {
+  const c = state.coaching;
+  if (!c) return;
+  state.coaching = undefined;
+  const list = state.trainer_feedback ?? [];
+  const entry = list[c.entry];
+  const note = c.parts.join(" ").replace(/\s+/g, " ").trim();
+  if (!entry) return;
+  if (!note) {
+    list.splice(c.entry, 1);
+    return;
+  }
+  entry.feedback = note;
+  entry.category = categorizeTrainerFeedback(note);
+  entry.parts = c.parts.length;
+}
+
+async function coachingTurn(sessionId: string, transcript: string, dealConfig: DealConfig): Promise<ControllerDecision | null> {
+  const t0 = Date.now();
+  const state = getOrCreateCallState(sessionId, dealConfig);
+  const beatBefore = state.current_beat;
+  const text = transcript.trim();
+  const open = state.coaching;
+
+  if (open) {
+    const tagged = COACH_TAG.test(text);
+    // A typed session ends at the first untagged message; a spoken one after 30 s of nothing more.
+    // Either way that message is then an ordinary turn.
+    if ((open.typed && !tagged) || Date.now() - open.lastAt > COACHING_IDLE_MS) {
+      closeCoaching(state);
+      return null;
+    }
+    if (isCoachingEnd(text)) {
+      closeCoaching(state);
+      return resumeAfterCoaching(sessionId, state, dealConfig, beatBefore, t0);
+    }
+    const piece = tagged ? text.replace(COACH_TAG, "").trim() : text;
+    if (piece) open.parts.push(piece);
+    open.lastAt = Date.now();
+    const entry = state.trainer_feedback?.[open.entry];
+    if (entry) {
+      entry.feedback = open.parts.join(" ");
+      entry.parts = open.parts.length;
+    }
+    // Silent: the trainer keeps the floor
+    return silentDecision(state, "", beatBefore, t0);
+  }
+
+  const start = coachingStart(text);
+  if (!start) return null;
+  const list = (state.trainer_feedback ??= []);
+  list.push({
+    timestampMs: Date.now(),
+    beat: state.current_beat,
+    last_spoken: lastSaid(state) || STEP_0_GREETING,
+    feedback: start.rest,
+    category: categorizeTrainerFeedback(start.rest),
+    parts: start.rest ? 1 : 0,
+  });
+  state.coaching = {
+    beat: state.current_beat,
+    lastSpoken: lastSaid(state),
+    parts: start.rest ? [start.rest] : [],
+    startedAt: Date.now(),
+    lastAt: Date.now(),
+    typed: start.typed,
+    entry: list.length - 1,
+  };
+  console.log(JSON.stringify({ event: "coaching_started", sessionId, beat: state.current_beat, typed: start.typed }));
+  // Typed notes are whole messages: take it quietly. Spoken: open the floor, or confirm a full note.
+  if (start.typed) return silentDecision(state, start.rest ? COACH_MORE_LINE : COACH_START_LINE, beatBefore, t0);
+  return silentDecision(state, start.rest.split(/\s+/).length >= 6 ? COACH_MORE_LINE : COACH_START_LINE, beatBefore, t0);
+}
+
+/**
+ * Back to the call after coaching: during an explanation Max carries on to the next part (the
+ * trainer asked him to keep going); at a question (consent, qualifying, price) he asks it again,
+ * never taking the coaching as the customer's yes.
+ */
+async function resumeAfterCoaching(sessionId: string, state: CallState, dealConfig: DealConfig, beatBefore: number, t0: number): Promise<ControllerDecision> {
+  console.log(JSON.stringify({ event: "coaching_ended", sessionId, beat: state.current_beat, notes: state.trainer_feedback?.length ?? 0 }));
+  const beat = BEATS.find((b) => b.id === state.current_beat);
+  const explaining = state.step0_completed && !state.is_stopped && beat?.expects === "statement" && state.current_beat >= 6 && state.current_beat <= 21;
+  if (explaining) {
+    const next = await processControllerTurn(sessionId, "okay", dealConfig);
+    next.textToSpeak = `${COACH_DONE_LINE} ${next.textToSpeak}`;
+    return next;
+  }
+  const question = state.is_stopped
+    ? ""
+    : !state.step0_completed
+      ? lastQuestionOf(state.last_spoken_text) || STEP_0_GREETING
+      : pendingQuestion(state);
+  return silentDecision(state, question ? `${COACH_DONE_LINE} ${question}` : COACH_DONE_LINE, beatBefore, t0);
 }
 
 // -----------------------------------------------------------------------------
