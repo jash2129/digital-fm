@@ -10,7 +10,8 @@ import type { HeygenCallLog } from "./heygen-logger";
 //  - one LLM review of the transcript (summary, sentiment, score, what went wrong / well, fixes)
 // The LLM part is best effort: on no key, timeout or bad output the row gets the other two.
 
-export const JUDGE_TIMEOUT_MS = 25_000;
+// Leaves Make at least 30 s of the call-log route's 55 s budget (call-log-webhook.ts SEND_BUDGET_MS)
+export const JUDGE_TIMEOUT_MS = 22_000;
 const MAX_TRANSCRIPT_FOR_JUDGE = 24_000;
 
 export interface PostCallAnalysis {

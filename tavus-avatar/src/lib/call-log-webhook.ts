@@ -20,6 +20,13 @@ const MAX_TRANSCRIPT_CHARS = 45_000;
 const MAX_LOG_CHARS = 2_000_000;
 // Make with two Drive uploads can take over 20 s (a batch call was lost at 20 s)
 const SEND_TIMEOUT_MS = 45_000;
+/**
+ * The whole send (AI review + Make) must end inside the route's 60 s limit on Vercel. The review
+ * (up to 25 s) plus Make (up to 45 s) could take 70 s: Vercel cut the request and the AI review went
+ * missing (23 Nov). Make now gets what is left of 55 s, never less than 15 s.
+ */
+export const SEND_BUDGET_MS = 55_000;
+const MIN_SEND_MS = 15_000;
 
 // Calls already sent from this process, so a double "end" never adds two rows
 const globalForCallLog = globalThis as unknown as { sentCallLogs?: Set<string> };
@@ -198,6 +205,7 @@ export async function sendCallLog(
   // Claimed before the slow AI review, so a second "end" (on any server) cannot race it
   if (!(await claimSend(sessionId))) return { sent: false, reason: "already sent" };
 
+  const startedAt = Date.now();
   // Post-call analysis: the facts the reviewer gets are the measured ones, so it does not guess them
   const draft = buildCallLogPayload(log, base);
   const facts = [
@@ -211,8 +219,9 @@ export async function sendCallLog(
   const analysis = provided.analysis ?? (await analyzeFinishedCall(log, base.state, draft.transcriptText, facts));
   const payload = { ...draft, ...analysis, ...(provided.inspectorUrl !== undefined ? { inspectorUrl: provided.inspectorUrl } : {}) };
 
+  const sendTimeoutMs = Math.min(SEND_TIMEOUT_MS, Math.max(MIN_SEND_MS, SEND_BUDGET_MS - (Date.now() - startedAt)));
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), SEND_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), sendTimeoutMs);
   try {
     const res = await fetch(url, {
       method: "POST",
@@ -227,8 +236,13 @@ export async function sendCallLog(
     await rememberRecordingLink(res, log);
     return { sent: true, status: res.status };
   } catch (err) {
-    await releaseSend(sessionId);
-    return { sent: false, reason: err instanceof Error ? err.message : String(err) };
+    // Timed out waiting for Make's answer: Make has the call and is still working on it (its
+    // transcription step is slow), so the claim stays. Releasing it here let a retry send the same
+    // call again (duplicate rows 583241f0, c65e04c4). Only a call that never got there is released.
+    const timedOut = controller.signal.aborted;
+    if (!timedOut) await releaseSend(sessionId);
+    else console.warn(JSON.stringify({ event: "call_log_slow_webhook", sessionId, waitedMs: sendTimeoutMs }));
+    return { sent: false, reason: timedOut ? `no answer from the webhook in ${Math.round(sendTimeoutMs / 1000)} s (it has the call; not sent again)` : err instanceof Error ? err.message : String(err) };
   } finally {
     clearTimeout(timer);
   }

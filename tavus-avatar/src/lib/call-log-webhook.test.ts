@@ -115,4 +115,32 @@ describe("sending", () => {
     expect(Buffer.from(String(sentBody.recordingBase64), "base64").toString()).toBe("rec");
     expect(sentBody.inspectorUrl).toBe(`https://max.vercel.app/inspector?session=${encodeURIComponent(id)}`);
   });
+
+  it("a slow webhook (Make still working) is never sent again; a failed connection can be retried", async () => {
+    vi.stubEnv("CALL_LOG_WEBHOOK_URL", "https://hook.example/x");
+    vi.stubEnv("XAI_API_KEY", "");
+    vi.stubEnv("OPENAI_API_KEY", "");
+    // Duplicate rows 583241f0 / c65e04c4: the app gave up after 45 s, released the claim, and the retry sent it twice
+    vi.useFakeTimers();
+    try {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn((_url: string, init: { signal: AbortSignal }) => new Promise((_, reject) => init.signal.addEventListener("abort", () => reject(new Error("aborted")))))
+      );
+      const slow = `slow_${Math.random()}`;
+      const pending = sendCallLog(slow, "https://x", { log: { ...LOG, sessionId: slow } });
+      await vi.advanceTimersByTimeAsync(46_000);
+      const first = await pending;
+      expect(first.sent).toBe(false);
+      expect(await sendCallLog(slow, "https://x", { log: { ...LOG, sessionId: slow } })).toEqual({ sent: false, reason: "already sent" });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    vi.stubGlobal("fetch", vi.fn(async () => Promise.reject(new Error("ECONNREFUSED"))));
+    const down = `down_${Math.random()}`;
+    expect((await sendCallLog(down, "https://x", { log: { ...LOG, sessionId: down } })).sent).toBe(false);
+    vi.stubGlobal("fetch", vi.fn(async () => ({ ok: true, status: 200 })));
+    expect(await sendCallLog(down, "https://x", { log: { ...LOG, sessionId: down } })).toEqual({ sent: true, status: 200 });
+  });
 });

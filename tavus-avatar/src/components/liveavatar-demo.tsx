@@ -22,6 +22,7 @@ import {
   isCutOff,
   adaptedWaitMs,
   SILENT_HOLD_EXTRA_MS,
+  NO_CUSTOMER_AUDIO_MS,
   InterimBuffer,
   type RecognizerResult,
   type AvatarCommand,
@@ -147,6 +148,9 @@ export function LiveAvatarDemo() {
   const [canPlaybackAudio, setCanPlaybackAudio] = useState(true);
   // Shown once Max's voice has come back through the mic ECHO_NOTICE_AFTER times this call
   const [showEchoNotice, setShowEchoNotice] = useState(false);
+  // No speech from the customer reached the recognizer NO_CUSTOMER_AUDIO_MS after connecting (0-turn calls)
+  const [showNoAudioNotice, setShowNoAudioNotice] = useState(false);
+  const heardCustomerRef = useRef(false);
   // The ID of the call that just ended, shown so testers can quote it in their feedback
   const [lastCallId, setLastCallId] = useState<string | null>(null);
   const [isGrokThinking, setIsGrokThinking] = useState(false);
@@ -994,6 +998,10 @@ export function LiveAvatarDemo() {
         }
       }
       turnControllerRef.current?.onCustomerActivity();
+      if (currentSpoken.trim()) {
+        heardCustomerRef.current = true;
+        setShowNoAudioNotice(false);
+      }
       if (finalTranscript.trim()) lastSttFinalAtRef.current = Date.now();
 
       // End-of-speech = the last moment NEW words were heard. The final result usually repeats the
@@ -1571,6 +1579,13 @@ export function LiveAvatarDemo() {
         })
         .catch(() => {});
       setIsConnected(true);
+      heardCustomerRef.current = false;
+      setTimeout(() => {
+        if (isConnectedRef.current && !heardCustomerRef.current) {
+          setShowNoAudioNotice(true);
+          logTurnEvent({ ts: new Date().toISOString(), event: "no_customer_audio", afterMs: NO_CUSTOMER_AUDIO_MS });
+        }
+      }, NO_CUSTOMER_AUDIO_MS);
       isConnectedRef.current = true;
       setIsConnecting(false);
 
@@ -1963,6 +1978,17 @@ export function LiveAvatarDemo() {
             className="ml-1 text-amber-200/70 hover:text-amber-100"
             aria-label="Dismiss"
           >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* No customer speech heard since connecting (the 0-turn test calls): microphone blocked or muted */}
+      {isConnected && showNoAudioNotice && (
+        <div className="absolute top-40 left-1/2 -translate-x-1/2 z-50 flex w-max max-w-[92vw] items-center gap-2 rounded-2xl sm:rounded-full border border-red-400/40 bg-red-500/15 px-4 py-2 text-xs text-red-100 shadow-2xl">
+          <span className="select-none">🎙️</span>
+          <span>Max can&apos;t hear you. Check that the microphone is allowed for this site and not muted, then say something.</span>
+          <button type="button" onClick={() => setShowNoAudioNotice(false)} className="ml-1 text-red-200/70 hover:text-red-100" aria-label="Dismiss">
             ✕
           </button>
         </div>

@@ -154,8 +154,12 @@ project planning thread, not in this repo. Below is what's actually landed in co
   screen carries on after the pause + `SILENT_HOLD_EXTRA_MS`. "I don't want the maintenance / tires"
   (`coverageExclusion`): the approved exclusion lines during the explanation, `DROP_MAINTENANCE_LINE` /
   `DROP_COVERAGE_LINE` + the price question at Beat 22. After the call closes, the closing line is said
-  once, then silence. `/api/call-log` sends each call to the sheet once (Upstash claim
-  `max:calllog-sent:<id>`). `src/lib/phase4.test.ts`.
+  once, then silence. `src/lib/phase4.test.ts`.
+- **Reliability (Phase 5)**: the call screen warns "Max can't hear you" when no customer speech
+  arrives `NO_CUSTOMER_AUDIO_MS` (25 s) after connecting (the 0-turn calls). The call-log send
+  (`call-log-webhook.ts`) fits Vercel's 60 s limit: AI review up to 22 s, Make gets the rest of
+  `SEND_BUDGET_MS` (55 s); a webhook that is merely slow keeps its send-once claim (`max:sent:<id>`),
+  so a retry never adds a duplicate row (583241f0, c65e04c4). Only a failed connection is retried.
 - **Self-learning (Phase 6)**, no approval, all visible and undoable on `/learning`:
   - Timing from coaching (`src/lib/learned-settings.ts`, Upstash `max:settings`): "don't cut me off /
     let me finish" -> +300 ms end-of-turn wait; "don't snooze" -> shorter pause between parts; "give

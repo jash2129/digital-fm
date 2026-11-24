@@ -291,6 +291,12 @@ export const IN_CALL_CUTOFF_MS = 2500;
  * the usual pause to finish their sentence before Max carries on.
  */
 export const SILENT_HOLD_EXTRA_MS = 2000;
+
+/**
+ * Phase 5: 3 of the test calls connected but Max never heard the customer (0 turns). If no speech at
+ * all reaches the recognizer this long after the call connects, the call screen says so.
+ */
+export const NO_CUSTOMER_AUDIO_MS = 25_000;
 export const IN_CALL_EXTRA_STEP_MS = 250;
 export const IN_CALL_EXTRA_MAX_MS = 750;
 
