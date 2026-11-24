@@ -26,6 +26,7 @@ import {
   IDENTITY_LINE,
   VEHICLE_DISCREPANCY_LINE,
   MANUFACTURER_VS_DEALER_LINE,
+  EQ_DEESCALATION_LINE,
 } from "./max-lines";
 import { shouldCutMaxOff, isIncompleteUtterance } from "../components/liveavatar-demo";
 
@@ -602,7 +603,8 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
 
       const frustratedTurn = await processControllerTurn(sessionId, "I have been waiting for hours, hurry up and don't waste my time!");
       expect(frustratedTurn.intent).toBe("customer_frustrated");
-      expect(frustratedTurn.textToSpeak).toContain("I hear you 100 percent. You've had a long day at the dealership");
+      expect(frustratedTurn.textToSpeak).toContain(EQ_DEESCALATION_LINE);
+      expect(frustratedTurn.textToSpeak).not.toMatch(/I hear you|long day/);
       expect(frustratedTurn.beatId).toBe(2); // Validates and holds beat with empathy
     });
 

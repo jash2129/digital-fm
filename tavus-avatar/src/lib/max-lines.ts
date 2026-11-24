@@ -181,7 +181,9 @@ export const IDENTITY_LINE = "I'm Max, your digital finance manager today.";
 // =============================================================================
 
 // Spoken when customer is angry, rushed, impatient, or complaining about dealership wait time
-export const EQ_DEESCALATION_LINE = "I hear you 100 percent. You've had a long day at the dealership, so I promise to keep this crisp, direct, and completely transparent so we can get you into your new car as fast as possible.";
+// TXM (2026-11-24): no "I hear you", no "long day". Status: PENDING TXM
+export const EQ_DEESCALATION_LINE = "Understood. I'll keep this short and clear so we can get you on your way.";
+export const STRAIGHT_TO_NUMBERS_LINE = "Understood, let's go straight to the numbers.";
 
 // Spoken when customer expresses anxiety, doubt, fear of hidden fees, or buyer's remorse
 export const EQ_REASSURANCE_LINE = "Take a deep breath—buying a car is a huge milestone, and it's totally normal to feel a bit hesitant. I'm here as your advocate with zero pressure, so we'll walk through every dollar together until you feel one hundred percent confident.";

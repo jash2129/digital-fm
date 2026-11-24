@@ -11,7 +11,7 @@ describe("grounded answers", () => {
     ["Where is that in the manual?", "glovebox"],
     ["What is the deductible?", "zero deductible"],
     ["So who pays then?", "owner pays"],
-    ["How much is labor?", "$130"],
+    ["How much is labor?", "$180"],
   ])("answers %s from the script", async (q, frag) => {
     nokey();
     const r = await answerFromKnowledgeBase(q);

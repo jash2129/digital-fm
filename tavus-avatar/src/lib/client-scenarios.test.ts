@@ -203,7 +203,8 @@ describe("Client Scenarios Human Experience Validation", () => {
     // Turn 8: Bottom-Line Price Demand
     const t8 = await processControllerTurn(sessionId, "Covering tires and wheels makes sense with all the potholes, but what's the bottom line price?", DEFAULT_DEAL_CONFIG);
     // MUST jump straight to Beat 22 offer without 7-loop deferral!
-    expect(t8.textToSpeak).toContain("skip straight to your exact bottom line numbers");
+    expect(t8.textToSpeak).toContain("go straight to the numbers");
+    expect(t8.textToSpeak).not.toContain("I hear you");
     expect(t8.textToSpeak).toContain("four dollars a day");
     expect(t8.textToSpeak).not.toContain("I'm going to cover that in just a moment");
     expect(t8.beatId).toBe(22);

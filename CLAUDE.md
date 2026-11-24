@@ -138,6 +138,10 @@ project planning thread, not in this repo. Below is what's actually landed in co
   paragraph again; "keep going / next / skip / stop repeating" (`isCarryOn`) move on; unclear turns
   move on; pushback or "hmm" gets the recap once; a lone word never jumps ahead. Question beats
   (consent, test drive, walkaround, price, close) are unchanged. `src/lib/presentation-flow.test.ts`.
+- **Script facts (Phase 3)**: spoken corrections live in `formatSpeechText` (beats.json stays as
+  written): labor $180-$200/hour (Beat 15, TXM-confirmed 2026-11-24), "premature wear and tear"
+  (Beat 8). `scriptFactAnswer` answers warranty / defect / labor questions during the explanation
+  from Beats 6, 7 and 15. No "I hear you" / "long day" lines. `src/lib/script-facts.test.ts`.
 - **Tests**: `npm test` (Vitest) covers the concurrency fix (including a real concurrent-HTTP-request
   integration test against a mocked Tavus API, so it doesn't need live Tavus credits), visitor cookie
   handling, the auth middleware's fail-closed behavior, and deal-context/usage-logging. `server-only`

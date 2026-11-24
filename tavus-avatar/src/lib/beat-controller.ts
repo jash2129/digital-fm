@@ -99,6 +99,7 @@ import {
   COACH_START_LINE,
   COACH_MORE_LINE,
   COACH_DONE_LINE,
+  STRAIGHT_TO_NUMBERS_LINE,
 } from "./max-lines";
 import { normalizeSpeech } from "./echo-guard";
 import { answerFromKnowledgeBase, looksLikeQuestion, retrieve } from "./grounded-answer";
@@ -249,7 +250,7 @@ export const BEAT_RECAPS: Record<number, string> = {
   12: "To recap, the manufacturer only covers factory defects, while wear and tear is out-of-pocket.",
   13: "To recap, major parts like an engine or transmission can cost seven to eight thousand dollars.",
   14: "To recap, dashboard sensors and electronics can cost thousands of dollars to replace.",
-  15: "To recap, service labor can add ten to fifteen hours of expense to any major repair.",
+  15: "To recap, labor runs one hundred eighty to two hundred dollars an hour, and a major repair can take ten to fifteen hours.",
   16: "As a quick recap, the wrap gives you ten years and one hundred thousand miles of bumper-to-bumper protection with zero deductible.",
   17: "As a quick recap, the tire and wheel package covers your tires and wheels for five full years with zero out-of-pocket costs.",
   18: "To recap, the five-year maintenance package covers your synthetic oil changes, filters, and tire rotations.",
@@ -291,6 +292,46 @@ export function isCarryOn(transcript: string): boolean {
   return n.length > 0 && CARRY_ON_RE.test(n);
 }
 
+// -----------------------------------------------------------------------------
+// SCRIPT FACTS (Phase 3, 2026-11-24). In TXM's calls "explain the warranty" and "what does that
+// cover?" got "I don't have that detail", "how much is labor?" was taken as a price question, and
+// "what do you mean by misinstalled?" got an unrelated recap. These are answered from Beats 6, 7
+// and 15 (the warranty of the car on the deal comes from TXM's brand table).
+// -----------------------------------------------------------------------------
+export const LABOR_ANSWER =
+  "Labor runs one hundred eighty to two hundred dollars an hour, depending on the technician, and a major repair can take ten to fifteen hours.";
+export const DEFECT_ANSWER =
+  "The factory warranty covers defects only, as stated in the owner's manual in the glovebox, page four: anything mis-designed, mis-built or mis-installed. If a breakdown comes from wear and tear, you pay for it.";
+
+function factoryWarrantyAnswer(state: CallState): string {
+  const make = state.dealConfig?.vehicle_make;
+  const w = factoryWarranty(make);
+  const two =
+    w && make
+      ? `Your ${make.trim()} comes with two factory warranties: the ${w.basic} base warranty, and the ${w.powertrain} powertrain warranty, which covers the engine and the transmission.`
+      : "The manufacturer gives two warranties: a base limited warranty, and a longer powertrain warranty, which covers the engine and the transmission.";
+  return `${two} ${DEFECT_ANSWER}`;
+}
+
+/** An answer from the script for a warranty, defect or labor question during the explanation; null otherwise */
+export function scriptFactAnswer(transcript: string, state: CallState): string | null {
+  const beat = state.current_beat;
+  if (!state.step0_completed || !isPresentationBeat(beat)) return null;
+  const n = transcript.toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  if (!n) return null;
+  if (/\blabou?r\b/.test(n) && /\b(how much|cost|costs|rate|charge|charges|per hour|an hour|price|expensive)\b/.test(n)) return LABOR_ANSWER;
+  // The factory warranty is explained before the protection package (Beat 16 onward is the wrap)
+  if (beat > 15 || /\b(bumper|wrap|extended|package|protection|tire|tires|wheel|maintenance|gap)\b/.test(n)) return null;
+  const asks = /\b(what|whats|how|why|explain|mean|means|meaning|tell me|so|is it|is that|does)\b/.test(n) || /\?\s*$/.test(transcript.trim());
+  if (asks && /\b(defect|defects|defective|mis ?design(ed)?|mis ?built|mis ?install(ed)?|misdesign(ed)?|misinstall(ed)?)\b/.test(n)) return DEFECT_ANSWER;
+  if (/\b(explain|what is|whats|tell me about|go over|describe|what are|how does|how long is)\b.*\bwarrant/.test(n)) return factoryWarrantyAnswer(state);
+  if (beat <= 7 && /\bwhat (does|do|will) (that|it|this|they) cover\b/.test(n)) return factoryWarrantyAnswer(state);
+  return null;
+}
+
+// Intents a script-fact question may be mistaken for (never a goodbye, a handoff or a coaching note)
+const SCRIPT_FACT_OVERRIDES = new Set(["other", "question_in_script", "question_out_of_script", "repeat_request", "price_ask", "number_clarification", "confusion", "acknowledge", "garbled", "early_price_objection"]);
+
 let flowTails: string[] | null = null;
 /** Check-ins Max must not ask during the explanation, longest first */
 function checkInTails(): string[] {
@@ -322,6 +363,7 @@ export function stripCheckIns(text: string): string {
 }
 
 export type ClassifierIntent =
+  | "script_fact"
   | "agree"
   | "no"
   | "question_in_script"
@@ -719,7 +761,7 @@ export function formatSpeechText(text: string): string {
   clean = clean.replace(/\b2\s*sets\b/gi, "two sets");
   clean = clean.replace(/\b8\s*tiers\b/gi, "eight tires");
   clean = clean.replace(/\b8\s*of\s*those\b/gi, "eight of those");
-  clean = clean.replace(/\b10\s*hours\s*(and\s*15\s*hours)?\b/gi, "ten hours and fifteen hours");
+  clean = clean.replace(/\b10\s*hours(\s*and\s*15\s*hours)?\b/gi, (_m, both) => (both ? "ten hours and fifteen hours" : "ten hours"));
   clean = clean.replace(/\b15\s*hours\b/gi, "fifteen hours");
   clean = clean.replace(/\b4\s*thousand\b/gi, "four thousand");
   clean = clean.replace(/\b7\s*thousand\b/gi, "seven thousand");
@@ -731,7 +773,11 @@ export function formatSpeechText(text: string): string {
   clean = clean.replace(/\$3\.50\b/gi, "three dollars and fifty cents");
   clean = clean.replace(/\$3\.25\b/gi, "three dollars and twenty-five cents");
   clean = clean.replace(/\$3\.00|\$3\b/gi, "three dollars");
-  clean = clean.replace(/\bhundred thirty dollar per hour up to hundred sixty dollar per hour\b/gi, "one hundred thirty to one hundred sixty dollars per hour");
+  // TXM coaching (23 Nov call, confirmed 2026-11-24): labor is $180 to $200 an hour, not $130 to $160.
+  // Spoken correction only; beats.json keeps the script as written.
+  clean = clean.replace(/\bhundred thirty dollar per hour up to hundred sixty dollar per hour\b/gi, "one hundred eighty to two hundred dollars per hour");
+  // TXM coaching #12: "premature wear and tear", not "a premature" (Beat 8)
+  clean = clean.replace(/\bthis can cause a premature to the vehicle\b/gi, "this can cause premature wear and tear on the vehicle");
   clean = clean.replace(/\bpage number 4\b/gi, "page number four");
 
   return polishSpeech(clean.trim());
@@ -3834,6 +3880,9 @@ async function runControllerTurn(
   if (intent === "early_price_objection" && state.current_beat < 22) {
     state.price_later_count = (state.price_later_count ?? 0) + 1;
   }
+  // Warranty, defect and labor questions during the explanation: answered from the script (Phase 3)
+  const factAnswer = SCRIPT_FACT_OVERRIDES.has(intent) ? scriptFactAnswer(customerTranscript, state) : null;
+  if (factAnswer) intent = "script_fact";
   // What the turn log records; differs from `intent` only where the reply's role is clearer
   let reportedIntent: ControllerDecision["intent"] = intent;
 
@@ -3850,6 +3899,12 @@ async function runControllerTurn(
   let toolCalls: Array<{ name: string; args: Record<string, any> }> = [];
 
   switch (intent) {
+    case "script_fact": {
+      textToSpeak = `${factAnswer} Now, back to where we were.`;
+      beatType = "continue";
+      break;
+    }
+
     case "agree": {
       const currentBeatObj = BEATS.find((b) => b.id === state.current_beat);
       if (currentBeatObj) {
@@ -4180,7 +4235,8 @@ async function runControllerTurn(
         state.delivered_beats.push(22);
         const beat22 = BEATS.find((b) => b.id === 22)!;
         const offerUtterance = getFullBeatUtterance(beat22, state.dealConfig, state);
-        textToSpeak = `I hear you loud and clear—let's skip straight to your exact bottom line numbers. ${offerUtterance}`;
+        // TXM: no "I hear you" (2026-11-24). Status: PENDING TXM
+        textToSpeak = `${STRAIGHT_TO_NUMBERS_LINE} ${offerUtterance}`;
         beatType = "wait";
         toolCalls = getBeatToolCalls(22);
       } else {

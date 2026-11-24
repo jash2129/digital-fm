@@ -57,7 +57,7 @@
     {
       "id": "climate",
       "topic": "Climate",
-      "answer": "Texas can pass 110 degrees in summer and get very cold in winter. This can cause premature damage to sensors, electronics, engine, transmission, cooling system and AC.",
+      "answer": "Texas can pass 110 degrees in summer and get very cold in winter. This can cause premature wear and tear on sensors, electronics, engine, transmission, cooling system and AC.",
       "source_beats": [
         8
       ],
@@ -131,7 +131,7 @@
     {
       "id": "labor",
       "topic": "Labor cost",
-      "answer": "Labor is $130 to $160 per hour depending on the technician. Such a job can take 10 to 15 hours.",
+      "answer": "Labor is $180 to $200 per hour depending on the technician. Such a job can take 10 to 15 hours.",
       "source_beats": [
         15
       ],
