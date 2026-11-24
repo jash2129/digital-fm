@@ -279,6 +279,25 @@ export const BARGE_IN_CUTOFF_WORDS = [
  */
 export const CONTINUE_PAUSE_MS = 1500;
 
+/**
+ * In-call adaptation (Phase 6): a customer who interrupts Max this soon after he starts, with a real
+ * sentence, was still talking when he replied. Each time, Max waits longer for this customer for the
+ * rest of the call, up to IN_CALL_EXTRA_MAX_MS.
+ */
+export const IN_CALL_CUTOFF_MS = 2500;
+export const IN_CALL_EXTRA_STEP_MS = 250;
+export const IN_CALL_EXTRA_MAX_MS = 750;
+
+/** Was this barge-in the customer finishing a sentence Max answered too soon? */
+export function isCutOff(msIntoLine: number, words: number): boolean {
+  return msIntoLine < IN_CALL_CUTOFF_MS && words >= 3;
+}
+
+/** The end-of-turn wait with what Max learned: across calls (learned settings) and in this call */
+export function adaptedWaitMs(baseMs: number, learnedExtraMs: number, inCallExtraMs: number): number {
+  return baseMs + Math.max(0, Math.min(1000, learnedExtraMs)) + Math.max(0, Math.min(IN_CALL_EXTRA_MAX_MS, inCallExtraMs));
+}
+
 export const END_OF_TURN_MS = {
   /** "yes", "okay", "sounds good" */
   quick: 300,

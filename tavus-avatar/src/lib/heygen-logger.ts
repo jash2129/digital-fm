@@ -96,6 +96,8 @@ export type TrainerFeedbackLog = {
   applied?: { id: string; from: string; to: string };
   /** why a rewording in the note could not be used */
   notApplied?: string;
+  /** timing changes the note made (learned-settings.ts) */
+  settingsChanged?: string[];
 };
 
 export type HeygenCallLog = {

@@ -17,6 +17,10 @@ import {
   endOfTurnWaitMs,
   END_OF_TURN_MS,
   CONTINUE_PAUSE_MS,
+  IN_CALL_EXTRA_STEP_MS,
+  IN_CALL_EXTRA_MAX_MS,
+  isCutOff,
+  adaptedWaitMs,
   InterimBuffer,
   type RecognizerResult,
   type AvatarCommand,
@@ -166,6 +170,10 @@ export function LiveAvatarDemo() {
   // Only speech from the current Max line / speech segment counts, never stale interim text
   const interimBufferRef = useRef(new InterimBuffer());
   const continuePauseTimerRef = useRef<any>(null);
+  // What Max learned from coaching and from all calls (src/lib/learned-settings.ts, sent by the turn API)
+  const learnedRef = useRef<{ endOfTurnExtraMs: number; continuePauseMs: number }>({ endOfTurnExtraMs: 0, continuePauseMs: CONTINUE_PAUSE_MS });
+  // In-call adaptation: extra wait for this customer after Max cut them off (turn-taking.ts isCutOff)
+  const inCallExtraMsRef = useRef(0);
   const currentTurnTimingRef = useRef<{
     turnId: number;
     userInput: string;
@@ -700,6 +708,7 @@ export function LiveAvatarDemo() {
         if (data.beatType) {
           lastBeatTypeRef.current = data.beatType;
         }
+        if (data.learnedSettings) learnedRef.current = data.learnedSettings;
 
         if (data.currentBeatId !== undefined) {
           setCurrentBeat({
@@ -1015,6 +1024,11 @@ export function LiveAvatarDemo() {
             }),
           }).catch(() => {});
         }
+        // In-call adaptation: Max answered while this customer was still talking -> wait longer for them
+        if (isCutOff(msIntoLine, currentSpoken.trim().split(/\s+/).filter(Boolean).length) && inCallExtraMsRef.current < IN_CALL_EXTRA_MAX_MS) {
+          inCallExtraMsRef.current = Math.min(IN_CALL_EXTRA_MAX_MS, inCallExtraMsRef.current + IN_CALL_EXTRA_STEP_MS);
+          logTurnEvent({ ts: new Date().toISOString(), event: "in_call_adapted", extraMs: inCallExtraMsRef.current, msIntoLine });
+        }
         setRemoteAudioMutedLocally(true);
         void interruptAvatar();
       }
@@ -1029,11 +1043,15 @@ export function LiveAvatarDemo() {
       const isRecentBargeIn = timeSinceInterrupted < 4000;
       // How long a silence means the customer has finished (turn-taking.ts endOfTurnWaitMs): quick answers
       // stay fast, a finished sentence waits 0.9 s, an unfinished one ("…and", "…um,") 2 s
-      const delayMs = endOfTurnWaitMs(currentSpoken, {
-        final: Boolean(finalTranscript.trim()),
-        incomplete: isIncompleteUtterance(currentSpoken),
-        recentBargeIn: isRecentBargeIn,
-      });
+      const delayMs = adaptedWaitMs(
+        endOfTurnWaitMs(currentSpoken, {
+          final: Boolean(finalTranscript.trim()),
+          incomplete: isIncompleteUtterance(currentSpoken),
+          recentBargeIn: isRecentBargeIn,
+        }),
+        learnedRef.current.endOfTurnExtraMs,
+        inCallExtraMsRef.current
+      );
 
       silenceEndTimerRef.current = setTimeout(() => {
         const spoken = (finalTranscript || interimText || currentSpoken).trim();
@@ -1500,16 +1518,17 @@ export function LiveAvatarDemo() {
             // Put avatar in attentive listening / head-nod state while waiting for user response
             void voiceRef.current?.queue.startListening().catch(() => {});
 
-            // Continue beats pause CONTINUE_PAUSE_MS (1.5 s). If the customer does not speak, send next beat.
+            // Continue beats pause the learned pause (default CONTINUE_PAUSE_MS, 1.5 s). If the customer does not speak, send next beat.
+            const pauseMs = learnedRef.current.continuePauseMs || CONTINUE_PAUSE_MS;
             if (lastBeatTypeRef.current === "continue" && isConnectedRef.current && !isUserSpeakingRef.current) {
               if (continuePauseTimerRef.current) clearTimeout(continuePauseTimerRef.current);
-              console.log(`[beat-controller] Continue beat finished. Pausing ${CONTINUE_PAUSE_MS}ms before auto-advancing to next beat...`);
+              console.log(`[beat-controller] Continue beat finished. Pausing ${pauseMs}ms before auto-advancing to next beat...`);
               continuePauseTimerRef.current = setTimeout(() => {
                 if (isConnectedRef.current && !isUserSpeakingRef.current && !isGrokProcessingRef.current) {
-                  console.log(`[beat-controller] ${CONTINUE_PAUSE_MS}ms pause elapsed without user speech. Advancing to next beat!`);
+                  console.log(`[beat-controller] ${pauseMs}ms pause elapsed without user speech. Advancing to next beat!`);
                   turnControllerRef.current?.onTranscript("proceed");
                 }
-              }, CONTINUE_PAUSE_MS);
+              }, pauseMs);
             }
           }
         } catch {
@@ -1535,7 +1554,10 @@ export function LiveAvatarDemo() {
         body: JSON.stringify({ action: "warmup" }),
       })
         .then((r) => r.json())
-        .then((w) => logTurnEvent({ ts: new Date().toISOString(), event: "chat_route_warmed", routeMs: w?.routeMs }))
+        .then((w) => {
+          if (w?.learnedSettings) learnedRef.current = w.learnedSettings;
+          logTurnEvent({ ts: new Date().toISOString(), event: "chat_route_warmed", routeMs: w?.routeMs });
+        })
         .catch(() => {});
       setIsConnected(true);
       isConnectedRef.current = true;

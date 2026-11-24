@@ -105,6 +105,7 @@ import {
 import { normalizeSpeech } from "./echo-guard";
 import * as AllLines from "./max-lines";
 import { addRephrasing, applyRephrasings, findMaxWords, loadRephrasings, lockedReason, parseRephrase } from "./learned-phrasing";
+import { adjustSetting, settingsFromNote } from "./learned-settings";
 import { answerFromKnowledgeBase, looksLikeQuestion, retrieve } from "./grounded-answer";
 
 export interface Beat {
@@ -209,6 +210,8 @@ export interface CallState {
     applied?: { id: string; from: string; to: string };
     /** why a rewording in this note could not be used */
     notApplied?: string;
+    /** timing changes this note made (learned-settings.ts), e.g. "endOfTurnExtraMs 0 -> 300" */
+    settingsChanged?: string[];
   }>;
   /**
    * An open coaching session: everything the trainer says is one note until they say "done" (or type
@@ -3273,6 +3276,20 @@ function everythingMaxSays(): string {
  * words (his last line first), and never for the price ladder or the recording disclosure.
  */
 async function learnFromNote(sessionId: string, state: CallState, closed: { entry: FeedbackEntry; lastSpoken: string }): Promise<boolean> {
+  // Timing ("don't cut me off", "don't snooze"): used at once, in this call and every later one
+  let timing = false;
+  for (const s of settingsFromNote(closed.entry.feedback)) {
+    const change = await adjustSetting(s.key, s.delta, "coaching", s.reason, sessionId);
+    if (change) {
+      (closed.entry.settingsChanged ??= []).push(`${change.key} ${change.from} -> ${change.to}`);
+      closed.entry.category = "flow";
+      timing = true;
+    }
+  }
+  return (await learnRewording(sessionId, closed)) || timing;
+}
+
+async function learnRewording(sessionId: string, closed: { entry: FeedbackEntry; lastSpoken: string }): Promise<boolean> {
   const wanted = parseRephrase(closed.entry.feedback);
   if (!wanted) return false;
   const from = findMaxWords(wanted.from, closed.lastSpoken) ?? findMaxWords(wanted.from, everythingMaxSays());

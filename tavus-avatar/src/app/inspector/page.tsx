@@ -640,6 +640,9 @@ export default function CallInspectorPage() {
                                   Applied in every call: &quot;{fb.applied.from}&quot; → {fb.applied.to ? `"${fb.applied.to}"` : "(left out)"}
                                 </div>
                               )}
+                              {fb.settingsChanged?.length ? (
+                                <div className="mt-1 text-[11px] text-emerald-300">Timing changed in every call: {fb.settingsChanged.join(", ")}</div>
+                              ) : null}
                               {!fb.applied && fb.notApplied && (
                                 <div className="mt-1 text-[11px] text-amber-300">Not applied: {fb.notApplied}</div>
                               )}

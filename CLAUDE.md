@@ -149,6 +149,18 @@ project planning thread, not in this repo. Below is what's actually landed in co
   ladder or the recording disclosure. Max confirms with `COACH_APPLIED_LINE`; the Inspector's coaching
   table shows "Applied" / "Not applied". `GET /api/learned` lists them, `DELETE /api/learned?id=`
   removes one.
+- **Self-learning (Phase 6)**, no approval, all visible and undoable on `/learning`:
+  - Timing from coaching (`src/lib/learned-settings.ts`, Upstash `max:settings`): "don't cut me off /
+    let me finish" -> +300 ms end-of-turn wait; "don't snooze" -> shorter pause between parts; "give
+    them a moment" -> longer. Bounded (`SETTING_BOUNDS`), every change in `history`. Sent to the call
+    screen as `learnedSettings` on every `/api/chat/grok` reply (and warmup).
+  - In-call: a customer Max cut off (interrupted < 2.5 s into his line with 3+ words) gets +250 ms
+    per cut-off for the rest of that call, up to 750 ms (`isCutOff` / `adaptedWaitMs` in turn-taking.ts).
+  - Nightly (`src/lib/learning-report.ts`, Vercel cron in root `vercel.json` -> `/api/learning/nightly`,
+    needs `CRON_SECRET`): reads the calls since the last run; customers cut off >= 1x per call over
+    3+ calls -> +200 ms wait on its own; reports unanswered questions, repeats/confusion and where
+    calls stop by beat, latency, and every coaching note's outcome. `/api/learning/report` (GET; POST
+    run / reset-settings). `src/lib/self-learning.test.ts`.
 - **Tests**: `npm test` (Vitest) covers the concurrency fix (including a real concurrent-HTTP-request
   integration test against a mocked Tavus API, so it doesn't need live Tavus credits), visitor cookie
   handling, the auth middleware's fail-closed behavior, and deal-context/usage-logging. `server-only`

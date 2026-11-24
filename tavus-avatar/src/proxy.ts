@@ -12,6 +12,12 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Vercel cron runs the nightly learning report with "Authorization: Bearer <CRON_SECRET>"
+  if (request.nextUrl.pathname === "/api/learning/nightly") {
+    const secret = process.env.CRON_SECRET;
+    if (secret && request.headers.get("authorization") === `Bearer ${secret}`) return NextResponse.next();
+  }
+
   const token = process.env.DEMO_API_TOKEN;
 
   if (!token) {

@@ -4,6 +4,7 @@ import { DEFAULT_DEAL_CONFIG } from "@/lib/deal-config";
 import { loadSession, saveSession } from "@/lib/session-store";
 import { streamingEnabled } from "@/lib/llm-stream";
 import { reportError } from "@/lib/error-report";
+import { loadSettings, settingsForClient } from "@/lib/learned-settings";
 
 function replyBody(decision: ControllerDecision, clientBeatId: unknown, routeStart: number) {
   return {
@@ -21,6 +22,8 @@ function replyBody(decision: ControllerDecision, clientBeatId: unknown, routeSta
     metrics: decision.metrics,
     timing: { routeStart, routeEnd: Date.now() },
     trainerFeedback: decision.state.trainer_feedback,
+    // Timing Max learned from coaching and from all calls (learned-settings.ts); the call screen uses it
+    learnedSettings: settingsForClient(),
   };
 }
 
@@ -43,13 +46,14 @@ export async function POST(request: Request) {
 
     // Called once at session start so the first real turn does not pay for a cold route/module load
     if (body.action === "warmup") {
-      return NextResponse.json({ ok: true, routeMs: Date.now() - routeStart, streaming: streamingEnabled() });
+      await loadSettings();
+      return NextResponse.json({ ok: true, routeMs: Date.now() - routeStart, streaming: streamingEnabled(), learnedSettings: settingsForClient() });
     }
     const { messages = [], sessionId = "live_session", dealConfig = DEFAULT_DEAL_CONFIG, clientBeatId, turnId = 0 } = body;
 
     // Serverless hosts: this call's state comes from the shared store and goes back after the turn
     // (a no-op on one long-running server, see session-store.ts)
-    await loadSession(sessionId);
+    await Promise.all([loadSession(sessionId), loadSettings()]);
 
     // Two-phase turns: the client reports whether Max's reply for turnId was actually heard
     if (body.action === "commit") {
