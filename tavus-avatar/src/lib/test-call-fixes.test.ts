@@ -46,14 +46,23 @@ describe("one-word fragments are not answers (7cfcc156, ccbf6324, 888ec8fb)", ()
     [23, "up"],
     [2, "There"],
     [4, "years"],
-    [7, "Are"],
-    [9, "Can"],
   ] as const)("Beat %i: '%s' is not understood: Max says so and asks his question again", async (beat, said) => {
     const t = await say(atBeat(beat), said);
     expect(t.intent).toBe("garbled");
     expect(t.beatId).toBe(beat);
     expect(t.textToSpeak.startsWith(`${GARBLED_LINE} `)).toBe(true);
     expect(t.textToSpeak).toMatch(/\?$/);
+  });
+
+  it.each([
+    [7, "Are"],
+    [9, "Can"],
+  ] as const)("Beat %i (the explanation): '%s' is held silently, never jumps ahead (Phase 4)", async (beat, said) => {
+    const t = await say(atBeat(beat), said);
+    expect(t.intent).toBe("fragment_hold");
+    expect(t.beatId).toBe(beat);
+    expect(t.textToSpeak).toBe("");
+    expect(t.beatType).toBe("continue");
   });
 
   it("'up' at the coverage question never confirms the package", async () => {

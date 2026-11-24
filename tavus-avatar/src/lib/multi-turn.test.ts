@@ -129,8 +129,10 @@ describe("multi-turn regressions", () => {
   it("Fix 5: after a recording objection the call stays closed", async () => {
     const [stop, after, again] = await play(1, "I don't want to be recorded", "okay fine, continue", "hello?");
     expect(stop.stopped).toBe(true);
+    // Phase 4: the closing line once, then silence (test calls said "Thank you, take care." 4 times)
+    expect(after.textToSpeak).toBe(CLOSING_LINE);
+    expect(again.textToSpeak).toBe("");
     for (const d of [after, again]) {
-      expect(d.textToSpeak).toBe(CLOSING_LINE);
       expect(d.textToSpeak).not.toContain(HANDOFF_LINE);
       expect(d.stopped).toBe(true);
     }

@@ -264,6 +264,8 @@ export const ANSWER_CHECK_LINE = "Does that answer your question?";
 export const TIRE_EXCLUSION_LINE = "You can certainly use your own tires, but the tire and wheel package protects your tires and wheels against road hazard damage with zero deductible.";
 // Wording approved by TXM, 2026-11-22
 export const MAINTENANCE_EXCLUSION_LINE = "I understand you do your own maintenance! The package covers synthetic oil and filter changes and tire rotations, with zero out of pocket and zero deductible.";
+// TXM #21, "I don't want the maintenance" at the price (2026-11-25), modelled on DROP_COVERAGE_LINE
+export const DROP_MAINTENANCE_LINE = "If you'd like to leave out the maintenance package, we can adjust the coverage options to fit what you need most.";
 export const DROP_COVERAGE_LINE = "If you'd like to drop the tire and wheel package, we can adjust the coverage options to fit what you need most.";
 export const UNIT_PRICE_LINE = "That's four dollars a day, which works out to about one hundred and twenty dollars a month on your paperwork.";
 export const TOTAL_PRICE_LINE = "The total for full vehicle protection is four dollars a day over your contract term.";

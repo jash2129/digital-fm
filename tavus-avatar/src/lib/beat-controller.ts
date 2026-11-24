@@ -88,6 +88,7 @@ import {
   ANSWER_CHECK_LINE,
   TIRE_EXCLUSION_LINE,
   MAINTENANCE_EXCLUSION_LINE,
+  DROP_MAINTENANCE_LINE,
   DROP_COVERAGE_LINE,
   UNIT_PRICE_LINE,
   TOTAL_PRICE_LINE,
@@ -218,6 +219,13 @@ export interface CallState {
    * an untagged message, or 30 s pass). Max stays silent meanwhile; the call's own state is untouched.
    */
   coaching?: { beat: number; lastSpoken: string; parts: string[]; startedAt: number; lastAt: number; typed: boolean; entry: number };
+  /**
+   * A lone word during the explanation ("Are", "So"), held silently: the recognizer usually cut a
+   * question off, so it is joined to what the customer says next (within FRAGMENT_JOIN_MS)
+   */
+  pending_fragment?: { text: string; at: number };
+  /** turns after the call closed (the closing line is said once) */
+  closing_count?: number;
 }
 
 export function splitIntoSentences(text: string): string[] {
@@ -289,6 +297,9 @@ export function beatRecap(beatId: number, state?: CallState): string {
 // one-line recap), treats unclear words as "keep going", and flows into the next part after a
 // short pause. The questions (consent, test drive, walkaround, price, close) are untouched.
 // -----------------------------------------------------------------------------
+/** How long a held lone word waits to be joined to the customer's next words */
+export const FRAGMENT_JOIN_MS = 10_000;
+
 export function isPresentationBeat(id: number): boolean {
   return id >= 6 && id <= 21;
 }
@@ -336,6 +347,22 @@ export function scriptFactAnswer(transcript: string, state: CallState): string |
   if (asks && /\b(defect|defects|defective|mis ?design(ed)?|mis ?built|mis ?install(ed)?|misdesign(ed)?|misinstall(ed)?)\b/.test(n)) return DEFECT_ANSWER;
   if (/\b(explain|what is|whats|tell me about|go over|describe|what are|how does|how long is)\b.*\bwarrant/.test(n)) return factoryWarrantyAnswer(state);
   if (beat <= 7 && /\bwhat (does|do|will) (that|it|this|they) cover\b/.test(n)) return factoryWarrantyAnswer(state);
+  return null;
+}
+
+// TXM #21: "I don't want the maintenance" was answered with a summary of what maintenance covers.
+// Now the approved exclusion lines, at any point of the explanation, and the adjust line at the price.
+const NOT_WANT = /\b(?:dont|do not|don t|wont|will not|no) (?:want|need|use|care about)\b|\bwithout\b|\bskip\b|\bleave out\b|\bdrop\b|\bno need for\b/;
+export function coverageExclusion(transcript: string, state: CallState): string | null {
+  const beat = state.current_beat;
+  if (!state.step0_completed || beat < 6 || beat > 22) return null;
+  const n = transcript.toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  const maintenance = /\bmaintenance\b|\boil changes?\b/.test(n);
+  const tires = /\btires?\b|\bwheels?\b/.test(n);
+  const ownMaintenance = /\b(?:my own|i do my own|do it myself) (?:oil|maintenance)|\bown oil\b/.test(n);
+  const ownTires = /\bmy own tires?\b|\bown tires?\b/.test(n);
+  if (maintenance && !tires && (NOT_WANT.test(n) || ownMaintenance)) return beat === 22 ? DROP_MAINTENANCE_LINE : MAINTENANCE_EXCLUSION_LINE;
+  if (tires && !maintenance && (NOT_WANT.test(n) || ownTires)) return beat === 22 ? DROP_COVERAGE_LINE : TIRE_EXCLUSION_LINE;
   return null;
 }
 
@@ -416,6 +443,8 @@ export type ClassifierIntent =
   | "acknowledge"
   /** Not a classifier result: Max moved on after three misses in a row (handleMisses) */
   | "move_on"
+  | "fragment_hold"
+  | "coverage_exclusion"
   | "resume_interrupted"
   | "other";
 
@@ -3013,6 +3042,14 @@ export async function processControllerTurn(
     : undefined;
   let decision: ControllerDecision;
   const now = getOrCreateCallState(sessionId, dealConfig);
+  // A word held from the last turn ("Are") belongs to these words ("you saying it's covered?")
+  const held = now.pending_fragment;
+  if (held) {
+    now.pending_fragment = undefined;
+    if (Date.now() - held.at < FRAGMENT_JOIN_MS && !mockClassification && !isCarryOn(customerTranscript)) {
+      customerTranscript = `${held.text.replace(/[.,!?…]+$/, "")} ${customerTranscript.trim()}`;
+    }
+  }
   const carryOn =
     !mockClassification && now.step0_completed && !now.is_stopped && isPresentationBeat(now.current_beat) && isCarryOn(customerTranscript);
 
@@ -3798,8 +3835,17 @@ async function flowPresentation(
 ): Promise<ControllerDecision> {
   const st = decision.state;
   // A lone word ("Are", "So") is usually the start of a question the recognizer cut off: never a
-  // reason to jump ahead (7cfcc156, ccbf6324, 888ec8fb). It keeps its reply until Phase 4.
-  if (customerTranscript && isLoneFragment(customerTranscript.replace(/\.{2,}|…/g, " "))) return decision;
+  // reason to jump ahead (7cfcc156, ccbf6324, 888ec8fb). During the explanation Max now says nothing
+  // (Phase 4, no more "Sorry, I didn't catch that. You understand?"): the word is kept and joined to
+  // what the customer says next; if they say nothing, the call screen carries on after a pause.
+  if (customerTranscript && isLoneFragment(customerTranscript.replace(/\.{2,}|…/g, " "))) {
+    if (decision.intent !== "garbled" || !isPresentationBeat(beatBefore) || decision.beatId !== beatBefore || !st.step0_completed || st.is_stopped) return decision;
+    const restored = cloneState(snapshot);
+    for (const k of Object.keys(st)) delete (st as unknown as Record<string, unknown>)[k];
+    Object.assign(st, restored, { pending_fragment: { text: customerTranscript.trim(), at: Date.now() } });
+    console.log(JSON.stringify({ event: "fragment_hold", sessionId, beat: beatBefore, word: customerTranscript.trim() }));
+    return { ...decision, textToSpeak: "", beatType: "continue", toolCalls: [], intent: "fragment_hold", state: st };
+  }
   if (!st.step0_completed || st.is_stopped || decision.isScriptComplete || decision.beatType === "stop") return decision;
   if (!isPresentationBeat(decision.beatId) || decision.intent === "coach_feedback") return decision;
   const held = decision.beatId === beatBefore;
@@ -3842,8 +3888,12 @@ async function runControllerTurn(
   // never the handoff line and never back into the script.
   if (state.is_stopped) {
     const terminalText = state.current_beat >= 25 && !state.verification_deferred ? SCRIPT_COMPLETE_LINE : CLOSING_LINE;
+    // Said once; after that Max stays silent (test calls ended with "Thank you, take care." four times)
+    const saidAlready = (state.closing_count ?? 0) >= 1 || normLine(state.last_spoken_text).endsWith(normLine(terminalText));
+    state.closing_count = (state.closing_count ?? 0) + 1;
+    if (!saidAlready) state.last_spoken_text = terminalText;
     return {
-      textToSpeak: terminalText,
+      textToSpeak: saidAlready ? "" : terminalText,
       beatId: state.current_beat,
       beatType: "stop",
       toolCalls: [],
@@ -3967,6 +4017,8 @@ async function runControllerTurn(
   // Warranty, defect and labor questions during the explanation: answered from the script (Phase 3)
   const factAnswer = SCRIPT_FACT_OVERRIDES.has(intent) ? scriptFactAnswer(customerTranscript, state) : null;
   if (factAnswer) intent = "script_fact";
+  const exclusion = !factAnswer && (SCRIPT_FACT_OVERRIDES.has(intent) || intent === "no" || intent === "negotiate_price") ? coverageExclusion(customerTranscript, state) : null;
+  if (exclusion) intent = "coverage_exclusion";
   // What the turn log records; differs from `intent` only where the reply's role is clearer
   let reportedIntent: ControllerDecision["intent"] = intent;
 
@@ -3983,6 +4035,13 @@ async function runControllerTurn(
   let toolCalls: Array<{ name: string; args: Record<string, any> }> = [];
 
   switch (intent) {
+    case "coverage_exclusion": {
+      // During the explanation: acknowledged, then on; at the price: the adjust line, then the price question
+      textToSpeak = state.current_beat === 22 ? `${exclusion} ${pendingQuestion(state)}` : exclusion!;
+      beatType = state.current_beat === 22 ? "wait" : "continue";
+      break;
+    }
+
     case "script_fact": {
       textToSpeak = `${factAnswer} Now, back to where we were.`;
       beatType = "continue";

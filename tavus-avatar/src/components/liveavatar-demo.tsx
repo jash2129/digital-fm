@@ -21,6 +21,7 @@ import {
   IN_CALL_EXTRA_MAX_MS,
   isCutOff,
   adaptedWaitMs,
+  SILENT_HOLD_EXTRA_MS,
   InterimBuffer,
   type RecognizerResult,
   type AvatarCommand,
@@ -802,6 +803,16 @@ export function LiveAvatarDemo() {
             speakingTurnRef.current = meta.turnId ? { turnId: meta.turnId } : null;
             await speakWithAvatar(assistantText);
           }
+        } else if (data.beatType === "continue" && isConnectedRef.current) {
+          // Max stays silent (a lone word held during the explanation): if the customer does not go
+          // on, carry on after a longer pause than usual
+          if (continuePauseTimerRef.current) clearTimeout(continuePauseTimerRef.current);
+          const holdMs = (learnedRef.current.continuePauseMs || CONTINUE_PAUSE_MS) + SILENT_HOLD_EXTRA_MS;
+          continuePauseTimerRef.current = setTimeout(() => {
+            if (isConnectedRef.current && !isUserSpeakingRef.current && !isGrokProcessingRef.current) {
+              turnControllerRef.current?.onTranscript("proceed");
+            }
+          }, holdMs);
         }
       } catch (err: any) {
         console.error("[chat/grok error]:", err);

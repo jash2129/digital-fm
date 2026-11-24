@@ -285,6 +285,12 @@ export const CONTINUE_PAUSE_MS = 1500;
  * rest of the call, up to IN_CALL_EXTRA_MAX_MS.
  */
 export const IN_CALL_CUTOFF_MS = 2500;
+
+/**
+ * Max said nothing (a lone word held during the explanation): the customer gets this much longer than
+ * the usual pause to finish their sentence before Max carries on.
+ */
+export const SILENT_HOLD_EXTRA_MS = 2000;
 export const IN_CALL_EXTRA_STEP_MS = 250;
 export const IN_CALL_EXTRA_MAX_MS = 750;
 

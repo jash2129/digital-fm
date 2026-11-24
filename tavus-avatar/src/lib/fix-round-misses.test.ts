@@ -34,17 +34,17 @@ function atBeat(beat: number, stage?: number) {
 }
 
 describe("misses in a row escalate instead of repeating", () => {
-  it("a statement beat: normal reply, then a shorter rephrase, then Max moves on", async () => {
+  it("during the explanation (Phase 2/4): a lone unclear word is held silently, the next unclear words carry on", async () => {
     const sid = atBeat(7);
     const first = await say(sid, "blorp");
-    expect(first.intent).toBe("garbled");
+    expect(first.intent).toBe("fragment_hold");
+    expect(first.textToSpeak).toBe("");
+    expect(first.beatId).toBe(7);
     const second = await say(sid, "flarp");
-    expect(second.textToSpeak.startsWith(REPHRASE_LINE)).toBe(true);
-    expect(second.beatId).toBe(7);
-    const third = await say(sid, "zzz");
-    expect(third.textToSpeak.startsWith(MOVE_ON_LINE)).toBe(true);
-    expect(third.beatId).toBe(8);
-    expect(third.intent).toBe("move_on");
+    expect(second.beatId).toBe(8);
+    expect(second.intent).toBe("move_on");
+    expect(second.textToSpeak.startsWith(REPHRASE_LINE)).toBe(false);
+    expect(second.textToSpeak.startsWith(MOVE_ON_LINE)).toBe(false);
   });
 
   it("the counter resets once the call moves on", async () => {

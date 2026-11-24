@@ -198,14 +198,12 @@ describe("in a call", () => {
     expect(speechCalls()).toHaveLength(0);
   });
 
-  it("misses in a row still move the call on after three", async () => {
+  it("unclear words during the explanation never stall the call (Phase 2/4)", async () => {
     const sid = atBeat(7);
-    await say(sid, "blorp");
+    expect((await say(sid, "blorp")).textToSpeak).toBe("");
     const second = await say(sid, "flarp");
-    expect(second.beatId).toBe(7);
-    const third = await say(sid, "zzz");
-    expect(third.beatId).toBe(8);
-    expect(third.intent).toBe("move_on");
-    expect(third.textToSpeak.startsWith(MOVE_ON_LINE)).toBe(true);
+    expect(second.beatId).toBe(8);
+    expect(second.intent).toBe("move_on");
+    expect(second.textToSpeak.startsWith(MOVE_ON_LINE)).toBe(false);
   });
 });
