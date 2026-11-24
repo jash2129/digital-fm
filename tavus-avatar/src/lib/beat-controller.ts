@@ -238,7 +238,9 @@ export function getBeatCheckInQuestion(beat: Beat): string {
 }
 
 export const BEAT_RECAPS: Record<number, string> = {
-  6: "As a quick recap, your Mazda comes with the five-year sixty thousand mile base warranty and ten-year one hundred thousand mile powertrain coverage.",
+  // Beat 6's real recap is built from TXM's brand table in beatRecap(); this is the fallback for a
+  // make the table has no single figure for
+  6: "As a quick recap, your vehicle comes with the manufacturer's factory warranty, and it covers factory defects only.",
   7: "Just to recap, the factory warranty covers factory defects only.",
   8: "As a quick recap, wear and tear from climate, roads, and driving causes ninety-five percent of breakdowns.",
   9: "As a recap, potholes and road hazards cause severe wear on tires, rims, and sensors.",
@@ -256,6 +258,68 @@ export const BEAT_RECAPS: Record<number, string> = {
   21: "To recap, you get the five-year tire and wheel protection and five-year maintenance package.",
   22: "That full vehicle protection package is just four dollars a day.",
 };
+
+/** A beat's one-line recap; Beat 6 names the warranty of the car on the deal (TXM's brand table) */
+export function beatRecap(beatId: number, state?: CallState): string {
+  if (beatId === 6) {
+    const make = state?.dealConfig?.vehicle_make;
+    const w = factoryWarranty(make);
+    if (w && make) return `As a quick recap, your ${make.trim()} comes with the ${w.basic} base warranty and the ${w.powertrain} powertrain coverage.`;
+  }
+  return BEAT_RECAPS[beatId] ?? "As a quick reminder, that coverage is fully included in your protection package.";
+}
+
+// -----------------------------------------------------------------------------
+// PRESENTATION FLOW (Phase 2, 2026-11-24). In TXM's test calls about 40% of Max's lines were
+// check-ins ("Would you like me to continue, or go over that again?" 108 times in 10 calls) and
+// whole paragraphs came back 4-6 times. TXM: "don't ask if I understand, just continue with the
+// presentation", "assume and keep going", "don't snooze". During the explanation (Beats 6-21) Max
+// now asks no check-ins, says a paragraph in full only once (a "no" or "I'm confused" gets the
+// one-line recap), treats unclear words as "keep going", and flows into the next part after a
+// short pause. The questions (consent, test drive, walkaround, price, close) are untouched.
+// -----------------------------------------------------------------------------
+export function isPresentationBeat(id: number): boolean {
+  return id >= 6 && id <= 21;
+}
+
+const CARRY_ON_RE =
+  /^(?:(?:okay|ok|alright|all right|yes|yeah|yep|sure|please|max|so|and|just|then) )*(?:keep going|go on|go ahead|carry on|continue|proceed|next|next one|next part|skip(?: it| that| this| ahead)?|move on|lets move on|move along|stop repeating(?: yourself)?|you already said that|you said that already|i got it|got it|whats next|keep it going)(?: (?:please|max|then|now|already))*$/;
+
+/** "keep going", "proceed", "skip", "next", "move on", "stop repeating" */
+export function isCarryOn(transcript: string): boolean {
+  const n = transcript.toLowerCase().replace(/['’]/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  return n.length > 0 && CARRY_ON_RE.test(n);
+}
+
+let flowTails: string[] | null = null;
+/** Check-ins Max must not ask during the explanation, longest first */
+function checkInTails(): string[] {
+  if (flowTails) return flowTails;
+  const set = new Set<string>([CLARIFY_LINE, "Does that help clarify things?", "Does that make sense?", "Are you still with me?"]);
+  for (const b of BEATS) {
+    if (!isPresentationBeat(b.id) || !b.check_in) continue;
+    set.add(getBeatCheckInQuestion(b));
+    set.add(formatSpeechText(b.check_in));
+  }
+  flowTails = [...set].map((t) => t.trim()).filter(Boolean).sort((a, b) => b.length - a.length);
+  return flowTails;
+}
+
+/** The reply without the check-in(s) at its end ("…the factory warranty... You understand?") */
+export function stripCheckIns(text: string): string {
+  let out = text.trim();
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const tail of checkInTails()) {
+      if (out.toLowerCase().endsWith(tail.toLowerCase())) {
+        out = out.slice(0, out.length - tail.length).replace(/[\s.…,;:-]*$/, "").trim();
+        if (out && !/[.!?]$/.test(out)) out += ".";
+        changed = true;
+      }
+    }
+  }
+  return out;
+}
 
 export type ClassifierIntent =
   | "agree"
@@ -440,7 +504,8 @@ export async function processClientTurn(
       const decision: ControllerDecision = {
         textToSpeak: resumeText,
         beatId: state.current_beat,
-        beatType: beat?.type ?? "wait",
+        // During the explanation the rest of the line flows on, like the line it came from (Phase 2)
+        beatType: isPresentationBeat(state.current_beat) && state.step0_completed && !/\?\s*$/.test(resumeText) ? "continue" : (beat?.type ?? "wait"),
         toolCalls: pending.toolCalls,
         state,
         intent: "resume_interrupted",
@@ -706,7 +771,8 @@ export function polishSpeech(text: string): string {
 export function getFullBeatUtterance(beat: Beat, dealConfig: DealConfig, state?: CallState): string {
   const rendered = renderBeatText(beat, dealConfig, state);
   const cleanBody = formatSpeechText(rendered);
-  if (beat.check_in) {
+  // During the explanation (Beats 6-21) Max asks no check-ins: he flows into the next part
+  if (beat.check_in && !isPresentationBeat(beat.id)) {
     // If customer is in an impatient flow, suppress interrogation tags
     if (state?.is_impatient_flow) {
       return cleanBody;
@@ -2881,8 +2947,14 @@ export async function processControllerTurn(
       }
     : undefined;
   let decision: ControllerDecision;
+  const now = getOrCreateCallState(sessionId, dealConfig);
+  const carryOn =
+    !mockClassification && now.step0_completed && !now.is_stopped && isPresentationBeat(now.current_beat) && isCarryOn(customerTranscript);
 
-  if (isFreeAIEnabled() && !mockClassification) {
+  if (carryOn) {
+    // "keep going", "next", "skip", "stop repeating" during the explanation: on to the next part
+    decision = await processScriptedTurn(sessionId, customerTranscript, dealConfig, { intent: "agree", topic_beat_ids: [] }, { onEarly });
+  } else if (isFreeAIEnabled() && !mockClassification) {
     // Free AI (MAX_MODE=free): the AI runs the call; a turn it cannot do safely goes to the script
     const free = await processFreeTurn(sessionId, customerTranscript, dealConfig, onEarly);
     if ("decision" in free) decision = free.decision;
@@ -3373,6 +3445,7 @@ async function processScriptedTurn(
   const snapshot = cloneState(stateRef);
   const metrics: TurnMetrics = { classifierMs: 0, usedLLM: false, classifierTimedOut: false };
   let decision = await runControllerTurn(sessionId, customerTranscript, dealConfig, mockClassification, metrics);
+  decision = await flowPresentation(sessionId, dealConfig, decision, beatBefore, snapshot, metrics, customerTranscript);
   decision = await handleMisses(sessionId, customerTranscript, dealConfig, decision, beatBefore, snapshot, metrics);
   varyRepeat(decision, beatBefore, snapshot.last_spoken_text);
   // AI speech (MAX_SPEECH=ai): the approved line chosen above is the draft; the AI says it in Max's own
@@ -3558,6 +3631,72 @@ async function handleMisses(
   next.state.last_spoken_text = next.textToSpeak;
   next.intent = "move_on";
   return next;
+}
+
+// Unclear words, the classifier timing out, or Max's own voice heard back: during the explanation
+// TXM wants Max to assume and keep going
+const FLOW_ON_INTENTS = new Set(["garbled", "avatar_echo", "classifier_timeout"]);
+const PUSHBACK_RE =
+  /^(?:hmm+|hm+|um+|uh+|huh|mm+|i guess|maybe|not sure|im not sure|i dont know|i don t know|really)\b|\b(?:not true|thats wrong|that s wrong|youre wrong|you re wrong|lying|liar|dont believe|don t believe|doubt|nonsense|no way|come on|i disagree)\b/;
+
+/** Replaces the reply's words, keeping the call's own record of them in step */
+function retext(decision: ControllerDecision, text: string): void {
+  const old = decision.textToSpeak;
+  if (old === text) return;
+  const st = decision.state;
+  decision.textToSpeak = text;
+  if (st.last_spoken_text === old) st.last_spoken_text = text;
+  const last = st.recent_turns?.at(-1);
+  if (last && last.max === old) last.max = text;
+  if (st.last_said && st.last_said.said === old) st.last_said.said = text;
+}
+
+/**
+ * Phase 2: during the explanation (Beats 6-21) no check-ins, and a reply that asks nothing flows on
+ * ("continue": the call screen moves to the next part after a short pause unless the customer
+ * speaks). A reply with nothing left to say once the check-in is gone, or an unclear turn, moves on
+ * at once. A reply that asks a real question ("Which part would you like me to explain?") still waits.
+ */
+async function flowPresentation(
+  sessionId: string,
+  dealConfig: DealConfig,
+  decision: ControllerDecision,
+  beatBefore: number,
+  snapshot: CallState,
+  metrics: TurnMetrics,
+  customerTranscript = ""
+): Promise<ControllerDecision> {
+  const st = decision.state;
+  // A lone word ("Are", "So") is usually the start of a question the recognizer cut off: never a
+  // reason to jump ahead (7cfcc156, ccbf6324, 888ec8fb). It keeps its reply until Phase 4.
+  if (customerTranscript && isLoneFragment(customerTranscript.replace(/\.{2,}|…/g, " "))) return decision;
+  if (!st.step0_completed || st.is_stopped || decision.isScriptComplete || decision.beatType === "stop") return decision;
+  if (!isPresentationBeat(decision.beatId) || decision.intent === "coach_feedback") return decision;
+  const held = decision.beatId === beatBefore;
+  const text = stripCheckIns(decision.textToSpeak);
+  const nothingLeft = !text || normLine(text) === normLine(GARBLED_LINE);
+  // Pushback or hesitation ("That's not true.", "Hmm.") is never skipped past: the one-line recap
+  // restates the point once, then Max flows on
+  const recap = beatRecap(beatBefore, st);
+  if (held && isPresentationBeat(beatBefore) && nothingLeft && !FLOW_ON_INTENTS.has(decision.intent) && PUSHBACK_RE.test(normLine(customerTranscript)) && normLine(snapshot.last_spoken_text) !== normLine(recap)) {
+    retext(decision, recap);
+    decision.beatType = "continue";
+    return decision;
+  }
+  if (held && isPresentationBeat(beatBefore) && (FLOW_ON_INTENTS.has(decision.intent) || nothingLeft)) {
+    // Assume and keep going: the turn is taken as "okay". The state object is restored in place, so
+    // callers holding it (processClientTurn) stay in step.
+    const restored = cloneState(snapshot);
+    for (const k of Object.keys(st)) delete (st as unknown as Record<string, unknown>)[k];
+    Object.assign(st, restored);
+    const next = await runControllerTurn(sessionId, "okay", dealConfig, { intent: "agree", topic_beat_ids: [] }, metrics);
+    next.intent = "move_on";
+    console.log(JSON.stringify({ event: "presentation_flow_on", sessionId, beat: beatBefore, was: decision.intent }));
+    return flowPresentation(sessionId, dealConfig, next, next.beatId, cloneState(next.state), metrics);
+  }
+  retext(decision, text);
+  if (!/\?\s*$/.test(text)) decision.beatType = "continue";
+  return decision;
 }
 
 async function runControllerTurn(
@@ -3971,6 +4110,12 @@ async function runControllerTurn(
       } else {
         // Speak lead-in line LEAD_IN_NO, then the same beat once more plus its check-in
         const currentBeat = BEATS.find((b) => b.id === state.current_beat)!;
+        if (isPresentationBeat(currentBeat.id)) {
+          // During the explanation a paragraph is said in full only once: the recap, then carry on
+          textToSpeak = beatRecap(currentBeat.id, state);
+          beatType = "continue";
+          break;
+        }
         const beatUtterance = getFullBeatUtterance(currentBeat, state.dealConfig);
         textToSpeak = `${LEAD_IN_NO} ${beatUtterance}`;
         beatType = currentBeat.type;
@@ -3988,14 +4133,14 @@ async function runControllerTurn(
 
       let responseText = "";
       if (state.delivered_beats.includes(targetId)) {
-        responseText = BEAT_RECAPS[targetId] || "As a quick reminder, that coverage is fully included in your protection package.";
+        responseText = beatRecap(targetId, state);
       } else {
         const beatObj = BEATS.find((b) => b.id === targetId);
         if (beatObj) {
           responseText = formatSpeechText(renderBeatText(beatObj, state.dealConfig));
           state.delivered_beats.push(targetId);
         } else {
-          responseText = BEAT_RECAPS[state.current_beat] || "As a quick reminder, that coverage is fully included in your package.";
+          responseText = beatRecap(state.current_beat, state);
         }
       }
 
@@ -4194,6 +4339,14 @@ async function runControllerTurn(
         break;
       }
       const currentBeat = BEATS.find((b) => b.id === state.current_beat)!;
+      // During the explanation "what does that mean" gets the one-line recap; the whole paragraph
+      // again only when the customer did not hear it ("say that again", "pardon", "repeat that")
+      const didNotHear = /\b(repeat|say that|say again|what did you say|pardon|come again|one more time|didn ?t (hear|catch)|did not (hear|catch)|couldn ?t hear|missed that)\b/.test(norm.replace(/['’]/g, ""));
+      if (isPresentationBeat(currentBeat.id) && !didNotHear) {
+        textToSpeak = beatRecap(currentBeat.id, state);
+        beatType = "continue";
+        break;
+      }
       textToSpeak = getFullBeatUtterance(currentBeat, state.dealConfig);
       beatType = currentBeat.type;
       break;
@@ -4407,6 +4560,7 @@ async function runControllerTurn(
       const currentBeat = BEATS.find((b) => b.id === state.current_beat)!;
       if (count >= 2) textToSpeak = WHICH_PART_LINE;
       else if (intent === "role_confusion" || state.current_beat === 1) textToSpeak = `${ROLE_EXPLAIN_LINE} ${pendingQuestion(state)}`;
+      else if (isPresentationBeat(currentBeat.id)) textToSpeak = beatRecap(currentBeat.id, state);
       else textToSpeak = `${LEAD_IN_NO} ${getFullBeatUtterance(currentBeat, state.dealConfig)}`;
       beatType = "wait";
       toolCalls = [];

@@ -5,6 +5,7 @@ import {
   resetCallState,
   BEATS,
   splitIntoSentences,
+  beatRecap,
   type ControllerDecision,
 } from "./beat-controller";
 import * as maxLines from "./max-lines";
@@ -17,6 +18,9 @@ const approvedCorpus: string[] = [];
 BEATS.forEach((b) => {
   approvedCorpus.push(b.text.toLowerCase());
   if (b.check_in) approvedCorpus.push(b.check_in.toLowerCase());
+  // The one-line recaps (Phase 2 uses them during the explanation); Beat 6's names the deal's car
+  // with TXM's brand-table figures
+  approvedCorpus.push(beatRecap(b.id, getOrCreateCallState("weird_corpus")).toLowerCase());
 });
 
 // 2. All exported lines from max-lines.ts
@@ -184,7 +188,9 @@ describe("Task 5 — Weird-Customer Rehearsal Suite", () => {
       // 1. Assert Max NEVER advances without a clear yes:
       // None of the hostile cases constitute a clear yes or authorized progression for that beat,
       // so Max must either hold the current beat (decision.beatId === beat) or stop/escalate (state.is_stopped === true).
-      if (!decision.state.is_stopped) {
+      // Phase 2 (TXM): during the explanation (Beats 6-21) Max assumes and keeps going, so moving on
+      // to the next part is allowed there; skipping a part never is (check 2)
+      if (!decision.state.is_stopped && !(beat >= 6 && beat <= 21)) {
         expect(
           decision.beatId,
           `Adversarial input "${customerSaid}" at Beat ${beat} unexpectedly advanced to Beat ${decision.beatId}!`

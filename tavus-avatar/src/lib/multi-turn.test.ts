@@ -18,6 +18,7 @@ import {
   renderBeatText,
   formatSpeechText,
   BEATS,
+  BEAT_RECAPS,
   type ControllerDecision,
 } from "./beat-controller";
 import {
@@ -83,7 +84,9 @@ describe("multi-turn regressions", () => {
       expect(showsEscalation(d)).toBe(false);
       expect(d.textToSpeak.toLowerCase()).not.toContain("member of our team");
     }
-    expect(turns[1].textToSpeak).toContain(CLARIFY_LINE);
+    // Phase 2: during the explanation no "continue, or go over that again?"; Max flows on
+    expect(turns[1].textToSpeak).not.toContain(CLARIFY_LINE);
+    expect(turns[1].beatType).toBe("continue");
     expect(turns[2].beatId).toBe(10);
   });
 
@@ -108,16 +111,19 @@ describe("multi-turn regressions", () => {
     expect(again.price).toBe("three dollars");
   });
 
-  it("Fix 4: 'what does that mean' repeats the current beat and its check-in", async () => {
+  it("Fix 4 / Phase 2: 'what does that mean' gets the recap; 'say that again' the paragraph, without a check-in", async () => {
     const beat10 = BEATS.find((b) => b.id === 10)!;
     const body = formatSpeechText(renderBeatText(beat10, getOrCreateCallState("probe").dealConfig));
-    for (const say of ["wait, what does that mean", "what do you mean", "can you explain that", "I don't understand", "say that again"]) {
+    for (const say of ["wait, what does that mean", "what do you mean", "can you explain that", "I don't understand"]) {
       const [d] = await play(10, say);
       expect(d.intent, say).toBe("repeat_request");
       expect(d.beatId, say).toBe(10);
-      expect(d.textToSpeak, say).toContain(body);
-      expect(d.textToSpeak, say).toContain(formatSpeechText(beat10.check_in!));
+      expect(d.textToSpeak, say).toBe(BEAT_RECAPS[10]);
+      expect(d.beatType, say).toBe("continue");
     }
+    const [again] = await play(10, "say that again");
+    expect(again.textToSpeak).toContain(body);
+    expect(again.textToSpeak).not.toContain(formatSpeechText(beat10.check_in!));
   });
 
   it("Fix 5: after a recording objection the call stays closed", async () => {
@@ -177,7 +183,8 @@ describe("multi-turn regressions", () => {
         // At Beat 23 the pending question is "which two" (follow-up 5 N), not the default check-in
         const checkIn = beat === 23 ? "Which two of those do you see the most value in?" : getBeatCheckInQuestion(BEATS.find((b) => b.id === beat)!);
         expect(d.intent, `B${beat} ${say}`).toBe("compliment");
-        expect(d.textToSpeak, `B${beat} ${say}`).toBe(`${COMPLIMENT_LINE} ${checkIn}`);
+        // Phase 2: during the explanation (Beats 6-21) no check-in; Max flows on
+        expect(d.textToSpeak, `B${beat} ${say}`).toBe(beat >= 6 && beat <= 21 ? COMPLIMENT_LINE : `${COMPLIMENT_LINE} ${checkIn}`);
         expect(d.beatId, `B${beat} ${say}`).toBe(beat);
         expect(d.stopped, `B${beat} ${say}`).toBe(false);
         expect(showsEscalation(d), `B${beat} ${say}`).toBe(false);
@@ -187,10 +194,16 @@ describe("multi-turn regressions", () => {
 
   it("A: 'why do you keep asking me that' repeats only the current check-in", async () => {
     for (const say of ["why do you keep asking me that", "why are you asking"]) {
-      const [d] = await play(10, say);
-      expect(d.textToSpeak, say).toBe("Are you with me?");
-      expect(d.beatId, say).toBe(10);
+      const [d] = await play(2, say);
+      expect(d.textToSpeak, say).toBe("Did you get a chance to take it for a test drive?");
+      expect(d.beatId, say).toBe(2);
     }
+  });
+
+  it("Phase 2: during the explanation 'why do you keep asking me that' stops the asking and carries on", async () => {
+    const [d] = await play(10, "why do you keep asking me that");
+    expect(d.textToSpeak).not.toContain("Are you with me?");
+    expect(d.beatId).toBe(11);
   });
 
   it("A: another language gets LANGUAGE_LINE and holds the beat", async () => {
@@ -205,7 +218,8 @@ describe("multi-turn regressions", () => {
   it("B: the unknown-question line never implies coverage", async () => {
     const [d] = await play(8, "what about hail?");
     expect(d.textToSpeak).toContain(UNKNOWN_QUESTION_LINE);
-    expect(d.textToSpeak).toContain(CLARIFY_LINE);
+    expect(d.textToSpeak).not.toContain(CLARIFY_LINE); // Phase 2: no check-in during the explanation
+    expect(d.beatType).toBe("continue");
     expect(d.textToSpeak.toLowerCase()).not.toContain("covered");
   });
 
@@ -264,7 +278,9 @@ describe("multi-turn regressions", () => {
     expect(d.stopped).toBe(false);
     expect(d.textToSpeak).not.toContain("I don't have that detail");
     expect(d.textToSpeak).not.toContain(body);
-    expect(d.textToSpeak).toContain(getBeatCheckInQuestion(beat15));
+    // Phase 2: answer, "back to where we were", and on (no "You understand?")
+    expect(d.textToSpeak).not.toContain(getBeatCheckInQuestion(beat15));
+    expect(d.beatType).toBe("continue");
   });
 
   it("A: 'what do you mean' without a number is still a repeat request", () => {
@@ -302,7 +318,7 @@ describe("multi-turn regressions", () => {
     expect(d.textToSpeak.trim()).toMatch(/Are you ready to finalize\?$/);
   });
 
-  it("C: a remote classifier slower than the cap holds the beat with the clarify line", async () => {
+  it("C: a remote classifier slower than the cap: during the explanation Max carries on (Phase 2)", async () => {
     const saved = { xai: process.env.XAI_API_KEY, openai: process.env.OPENAI_API_KEY };
     process.env.XAI_API_KEY = "test-key";
     // A classifier that never answers, but honors the abort signal
@@ -323,8 +339,9 @@ describe("multi-turn regressions", () => {
       const turn = processControllerTurn(sid, line);
       await vi.advanceTimersByTimeAsync(LLM_CLASSIFIER_TIMEOUT_MS + 10);
       const d = await turn;
-      expect(d.textToSpeak).toBe(CLARIFY_LINE);
-      expect(d.beatId).toBe(9);
+      expect(d.textToSpeak).not.toBe(CLARIFY_LINE);
+      expect(d.beatId).toBe(10);
+      expect(d.intent).toBe("move_on");
       expect(d.metrics).toMatchObject({ usedLLM: true, classifierTimedOut: true });
     } finally {
       vi.unstubAllGlobals();

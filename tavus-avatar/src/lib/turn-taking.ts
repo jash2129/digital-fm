@@ -273,6 +273,12 @@ export const BARGE_IN_CUTOFF_WORDS = [
 // (Deepgram finalises after 0.3 s of quiet) ended turns on a normal thinking pause. Quick answers stay
 // fast; a sentence that is clearly unfinished, or a long story, gets more room.
 // -----------------------------------------------------------------------------
+/**
+ * After a "continue" part of the explanation, how long Max waits for the customer before carrying on
+ * (was 3.5 s; TXM: "don't snooze"). The customer can still cut in at any time.
+ */
+export const CONTINUE_PAUSE_MS = 1500;
+
 export const END_OF_TURN_MS = {
   /** "yes", "okay", "sounds good" */
   quick: 300,

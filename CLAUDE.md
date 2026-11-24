@@ -131,6 +131,13 @@ project planning thread, not in this repo. Below is what's actually landed in co
   yet deleted (unused by Max, do not build on it): the Tavus-path `escalate_to_human` tool in
   `persona-tools.ts`, `POST /api/escalation`, `src/app/content/escalate/page.tsx`, and the
   "6. Escalate" operator button in `src/components/liveavatar-demo.tsx`.
+- **Presentation flow (Phase 2)**: during the explanation (Beats 6-21, `isPresentationBeat`) Max asks
+  no check-ins and flows on (`flowPresentation` in `beat-controller.ts`; the call screen carries on
+  after `CONTINUE_PAUSE_MS` = 1.5 s). A "no", "I'm confused" or "what does that mean" gets the beat's
+  one-line recap (`beatRecap`; Beat 6's names the deal's car from TXM's brand table), never the whole
+  paragraph again; "keep going / next / skip / stop repeating" (`isCarryOn`) move on; unclear turns
+  move on; pushback or "hmm" gets the recap once; a lone word never jumps ahead. Question beats
+  (consent, test drive, walkaround, price, close) are unchanged. `src/lib/presentation-flow.test.ts`.
 - **Tests**: `npm test` (Vitest) covers the concurrency fix (including a real concurrent-HTTP-request
   integration test against a mocked Tavus API, so it doesn't need live Tavus credits), visitor cookie
   handling, the auth middleware's fail-closed behavior, and deal-context/usage-logging. `server-only`

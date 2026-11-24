@@ -87,7 +87,16 @@ describe("1: Step 0 only says 'glad to hear that' to a good answer", () => {
 });
 
 describe("2: a no-pressure reply to 'I'm not paying for anything extra'", () => {
-  it.each([1, 4, 9])("at Beat %i: reassures, then re-asks the pending question", async (beat) => {
+  it("at Beat 9 (the explanation): reassures and carries on, no check-in (Phase 2)", async () => {
+    for (const line of ["I'm not paying for anything extra.", "you always upsell", "don't pressure me"]) {
+      const t = await say(atBeat(9), line);
+      expect(t.textToSpeak).toBe(NO_PRESSURE_LINE);
+      expect(t.beatId).toBe(9);
+      expect(t.beatType).toBe("continue");
+    }
+  });
+
+  it.each([1, 4])("at Beat %i: reassures, then re-asks the pending question", async (beat) => {
     for (const line of ["I'm not paying for anything extra.", "you always upsell", "don't pressure me"]) {
       const sid = atBeat(beat);
       const t = await say(sid, line);

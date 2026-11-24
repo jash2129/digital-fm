@@ -136,7 +136,20 @@ describe("3: 'I didn't catch that' and 'I don't understand' get the right reply"
 });
 
 describe("4: price objections before the price is quoted", () => {
-  it.each([4, 9, 19])("at Beat %i: no counter, a 'price in a moment' reply, then the pending question", async (beat) => {
+  it.each([9, 19])("at Beat %i (the explanation): no counter, a 'price in a moment' reply, then on (Phase 2)", async (beat) => {
+    for (const line of ["That's too much", "I can't afford that", "can you do better", "I'll give you $2 a day"]) {
+      const sid = atBeat(beat);
+      const t = await say(sid, line);
+      expect(t.textToSpeak.startsWith(PRICE_LATER_LINE), line).toBe(true);
+      expect(t.textToSpeak).not.toMatch(/\?$/);
+      expect(t.beatType).toBe("continue");
+      expect(t.textToSpeak).not.toContain(UNKNOWN_QUESTION_LINE);
+      expect(t.beatId).toBe(beat);
+      expect(getOrCreateCallState(sid).concession_stage ?? 1).toBe(1);
+    }
+  });
+
+  it.each([4])("at Beat %i: no counter, a 'price in a moment' reply, then the pending question", async (beat) => {
     for (const line of ["That's too much", "I can't afford that", "can you do better", "I'll give you $2 a day"]) {
       const sid = atBeat(beat);
       const t = await say(sid, line);

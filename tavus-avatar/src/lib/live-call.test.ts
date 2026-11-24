@@ -129,7 +129,8 @@ describe("S: greetings re-ask the pending question", () => {
     for (const [beat, say] of [[10, "Hello."], [7, "can you hear me"]] as const) {
       const sid = fresh(beat);
       const d = await processClientTurn(sid, say, 1);
-      expect(d.textToSpeak.trim().endsWith("?"), `${beat} ${say}`).toBe(true);
+      // Phase 2: during the explanation the reassurance flows on instead of asking a check-in
+      expect(d.textToSpeak.trim().endsWith("?") || d.beatType === "continue", `${beat} ${say}`).toBe(true);
       expect(d.beatId, `${beat} ${say}`).toBe(beat);
     }
   });
@@ -242,7 +243,8 @@ describe("Follow-up 7 A: a rollback never undoes the customer's progress", () =>
     commitTurn(sid, 2, false, 0); // cut at the top again
     const third = await processClientTurn(sid, "okay", 3);
     expect(third.textToSpeak).not.toBe(again.textToSpeak);
-    expect(third.textToSpeak.trim().endsWith("?")).toBe(true); // just its question
+    // Beat 6 asks nothing any more (Phase 2): the rest of the line, flowing on
+    expect(third.beatType).toBe("continue");
   });
 });
 
@@ -289,7 +291,9 @@ describe("Follow-up 7 B: the customer says the vehicle is wrong", () => {
     const c = await processClientTurn(sid, "I didn't buy a Mazda", 3);
     expect(b.textToSpeak.startsWith("Understood, I've noted it, and I'll have the sales team confirm the vehicle details.")).toBe(true);
     expect(new Set([a.textToSpeak, b.textToSpeak, c.textToSpeak]).size).toBe(3);
-    for (const d of [a, b, c]) expect(d.beatId).toBe(9);
+    // Phase 2: during the explanation a third correction, with nothing new to say, carries on
+    for (const d of [a, b]) expect(d.beatId).toBe(9);
+    expect(c.beatId).toBeLessThanOrEqual(10);
   });
 
   it("the live call's phrasings are all recognized", () => {

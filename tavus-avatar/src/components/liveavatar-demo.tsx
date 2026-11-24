@@ -16,6 +16,7 @@ import {
   bargeInDecision,
   endOfTurnWaitMs,
   END_OF_TURN_MS,
+  CONTINUE_PAUSE_MS,
   InterimBuffer,
   type RecognizerResult,
   type AvatarCommand,
@@ -1499,16 +1500,16 @@ export function LiveAvatarDemo() {
             // Put avatar in attentive listening / head-nod state while waiting for user response
             void voiceRef.current?.queue.startListening().catch(() => {});
 
-            // Section 3.3: continue beats pause 3500ms. If user does not speak, send next beat.
+            // Continue beats pause CONTINUE_PAUSE_MS (1.5 s). If the customer does not speak, send next beat.
             if (lastBeatTypeRef.current === "continue" && isConnectedRef.current && !isUserSpeakingRef.current) {
               if (continuePauseTimerRef.current) clearTimeout(continuePauseTimerRef.current);
-              console.log("[beat-controller] Continue beat finished. Pausing 3500ms before auto-advancing to next beat...");
+              console.log(`[beat-controller] Continue beat finished. Pausing ${CONTINUE_PAUSE_MS}ms before auto-advancing to next beat...`);
               continuePauseTimerRef.current = setTimeout(() => {
                 if (isConnectedRef.current && !isUserSpeakingRef.current && !isGrokProcessingRef.current) {
-                  console.log("[beat-controller] 3500ms pause elapsed without user speech. Advancing to next beat!");
+                  console.log(`[beat-controller] ${CONTINUE_PAUSE_MS}ms pause elapsed without user speech. Advancing to next beat!`);
                   turnControllerRef.current?.onTranscript("proceed");
                 }
-              }, 3500);
+              }, CONTINUE_PAUSE_MS);
             }
           }
         } catch {
