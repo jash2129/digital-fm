@@ -142,7 +142,16 @@ export const ROLE_EXPLAIN_LINE = "I'm Max, the finance manager. I go over your p
 
 // Stage 0 Transition into Legal Disclosure
 // Status: APPROVED
-export const STEP_0_TRANSITION_LINE = "Glad to hear that! Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.";
+// The recording disclosure, approved by TXM 2026-11-25 (replaces "…this transaction is recorded audio
+// and video, also I'm required by the law … to make sure you understand first okay"). One source for
+// every path: Beat 1, the greeting's transition, free AI, the safety checks and the post-call review.
+// beats.json keeps TXM's original text; renderBeatText says this instead.
+export const DISCLOSURE_TEXT =
+  "Before we begin, this conversation is being recorded, both audio and video. I also need to go over everything with you before you sign anything, so you know exactly what you're agreeing to.";
+export const DISCLOSURE_LINE = `${DISCLOSURE_TEXT} Is that okay?`;
+/** Max said the disclosure (the approved wording, or the old one in older call logs) */
+export const DISCLOSURE_RE = /\brecorded,? (?:both )?audio and video\b/i;
+export const STEP_0_TRANSITION_LINE = `Glad to hear that! ${DISCLOSURE_LINE}`;
 
 // Natural Conversational Affirmative Transition Bridges
 // Gives Max active-listening charisma rather than sounding like an automated script runner

@@ -1,4 +1,5 @@
 import "server-only";
+import { DISCLOSURE_RE } from "./max-lines";
 
 import type { CallState } from "./beat-controller";
 import { analyzeCallExperience } from "./call-experience-analyzer";
@@ -41,7 +42,7 @@ export function complianceChecks(log: HeygenCallLog, state?: CallState): string 
   const said = maxLines(log).join(" ");
   const furthest = state ? Math.max(state.current_beat, ...state.delivered_beats) : 0;
 
-  const disclosure = /recorded audio and video/i.test(said) ? "PASS" : furthest > 1 ? "FAIL" : "not reached";
+  const disclosure = DISCLOSURE_RE.test(said) ? "PASS" : furthest > 1 ? "FAIL" : "not reached";
   // Any daily amount under the $3 hard floor, in words or digits
   const underFloor = /\b(one|two) dollars?\b|\btwo (fifty|twenty five|seventy five)\b|\$\s?[0-2](\.\d+)?\b/i.test(said);
   const priceOffered = /\b(four|three) dollars?\b|\$\s?[3-4](\.\d+)?\b/i.test(said);

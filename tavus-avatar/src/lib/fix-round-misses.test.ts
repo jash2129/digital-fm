@@ -64,7 +64,7 @@ describe("misses in a row escalate instead of repeating", () => {
       expect(t.beatId).toBe(1);
     }
     expect(replies.slice(1)).toContain(CONSENT_SHORT_LINE);
-    expect(replies.filter((r) => r.includes("recorded audio and video")).length).toBeLessThanOrEqual(1);
+    expect(replies.filter((r) => r.includes("both audio and video")).length).toBeLessThanOrEqual(1);
   });
 
   it("at the price, misses never become a yes: a plain decision question instead", async () => {

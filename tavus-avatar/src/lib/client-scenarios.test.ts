@@ -25,7 +25,7 @@ describe("Client Scenarios Human Experience Validation", () => {
 
     // Turn 4: Agreement to proceed into disclosure
     const t4 = await processControllerTurn(sessionId, "Okay, let's proceed.", DEFAULT_DEAL_CONFIG);
-    expect(t4.textToSpeak).toContain("recorded audio and video");
+    expect(t4.textToSpeak).toContain("both audio and video");
 
     // Turn 5: Disclosure accepted -> Beat 2
     const t5 = await processControllerTurn(sessionId, "Yes, that's fine.", DEFAULT_DEAL_CONFIG);
@@ -93,7 +93,7 @@ describe("Client Scenarios Human Experience Validation", () => {
 
     // Turn 3: Disclosure
     const t3 = await processControllerTurn(sessionId, "Yeah, sounds good to me.", DEFAULT_DEAL_CONFIG);
-    expect(t3.textToSpeak).toContain("recorded audio and video");
+    expect(t3.textToSpeak).toContain("both audio and video");
 
     // Turn 4: Customer acknowledges recording -> moves to Beat 2
     const t4 = await processControllerTurn(sessionId, "Understood.", DEFAULT_DEAL_CONFIG);
@@ -181,7 +181,7 @@ describe("Client Scenarios Human Experience Validation", () => {
     const t4 = await processControllerTurn(sessionId, "I'm listening, get to the point.", DEFAULT_DEAL_CONFIG);
     expect(t4.textToSpeak).toContain("Understood, I value your time and will keep this crisp, direct, and straight to the point");
     expect(t4.textToSpeak).not.toContain("Awesome, so glad to hear that!");
-    expect(t4.textToSpeak).toContain("recorded audio and video");
+    expect(t4.textToSpeak).toContain("both audio and video");
 
     // Turn 5: Move to Beat 2
     const t5 = await processControllerTurn(sessionId, "Fine, whatever.", DEFAULT_DEAL_CONFIG);

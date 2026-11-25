@@ -101,6 +101,9 @@ import {
   COACH_MORE_LINE,
   COACH_DONE_LINE,
   COACH_APPLIED_LINE,
+  DISCLOSURE_LINE,
+  DISCLOSURE_TEXT,
+  DISCLOSURE_RE,
   STRAIGHT_TO_NUMBERS_LINE,
 } from "./max-lines";
 import { normalizeSpeech } from "./echo-guard";
@@ -329,8 +332,7 @@ export function whoIsMaxAnswer(transcript: string): string | null {
 // disclosure Max never said. Whatever the path (script, AI, free mode), a reply at Beat 1 before the
 // disclosure has been said now ends with the full disclosure instead of a bare consent question.
 // -----------------------------------------------------------------------------
-const DISCLOSURE_KEY = "recorded audio and video";
-const hasDisclosure = (t: string | undefined) => !!t && t.toLowerCase().replace(/[^a-z ]/g, " ").replace(/\s+/g, " ").includes(DISCLOSURE_KEY);
+const hasDisclosure = (t: string | undefined) => !!t && DISCLOSURE_RE.test(t);
 const CONSENT_TAILS = ["Is that okay with you?", "Is that okay?", "Is that alright with you?", "Is that all right with you?"];
 
 /** The customer asked who Max is and the reply does not say: Max's answer goes first */
@@ -809,7 +811,8 @@ export function renderFactoryWarranty(text: string, make: string | undefined): s
 }
 
 export function renderBeatText(beat: Beat, dealConfig: DealConfig, state?: CallState): string {
-  let rendered = beat.id === 6 ? renderFactoryWarranty(beat.text, dealConfig.vehicle_make) : beat.text;
+  // Beat 1: the recording disclosure in the wording TXM approved on 2026-11-25 (beats.json keeps the original)
+  let rendered = beat.id === 1 ? `"${DISCLOSURE_LINE}"` : beat.id === 6 ? renderFactoryWarranty(beat.text, dealConfig.vehicle_make) : beat.text;
   if (beat.id === 24) {
     const yearMakeModel = `${dealConfig.vehicle_year} ${dealConfig.vehicle_make} ${dealConfig.vehicle_model}`.trim();
     const chosen = state?.chosen_coverages ?? [];
@@ -1015,6 +1018,9 @@ export function isAvatarScriptEcho(transcript: string): boolean {
     "handling your paperwork today",
     "how has your experience been with our team",
     "transaction is recorded audio and video",
+    "being recorded both audio and video",
+    "before you sign anything",
+    "exactly what you re agreeing to",
     "required by the law to go over everything",
     "before you sign any paperwork",
     "make sure you understand first okay",
@@ -2912,7 +2918,7 @@ export async function generateStep0Turn(
   }
 
   // The opener no longer introduces Max; do it once here unless he already answered "who are you?"
-  if (!opts.introduced) transitionLine = transitionLine.replace("Now before I start", `${STEP_0_INTRO_LINE} Now before I start`);
+  if (!opts.introduced) transitionLine = transitionLine.replace("Before we begin", `${STEP_0_INTRO_LINE} Before we begin`);
 
   return {
     text: formatSpeechText(transitionLine),
@@ -3525,9 +3531,8 @@ async function resumeAfterCoaching(sessionId: string, state: CallState, dealConf
 // Code still enforces the price ladder, the facts and the disclosure (src/lib/free-ai.ts).
 // -----------------------------------------------------------------------------
 /** The recording disclosure the AI must say word for word (TXM's own words, in Max's voice) */
-export const FREE_DISCLOSURE =
-  "This transaction is recorded audio and video, and I'm required by law to go over everything with you before you sign any paperwork, to make sure you understand.";
-const saysDisclosure = (t: string) => /recorded audio and video/i.test(t);
+export const FREE_DISCLOSURE = DISCLOSURE_TEXT;
+const saysDisclosure = (t: string) => DISCLOSURE_RE.test(t);
 
 function freeScript(dealConfig: DealConfig) {
   const beats = BEATS.map((b) => ({ id: b.id, text: formatSpeechText(renderBeatText(b, dealConfig)) }));

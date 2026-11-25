@@ -42,7 +42,7 @@ describe("1: Step 0 only says 'glad to hear that' to a good answer", () => {
     expect(t.textToSpeak).not.toContain(GLAD);
     expect(t.textToSpeak.startsWith(STEP_0_SORRY_LINE)).toBe(true);
     expect(t.beatId).toBe(1);
-    expect(t.textToSpeak).toContain("recorded audio and video");
+    expect(t.textToSpeak).toContain("both audio and video");
   });
 
   it("a 3rd wrong-vehicle correction stays on the pending question, never advances", async () => {
@@ -229,7 +229,7 @@ const SCRIPTS: Record<string, Turn[]> = {
   ],
   "S5 two no's at the disclosure": [
     { say: "yes", beat: 0, has: STEP_0_CHECKIN_LINE },
-    { say: "fine", beat: 1, has: "recorded audio and video" },
+    { say: "fine", beat: 1, has: "both audio and video" },
     { say: "No.", beat: 1, has: LEAD_IN_NO },
     { say: "No.", beat: 1, has: TAKE_TIME_LINE, not: "end this session" },
     { say: "okay", beat: 2 },

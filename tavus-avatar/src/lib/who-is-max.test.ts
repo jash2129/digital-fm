@@ -41,7 +41,7 @@ describe("on the turn the disclosure is due", () => {
       await say(sid, "Yes, I can hear and see you");
       const d = await say(sid, q);
       expect(d.textToSpeak, q).toMatch(ANSWERED);
-      expect(d.textToSpeak, q).toMatch(/recorded audio and video/);
+      expect(d.textToSpeak, q).toMatch(/both audio and video/);
       expect(d.beatId, q).toBe(1);
     }
   });
@@ -87,7 +87,7 @@ describe("guards on every path (script, AI wording, free mode)", () => {
     const d = decision(`${AI_DISCLOSURE_LINE} Is that okay with you?`, 1);
     ensureDisclosure(d);
     expect(d.textToSpeak.startsWith(AI_DISCLOSURE_LINE)).toBe(true);
-    expect(d.textToSpeak).toMatch(/recorded audio and video/);
+    expect(d.textToSpeak).toMatch(/both audio and video/);
     expect(d.state.disclosure_said).toBe(true);
   });
 

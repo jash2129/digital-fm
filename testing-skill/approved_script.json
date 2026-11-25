@@ -48,13 +48,13 @@
       "title": "Stage 1: Mandatory Legal Audio/Video Disclosure",
       "description": "Mandatory legal notice that call is recorded for insurance and required by law. Strictly 99% verbatim match required.",
       "mandatory_verbatim_lines": [
-        "Before I start I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay."
+        "Before we begin, this conversation is being recorded, both audio and video. I also need to go over everything with you before you sign anything, so you know exactly what you're agreeing to. Is that okay?"
       ],
       "required_phrases": [
-        "recorded audio and video",
-        "required by the law",
-        "before you sign any paperwork",
-        "make sure you understand first okay"
+        "being recorded, both audio and video",
+        "go over everything with you",
+        "before you sign anything",
+        "Is that okay?"
       ],
       "forbidden_phrases": [
         "optional recording",

@@ -188,7 +188,7 @@ describe("in a call", () => {
     aiReplies({ say: "Great! So, let's talk about your coverage.", beat: 4 });
     const sid = newCall(0);
     const d = await say(sid, "Yes I can hear you, it's been great");
-    expect(d.textToSpeak).toMatch(/recorded audio and video/);
+    expect(d.textToSpeak).toMatch(/both audio and video/);
     expect(d.beatId).toBe(1);
     expect(getOrCreateCallState(sid).free_disclosure_given).toBe(true);
   });

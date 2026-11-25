@@ -122,7 +122,7 @@ describe("Two-Agent Automated Call Testing (Agent 1 Max vs Agent 2 Customer Simu
     // Follow-up 7 D: the short opener asks the check-in; Max introduces himself on the way into Beat 1
     expect(result.timingLogs[0].avatarText).toContain("congratulations on your new vehicle");
     // Turn 1: Beat 1 Legal Disclosure
-    expect(result.timingLogs[1].avatarText).toContain("this transaction is recorded audio and video");
+    expect(result.timingLogs[1].avatarText).toContain("this conversation is being recorded, both audio and video");
     // Turn 2: Beat 2
     expect(result.timingLogs[2].avatarText).toContain("2026 Mazda CX five");
     // Median turn latency should be under 2.5s

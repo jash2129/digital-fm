@@ -4,7 +4,8 @@
     {
       "id": "disclosure",
       "topic": "Recording and legal review",
-      "answer": "This transaction is recorded audio and video, and I'm required by law to go over everything with you before you sign any paperwork, to make sure you understand.",
+      "answer": "This conversation is being recorded, both audio and video, and I need to go over everything with you before you sign anything, so you know exactly what you're agreeing to.",
+      "approved": "Wording approved by TXM 2026-11-25",
       "source_beats": [
         1
       ],
@@ -441,10 +442,10 @@
   "needs_txm": [
     {
       "question": "What is GAP? What does GAP cover?",
-      "txm_must_provide": "Approve or correct the proposed answer (2026-11-25). Confirm: any limits or exclusions on 'pays the difference' (deductible, maximum payout); the state 5% cap (Nov 21 transcript garbled); that the pro-rated refund applies to every GAP contract; and whether GAP is part of the package Max presents at all (Beats 1-25 never mention it). To use it: set status to \"approved\".",
+      "txm_must_provide": "Approved by TXM 2026-11-25, as proposed.",
       "answer": "GAP covers the difference between what your insurance pays if the car is totaled or stolen and what you still owe on the loan, so you wouldn't have to pay that difference yourself. The GAP term matches your loan term, and it's cancelable any time with a pro-rated refund based on time and miles used. The exact terms are in your contract, and I'll go over them with you.",
       "never_say": ["paid 100% in full", "65 to 75 percent", "any dollar price not from the pricing system", "it's auto insurance"],
-      "status": "needs_txm",
+      "status": "approved",
       "keywords": ["gap", "gap insurance", "gap coverage", "gap protection", "totaled", "owe on the loan", "loan balance"]
     },
     {

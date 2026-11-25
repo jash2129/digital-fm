@@ -113,7 +113,7 @@ describe("3: 'I didn't catch that' and 'I don't understand' get the right reply"
     const t = await say(sid, "I don't understand what you do");
     expect(t.textToSpeak.startsWith(ROLE_EXPLAIN_LINE)).toBe(true);
     expect(t.textToSpeak).toMatch(/\?$/);
-    expect(t.textToSpeak).not.toContain("recorded audio and video");
+    expect(t.textToSpeak).not.toContain("both audio and video");
     expect(t.beatId).toBe(1);
   });
 
@@ -316,7 +316,7 @@ const SCRIPTS: Record<string, Turn[]> = {
     { say: "yes", beat: 0, has: STEP_0_CHECKIN_LINE },
     { say: "Sorry, what? I didn't catch that.", beat: 0, has: STEP_0_CHECKIN_LINE, not: "Thanks for sharing" },
     { say: "good", beat: 1, has: GLAD },
-    { say: "I don't understand what you do", beat: 1, has: ROLE_EXPLAIN_LINE, not: "recorded audio and video" },
+    { say: "I don't understand what you do", beat: 1, has: ROLE_EXPLAIN_LINE, not: "both audio and video" },
     { say: "I still don't get it", beat: 1, has: WHICH_PART_LINE, not: UNKNOWN_QUESTION_LINE },
     { say: "okay", beat: 2 },
   ],

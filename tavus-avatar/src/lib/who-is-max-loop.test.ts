@@ -50,17 +50,31 @@ describe("'who are you' is answered on every beat", () => {
       calls++;
       if (!ANSWERED.test(d.textToSpeak)) skipped++;
       // At the disclosure turn the disclosure is never dropped for the answer
-      if (lead.length === 1 && d.beatId === 1) expect(d.textToSpeak, q).toMatch(/recorded audio and video/);
+      if (lead.length === 1 && d.beatId === 1) expect(d.textToSpeak, q).toMatch(/both audio and video/);
     }
     expect(calls).toBe(200);
     expect(skipped).toBe(0);
   });
 });
 
-describe("GAP stays unspoken until TXM approves it", () => {
-  it("the proposed answer is not used while its status is needs_txm", async () => {
-    expect(retrieve("what is gap").map((f) => f.id)).not.toContain("gap");
-    const d = await say(atBeat(9), "What is GAP?");
-    expect(d.textToSpeak).not.toMatch(/insurance pays if the car is totaled/);
+describe("GAP (approved by TXM 2026-11-25)", () => {
+  it("is answered with the approved wording, and the call carries on", async () => {
+    for (const q of ["What is GAP?", "what does GAP cover", "do I need gap insurance?"]) {
+      const d = await say(atBeat(9), q);
+      expect(d.textToSpeak, q).toMatch(/GAP covers the difference between what your insurance pays/);
+      expect(d.textToSpeak, q).not.toMatch(/100% in full|65 to 75 percent/i);
+      expect(d.beatId, q).toBe(9);
+    }
+  });
+
+  it("the old disclosure wording is gone from everything Max says", async () => {
+    const sid = `wd_${Math.random().toString(36).slice(2)}`;
+    resetCallState(sid);
+    getOrCreateCallState(sid, DEFAULT_DEAL_CONFIG);
+    await say(sid, "Yes, I can hear and see you");
+    const d = await say(sid, "It's been great");
+    expect(d.textToSpeak).toContain("Before we begin, this conversation is being recorded, both audio and video.");
+    expect(d.textToSpeak).toMatch(/Is that okay\?$/);
+    expect(d.textToSpeak).not.toMatch(/required by the law|first okay/);
   });
 });

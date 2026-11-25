@@ -62,7 +62,7 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
       const decision2 = await processControllerTurn(sessionId, "The team was great today");
       expect(decision2.beatId).toBe(1);
       expect(decision2.state.step0_completed).toBe(true);
-      expect(decision2.textToSpeak).toContain("this transaction is recorded audio and video");
+      expect(decision2.textToSpeak).toContain("this conversation is being recorded, both audio and video");
     });
 
     it("pointer never moves backward", async () => {
@@ -158,7 +158,7 @@ describe("Part 3 — Beat Controller Unit & Simulation Tests", () => {
           userInput: "Everything went smoothly today!",
           intent: "agree",
           topic_beat_ids: [],
-          expectedKeyword: "recorded audio and video",
+          expectedKeyword: "both audio and video",
         },
         {
           stepName: "1. agree -> advances to Beat 2",
