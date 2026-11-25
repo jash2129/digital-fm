@@ -1452,6 +1452,8 @@ export function classifyCustomerInputRuleBased(
 
   // 1. AI Question (check before human request so questions like "are you an AI avatar or a real person?" are handled as AI disclosure)
   if (
+    // "are you AI" (no "an") was read as "yes" at Beat 4 and moved the call on
+    whoIsMaxAnswer(norm) === AI_DISCLOSURE_LINE ||
     norm.includes("are you an ai") ||
     norm.includes("are you a robot") ||
     norm.includes("are you real") ||

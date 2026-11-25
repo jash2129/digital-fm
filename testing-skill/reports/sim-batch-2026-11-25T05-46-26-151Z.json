@@ -1,0 +1,3244 @@
+[
+  {
+    "id": "sim-hard_haggler-3-mwvp8pw7",
+    "persona": "hard_haggler",
+    "turns": [
+      {
+        "customer": "Yes I can hear and see you just fine.",
+        "max": "Awesome, great to connect with you! First of all, congratulations on your new vehicle... How has your experience been with our team so far?",
+        "beat": 0
+      },
+      {
+        "customer": "It's been good so far. The car looks sharp. Let's go over the numbers.",
+        "max": "Awesome, so glad to hear that! Our team works really hard to take care of our customers. I'm Max, your finance manager, and I'll be handling your paperwork today. Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.",
+        "beat": 1
+      },
+      {
+        "customer": "Okay that's fine, go ahead and start.",
+        "max": "First I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork, have you got the chance to drive the vehicle that you are buying.",
+        "beat": 2
+      },
+      {
+        "customer": "Yes I drove it. It was nice. Can we move on to the numbers?",
+        "max": "I'm going to cover that in just a moment. When you came back from the test drive, the sales person did the walkaround and showed you all the features, bells, and whistles in the car.",
+        "beat": 3
+      },
+      {
+        "customer": "Yes they did. Everything looks good. Can we please get to the paperwork and pricing now?",
+        "max": "Understood, let's go straight to the numbers. You can get everything I just mentioned for only four dollars a day a coffee a day and everything is covered in your vehicle not even that a coffee a day from starbucks is eight dollars and sixty cent for less than half a cup of a coffee a day you will get everything covered so you don't have to worry about paying anyone anything in the future",
+        "beat": 22
+      },
+      {
+        "customer": "That's too much. Can you do better? I'll give you two dollars a day.",
+        "max": "Three dollars a day is our absolute hard floor for full vehicle protection — at less than the cost of a cup of coffee, it's the strongest coverage we offer. Let's get you locked in.",
+        "beat": 22
+      },
+      {
+        "customer": "That's still high. I'll give you two dollars a day.",
+        "max": "I understand. Three dollars a day is the lowest I can go. Would you like to go ahead at three dollars a day, or keep just your factory warranty?",
+        "beat": 23
+      },
+      {
+        "customer": "That's still high. I'll give you two dollars a day.",
+        "max": "No problem at all, you'll keep your factory warranty. Let's finish your paperwork. Now that we've confirmed your paperwork, let me quickly verify your full legal name, spelling, and current mailing address before final signature.",
+        "beat": 25
+      },
+      {
+        "customer": "No, wait. Two dollars a day or I'm not doing the protection package. That's my final offer.",
+        "max": "No problem at all, you'll keep your factory warranty. Let's finish your paperwork. Now that we've confirmed your paperwork, let me quickly verify your full legal name, spelling, and current mailing address before final signature.",
+        "beat": 25
+      },
+      {
+        "customer": "That's fine, no protection package. Let's finish the paperwork with just the factory warranty. My name is spelled J O H N D O E. Address is 123 Main Street, Anytown, USA 12345.",
+        "max": "Everything on your paperwork is all set and finalized. Congratulations on your new vehicle, and enjoy the ride!",
+        "beat": 25
+      }
+    ],
+    "glitched": 0,
+    "endedBy": "max",
+    "scorecard": {
+      "checks": [
+        {
+          "id": "no_loop",
+          "label": "Max never loops",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "varied_reask",
+          "label": "Re-asks are not word for word",
+          "severity": "soft",
+          "pass": false,
+          "detail": "said twice in a row: \"No problem at all, you'll keep your factory warranty. Let's finish your paperwork. Now tha…\""
+        },
+        {
+          "id": "few_recoveries",
+          "label": "Rarely has to say he didn't understand",
+          "severity": "soft",
+          "pass": true
+        },
+        {
+          "id": "no_restart",
+          "label": "Never jumps back to the start",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "fragment_not_answer",
+          "label": "Fragments are not answers",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "price_approved",
+          "label": "Only approved prices, never under $3",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "ladder_on_no",
+          "label": "A 'no' to the price gets a lower price",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "no_confirm_after_refusal",
+          "label": "Never confirms the package after a refusal",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "not_stuck",
+          "label": "Never stuck on one beat",
+          "severity": "soft",
+          "pass": true
+        }
+      ],
+      "passed": 8,
+      "failed": 1,
+      "furthestBeat": 25,
+      "reachedPrice": true,
+      "completed": true
+    },
+    "seconds": 12,
+    "understanding": [
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 12,
+        "totalMs": 12,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 4,
+        "firstMs": 5,
+        "totalMs": 5,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      }
+    ]
+  },
+  {
+    "id": "sim-skeptical_client-2-mwvp8pw6",
+    "persona": "skeptical_client",
+    "turns": [
+      {
+        "customer": "Yeah, I can see and hear you fine. Who are you? Is this a sales call?",
+        "max": "I'm Max, your finance manager. My job is to go over your paperwork and the coverage options with you before you sign. How has your experience been with our team so far?",
+        "beat": 0
+      },
+      {
+        "customer": "Who are you really? Is this a sales call?",
+        "max": "I'm Max, your finance manager. My job is to go over your paperwork and the coverage options with you before you sign. How has your experience been with our team so far?",
+        "beat": 0
+      },
+      {
+        "customer": "Can we start over? Who are you really? Is this a sales call?",
+        "max": "As I mentioned, I'm Max, your finance manager. How has your experience been with our team so far?",
+        "beat": 0
+      },
+      {
+        "customer": "It's been okay. What paperwork we doing? Is this mandatory?",
+        "max": "Awesome, so glad to hear that! Our team works really hard to take care of our customers. Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.",
+        "beat": 1
+      },
+      {
+        "customer": "any paperwork to make",
+        "max": "Would you like me to continue, or go over that again?",
+        "beat": 1
+      },
+      {
+        "customer": "Yeah keep going. What's the factory warranty cover exactly?",
+        "max": "First I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork, have you got the chance to drive the vehicle that you are buying.",
+        "beat": 2
+      },
+      {
+        "customer": "Yeah I drove it. What's next?",
+        "max": "Awesome! When you came back from the test drive, the sales person did the walkaround and showed you all the features, bells, and whistles in the car.",
+        "beat": 3
+      },
+      {
+        "customer": "Yeah they did. Can you just go over the numbers now?",
+        "max": "Great. What's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?",
+        "beat": 4
+      },
+      {
+        "customer": "Not really. Tell me what it covers and how long. Is this mandatory?",
+        "max": "Would you like me to continue, or go over that again?",
+        "beat": 4
+      },
+      {
+        "customer": "Yeah go on. What's the daily price for that protection package?",
+        "max": "I'm going to cover that in just a moment. There is actually more information about the warranty I need to go over with you to make sure you do understand everything... Is that okay?",
+        "beat": 5
+      },
+      {
+        "customer": "Fine, go ahead. What's the daily price for the protection package though?",
+        "max": "Understood. Would you like me to continue, or go over that again?",
+        "beat": 5
+      },
+      {
+        "customer": "Just keep going. What's the daily price?",
+        "max": "Understood, let's go straight to the numbers. You can get everything I just mentioned for only four dollars a day a coffee a day and everything is covered in your vehicle not even that a coffee a day from starbucks is eight dollars and sixty cent for less than half a cup of a coffee a day you will get everything covered so you don't have to worry about paying anyone anything in the future",
+        "beat": 22
+      },
+      {
+        "customer": "No that's too much. What's the total price?",
+        "max": "I understand. While four dollars is our standard rate, the best I can offer directly is three dollars and fifty cents a day. Which two coverages are most important to you?",
+        "beat": 23
+      },
+      {
+        "customer": "Still too high. What's the total for the whole thing?",
+        "max": "I want to make sure you get the right coverage. I can bring that down to three dollars and twenty-five cents a day. Does that sound fair?",
+        "beat": 23
+      },
+      {
+        "customer": "No still too much. How much is it total?",
+        "max": "Understood, let's go straight to the numbers. You can get everything I just mentioned for only three dollars and twenty-five cents a day a coffee a day and everything is covered in your vehicle not even that a coffee a day from starbucks is eight dollars and sixty cent for less than half a cup of a coffee a day you will get everything covered so you don't have to worry about paying anyone anything in the future",
+        "beat": 22
+      },
+      {
+        "customer": "No way. What's the full price for the package?",
+        "max": "To make this work for you, three dollars a day is our absolute hard floor for full vehicle protection. Are you ready to finalize at three dollars a day?",
+        "beat": 23
+      },
+      {
+        "customer": "No",
+        "max": "I understand. Three dollars a day is the lowest I can go. Would you like to go ahead at three dollars a day, or keep just your factory warranty?",
+        "beat": 23
+      },
+      {
+        "customer": "Keep just the factory warranty. Let's finish the paperwork.",
+        "max": "No problem at all, you'll keep your factory warranty. Let's finish your paperwork. Now that we've confirmed your paperwork, let me quickly verify your full legal name, spelling, and current mailing address before final signature.",
+        "beat": 25
+      },
+      {
+        "customer": "My name is David Thompson. Address is 123 Oak Street, Seattle. What's next?",
+        "max": "Everything on your paperwork is all set and finalized. Congratulations on your new vehicle, and enjoy the ride!",
+        "beat": 25
+      }
+    ],
+    "glitched": 2,
+    "endedBy": "max",
+    "scorecard": {
+      "checks": [
+        {
+          "id": "no_loop",
+          "label": "Max never loops",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "varied_reask",
+          "label": "Re-asks are not word for word",
+          "severity": "soft",
+          "pass": false,
+          "detail": "said twice in a row: \"I'm Max, your finance manager. My job is to go over your paperwork and the coverage option…\""
+        },
+        {
+          "id": "few_recoveries",
+          "label": "Rarely has to say he didn't understand",
+          "severity": "soft",
+          "pass": true
+        },
+        {
+          "id": "no_restart",
+          "label": "Never jumps back to the start",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "fragment_not_answer",
+          "label": "Fragments are not answers",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "price_approved",
+          "label": "Only approved prices, never under $3",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "ladder_on_no",
+          "label": "A 'no' to the price gets a lower price",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "no_confirm_after_refusal",
+          "label": "Never confirms the package after a refusal",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "not_stuck",
+          "label": "Never stuck on one beat",
+          "severity": "soft",
+          "pass": true
+        }
+      ],
+      "passed": 8,
+      "failed": 1,
+      "furthestBeat": 25,
+      "reachedPrice": true,
+      "completed": true
+    },
+    "seconds": 28,
+    "understanding": [
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 801,
+        "firstMs": 802,
+        "totalMs": 802,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 807,
+        "firstMs": 807,
+        "totalMs": 807,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 805,
+        "firstMs": 805,
+        "totalMs": 805,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 769,
+        "firstMs": 770,
+        "totalMs": 770,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      }
+    ]
+  },
+  {
+    "id": "sim-terse_tester-1-mwvp8pvg",
+    "persona": "terse_tester",
+    "turns": [
+      {
+        "customer": "yeah",
+        "max": "Awesome, great to connect with you! First of all, congratulations on your new vehicle... How has your experience been with our team so far?",
+        "beat": 0
+      },
+      {
+        "customer": "okay",
+        "max": "Awesome, so glad to hear that! Our team works really hard to take care of our customers. I'm Max, your finance manager, and I'll be handling your paperwork today. Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.",
+        "beat": 1
+      },
+      {
+        "customer": "yes Max carry on",
+        "max": "First I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork, have you got the chance to drive the vehicle that you are buying.",
+        "beat": 2
+      },
+      {
+        "customer": "yes",
+        "max": "Awesome! When you came back from the test drive, the sales person did the walkaround and showed you all the features, bells, and whistles in the car.",
+        "beat": 3
+      },
+      {
+        "customer": "yes",
+        "max": "Great. What's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?",
+        "beat": 4
+      },
+      {
+        "customer": "yes",
+        "max": "Gotcha. There is actually more information about the warranty I need to go over with you to make sure you do understand everything... Is that okay?",
+        "beat": 5
+      },
+      {
+        "customer": "yes Max carry on",
+        "max": "Right on. Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one. The first warranty is three years thirty-six thousand mile Base limited warranty. The second is five years sixty thousand mile powertrain which is referring to the engine and the transmission, I'm sure you and I agree thats a very good complementary warranty from the manufacturer",
+        "beat": 6
+      },
+      {
+        "customer": "proceed",
+        "max": "But what you do not know that this warranty is a defect only stated in the manual book of the vehicle in the glovebox page number four saying that this warranty from the manufacturer is against any thing that is misdesigned, misbuilt, or misinstalled.",
+        "beat": 7
+      },
+      {
+        "customer": "proceed",
+        "max": "Now there is another reason can cause any break down to the vehicle goes under wear and tear I'm sure you heard that phrase before. Three reasons usually cause the wear and tear. Climate, road conditions, and driving habits... especially here in Texas. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause premature wear and tear on the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car",
+        "beat": 8
+      },
+      {
+        "customer": "proceed",
+        "max": "Also Road conditions specially nowadays construction are everywhere and uneven service roads and potholes everywhere that can have big impact on the tires RIMS sensor electronic technology, engine transmission cooling system and tons of other parts on the vehicle",
+        "beat": 9
+      },
+      {
+        "customer": "proceed",
+        "max": "And finally the Driving habits the way I drive the way you drive in fact the way everyone drives have a huge impact on the vehicle they are driving and those are the main three reasons can cause any break down to the vehicle ninety-five percent of the time when the vehicle break down it due to wear and tear",
+        "beat": 10
+      },
+      {
+        "customer": "proceed",
+        "max": "And the first thing you do as in owner when the vehicle break down you go to any service place and the first thing the first place will do before they say anything to you by the law they must first diagnose the vehicle to find out what is the problem, once they diagnose the vehicle the manufacturer will step in and they are very cautious.",
+        "beat": 11
+      },
+      {
+        "customer": "proceed",
+        "max": "WHY? Because the manufacturer reserve the right to determine if the break down happen due to any Mis design or mis built or miss installed if they find out the break down happen because of them thats great because they will pay for it igf they find out the break down happen cause of you or the wear and tear unfortunately you will pay for it and like I said before ninety-five percent of the time when the vehicle break down it due to the wear and tear.",
+        "beat": 12
+      },
+      {
+        "customer": "proceed",
+        "max": "Thats why we don't feel comfortable that we will leave you in a good position without a good warranty around the vehicle. Why because we do have a part department we know how much the parts cost engine by itself can cost up to seven thousand transmission six thousand AC almost four thousand electronic and technology is the luck of the draw could cost anywhere from hundred dollar all the way up to twelve thousand dollar",
+        "beat": 13
+      },
+      {
+        "customer": "proceed",
+        "max": "If God forbid a sensor break down in the screens in the dashboard they cant just change that sensor that sensor is a part of a huge component they will have to take the whole thing out and replace it with a brand new one thats roughly sixty five hundred dollar part up to eighty five hundred dollar part depends on the vehicle thats not even include the labor charge",
+        "beat": 14
+      },
+      {
+        "customer": "proceed",
+        "max": "Labor will charge you anywhere between one hundred eighty to two hundred dollars per hour depend on the quality of the technician they are using in the service place and a job like that could take anywhere between ten hours and fifteen hours of labor to fix it so instead you pay seventy hundred dollar for parts plus ten hours of labor. No absolutely not",
+        "beat": 15
+      },
+      {
+        "customer": "proceed",
+        "max": "Thats why we recommend to you to wrap the true blanket cover warranty around the vehicle which is ten years hundred thousand mile warranty bumper to bumper and what I mean by that is a warranty will cover everything in the vehicle as far as engine transmission drive axle four wheel drive the suspension the steering the cooling system the electric the breaks the AC air condition sensors all the electronics and technology and the labor with zero deductible any where you go we kindly asking you to come here when you need to service the car we only get the benefits when you come visit any of our service locations across the metroplex",
+        "beat": 16
+      },
+      {
+        "customer": "proceed",
+        "max": "Also we know that the cost of ownership for you over the next five years will cost you thousands of dollars to maintain the vehicle thats why we include for you five years tire and wheel cover I'm assuming you will need two sets of tires over the next five years depends on your driving habits so instead you pay for eight tires three hundred and fifty dollar for each tire plus hundred and twenty five dollar installation thats almost five hundred dollar a pice eight of those will cost almost four thousand dollar instead you pay that no the policy will take care of that for you so you don't have to worry about paying that much",
+        "beat": 17
+      },
+      {
+        "customer": "proceed",
+        "max": "We also include for you the five years maintenance package that cover all your full synthetic oil change filters and tire rotation so instead you pay for a hundred twenty five dollar for every oil change plus twenty-nine dollars for filter plus a hundred fourty dollar for tire rotation every time you go to service your vehicle no say good buy to all that",
+        "beat": 18
+      },
+      {
+        "customer": "proceed",
+        "max": "Under this policy the only thing you have to worry about is just paying for your GAS and guess what we don't have cover for that",
+        "beat": 19
+      },
+      {
+        "customer": "proceed",
+        "max": "Now let me recap what I just said you get. Ten years hundred thousand mile bumper to bumper warranty that covers all the mechanic breake down all the electronic breake down all the parts all the labor with zero deductible you pay nothing out of your pocket every time you fix the vehicle",
+        "beat": 20
+      },
+      {
+        "customer": "proceed",
+        "max": "You also get the five years tire and wheels cover, cover all the tires and wheels for the next five years and finally your maintenance cover for five years cover all your full synthetic oil change all your filters and tire rotation so you don't have to worry about paying anything in the future and like I said the only thing you have to worry about is paying for your Gas",
+        "beat": 21
+      },
+      {
+        "customer": "proceed",
+        "max": "You can get everything I just mentioned for only four dollars a day a coffee a day and everything is covered in your vehicle not even that a coffee a day from starbucks is eight dollars and sixty cent for less than half a cup of a coffee a day you will get everything covered so you don't have to worry about paying anyone anything in the future",
+        "beat": 22
+      },
+      {
+        "customer": "no",
+        "max": "I understand. While four dollars is our standard rate, the best I can offer directly is three dollars and fifty cents a day. Which two coverages are most important to you?",
+        "beat": 23
+      },
+      {
+        "customer": "yes",
+        "max": "Which two of those do you see the most value in?",
+        "beat": 23
+      },
+      {
+        "customer": "proceed",
+        "max": "Great, so to confirm, we're moving forward with full vehicle protection for three dollars and fifty cents a day on your 2026 Mazda CX five... Are you ready to finalize?",
+        "beat": 24
+      },
+      {
+        "customer": "yes Max carry on",
+        "max": "Now that we've confirmed your paperwork, let me quickly verify your full legal name, spelling, and current mailing address before final signature.",
+        "beat": 25
+      },
+      {
+        "customer": "proceed",
+        "max": "I just need your full legal name, spelling, and current mailing address to verify.",
+        "beat": 25
+      },
+      {
+        "customer": "yes Max carry on",
+        "max": "No problem, you can confirm those details on your paperwork before you sign. Thank you.",
+        "beat": 25
+      }
+    ],
+    "glitched": 0,
+    "endedBy": "max",
+    "scorecard": {
+      "checks": [
+        {
+          "id": "no_loop",
+          "label": "Max never loops",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "varied_reask",
+          "label": "Re-asks are not word for word",
+          "severity": "soft",
+          "pass": true
+        },
+        {
+          "id": "few_recoveries",
+          "label": "Rarely has to say he didn't understand",
+          "severity": "soft",
+          "pass": true
+        },
+        {
+          "id": "no_restart",
+          "label": "Never jumps back to the start",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "fragment_not_answer",
+          "label": "Fragments are not answers",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "price_approved",
+          "label": "Only approved prices, never under $3",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "ladder_on_no",
+          "label": "A 'no' to the price gets a lower price",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "no_confirm_after_refusal",
+          "label": "Never confirms the package after a refusal",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "not_stuck",
+          "label": "Never stuck on one beat",
+          "severity": "soft",
+          "pass": true
+        }
+      ],
+      "passed": 9,
+      "failed": 0,
+      "furthestBeat": 25,
+      "reachedPrice": true,
+      "completed": true
+    },
+    "seconds": 32,
+    "understanding": [
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      }
+    ]
+  },
+  {
+    "id": "sim-confused_buyer-4-mwvp8pw7",
+    "persona": "confused_buyer",
+    "turns": [
+      {
+        "customer": "Yes I can hear and see you fine. Thanks for asking. Ready to go over the paperwork for your new CX-5?",
+        "max": "Awesome, great to connect with you! First of all, congratulations on your new vehicle... How has your experience been with our team so far?",
+        "beat": 0
+      },
+      {
+        "customer": "It's been pretty good so far. Everyone's been nice. Sorry, what are we going over first? The papers?",
+        "max": "Awesome, so glad to hear that! Our team works really hard to take care of our customers. I'm Max, your finance manager, and I'll be handling your paperwork today. Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.",
+        "beat": 1
+      },
+      {
+        "customer": "paperwork to make",
+        "max": "Would you like me to continue, or go over that again?",
+        "beat": 1
+      },
+      {
+        "customer": "Sorry, what does that mean? The recorded part and the law thing? Can you explain it again please?",
+        "max": "Before I start I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.",
+        "beat": 1
+      },
+      {
+        "customer": "Okay",
+        "max": "First I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork, have you got the chance to drive the vehicle that you are buying.",
+        "beat": 2
+      },
+      {
+        "customer": "Sorry I don’t get it. Can you say that again? The part about driving it?",
+        "max": "Allow me to go over it really quick to make sure that you understand everything. First I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork, have you got the chance to drive the vehicle that you are buying.",
+        "beat": 2
+      },
+      {
+        "customer": "Sorry, can you say that again please? I still don’t get it.",
+        "max": "Which part would you like me to explain?",
+        "beat": 2
+      },
+      {
+        "customer": "The part about driving the vehicle I’m buying. Sorry, what does that mean exactly?",
+        "max": "First I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork, have you got the chance to drive the vehicle that you are buying.",
+        "beat": 2
+      },
+      {
+        "customer": "Oh, did I need to test drive it first? I haven’t driven it yet. Is that a problem?",
+        "max": "Allow me to go over it really quick to make sure that you understand everything. First I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork, have you got the chance to drive the vehicle that you are buying.",
+        "beat": 2
+      },
+      {
+        "customer": "Sorry I’m confused. I haven’t driven it yet. Should I go do that before we do the papers?",
+        "max": "Which part would you like me to explain?",
+        "beat": 2
+      },
+      {
+        "customer": "The whole driving the vehicle part. I don’t understand why you keep asking me that. Sorry.",
+        "max": "Did you get a chance to take it for a test drive?",
+        "beat": 2
+      },
+      {
+        "customer": "No I haven’t. Sorry, what does that mean for the paperwork? Do I need to drive it first?",
+        "max": "As I mentioned, first I see that you agreed to buy a new 2026 Mazda CX five.",
+        "beat": 2
+      },
+      {
+        "customer": "Sorry I don’t get it. What exactly did I agree to? Can you explain it again please?",
+        "max": "Which part would you like me to explain?",
+        "beat": 2
+      },
+      {
+        "customer": "The part where you said I agreed to buy it. What exactly did I agree to? The price and everything?",
+        "max": "Would you like me to continue, or go over that again?",
+        "beat": 2
+      },
+      {
+        "customer": "Can you go over that again please? I still don’t understand what I agreed to exactly.",
+        "max": "Got it. Which part would you like me to explain?",
+        "beat": 2
+      },
+      {
+        "customer": "Sorry what does it mean that I agreed to buy the 2026 Mazda CX-5? Can you tell me the price and what’s included again?",
+        "max": "Understood, let's go straight to the numbers. You can get everything I just mentioned for only four dollars a day a coffee a day and everything is covered in your vehicle not even that a coffee a day from starbucks is eight dollars and sixty cent for less than half a cup of a coffee a day you will get everything covered so you don't have to worry about paying anyone anything in the future",
+        "beat": 22
+      },
+      {
+        "customer": "Sorry what does that mean? Four dollars a day for what exactly? I don’t get it. Can you say that again?",
+        "max": "Allow me to go over it really quick to make sure that you understand everything. You can get everything I just mentioned for only four dollars a day a coffee a day and everything is covered in your vehicle not even that a coffee a day from starbucks is eight dollars and sixty cent for less than half a cup of a coffee a day you will get everything covered so you don't have to worry about paying anyone anything in the future",
+        "beat": 22
+      },
+      {
+        "customer": "Sorry I still don’t get it. What is the four dollars a day for? What’s being covered? Can you explain it slower?",
+        "max": "Which part would you like me to explain?",
+        "beat": 22
+      },
+      {
+        "customer": "Sorry, what is the four dollars a day actually for? Like what does it buy me? I don’t understand.",
+        "max": "You can get everything I just mentioned for only four dollars a day a coffee a day and everything is covered in your vehicle not even that a coffee a day from starbucks is eight dollars and sixty cent for less than half a cup of a coffee a day you will get everything covered so you don't have to worry about paying anyone anything in the future",
+        "beat": 22
+      },
+      {
+        "customer": "day a coffee a",
+        "max": "Would you like to go ahead with the protection package, or not today?",
+        "beat": 22
+      },
+      {
+        "customer": "Sorry, can you explain what the protection package actually covers first? I still don’t understand.",
+        "max": "Would you like to go ahead with the protection package, or not today?",
+        "beat": 22
+      },
+      {
+        "customer": "Sorry I don’t get it yet. What exactly does the protection package do? Can you explain it one more time?",
+        "max": "Which part would you like me to explain?",
+        "beat": 22
+      },
+      {
+        "customer": "What does the protection package actually cover? Like what’s included and what does four dollars a day pay for?",
+        "max": "Great, so to confirm, we're moving forward with full vehicle protection for four dollars a day on your 2026 Mazda CX five... Are you ready to finalize?",
+        "beat": 24
+      },
+      {
+        "customer": "Sorry what does full vehicle protection mean? Can you explain what it actually covers first? I still don’t understand.",
+        "max": "Great, so to confirm, we're moving forward with full vehicle protection for four dollars a day on your 2026 Mazda CX five... Are you ready to finalize?",
+        "beat": 24
+      },
+      {
+        "customer": "Sorry, I’m still confused. What exactly does full vehicle protection cover? Can you explain it again please?",
+        "max": "Understood. Would you like me to continue, or go over that again?",
+        "beat": 24
+      },
+      {
+        "customer": "Can you go over what full vehicle protection actually covers? I still don’t understand it.",
+        "max": "As I mentioned, great, so to confirm, we're moving forward with full vehicle protection for four dollars a day on your 2026 Mazda CX five. Are you ready to finalize?",
+        "beat": 24
+      },
+      {
+        "customer": "Sorry I don’t get it yet. What is full vehicle protection? What does it cover exactly? Can you explain it please?",
+        "max": "Allow me to go over it really quick to make sure that you understand everything. Great, so to confirm, we're moving forward with full vehicle protection for four dollars a day on your 2026 Mazda CX five... Are you ready to finalize?",
+        "beat": 24
+      },
+      {
+        "customer": "Sorry I still don’t understand. What exactly is full vehicle protection? What am I paying four dollars a day for? Can you explain it one more time?",
+        "max": "Got it. Are you ready to finalize?",
+        "beat": 24
+      },
+      {
+        "customer": "Sorry, no, not yet. I still don’t understand what the protection package covers. Can you please explain it again?",
+        "max": "Are you ready to finalize?",
+        "beat": 24
+      },
+      {
+        "customer": "Sorry what does finalize mean? Can you explain the protection part one more time first?",
+        "max": "Are you ready to finalize?",
+        "beat": 24
+      },
+      {
+        "customer": "Sorry I’m still confused about the protection package. Can you tell me exactly what it covers before we finalize?",
+        "max": "Now that we've confirmed your paperwork, let me quickly verify your full legal name, spelling, and current mailing address before final signature.",
+        "beat": 25
+      },
+      {
+        "customer": "mailing address before final signature",
+        "max": "Everything on your paperwork is all set and finalized. Congratulations on your new vehicle, and enjoy the ride!",
+        "beat": 25
+      }
+    ],
+    "glitched": 4,
+    "endedBy": "max",
+    "scorecard": {
+      "checks": [
+        {
+          "id": "no_loop",
+          "label": "Max never loops",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "varied_reask",
+          "label": "Re-asks are not word for word",
+          "severity": "soft",
+          "pass": false,
+          "detail": "said twice in a row: \"Would you like to go ahead with the protection package, or not today?\""
+        },
+        {
+          "id": "few_recoveries",
+          "label": "Rarely has to say he didn't understand",
+          "severity": "soft",
+          "pass": true
+        },
+        {
+          "id": "no_restart",
+          "label": "Never jumps back to the start",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "fragment_not_answer",
+          "label": "Fragments are not answers",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "price_approved",
+          "label": "Only approved prices, never under $3",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "ladder_on_no",
+          "label": "A 'no' to the price gets a lower price",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "no_confirm_after_refusal",
+          "label": "Never confirms the package after a refusal",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "not_stuck",
+          "label": "Never stuck on one beat",
+          "severity": "soft",
+          "pass": false,
+          "detail": "6 turns on Beat 2"
+        }
+      ],
+      "passed": 7,
+      "failed": 2,
+      "furthestBeat": 25,
+      "reachedPrice": true,
+      "completed": true
+    },
+    "seconds": 40,
+    "understanding": [
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 811,
+        "firstMs": 811,
+        "totalMs": 811,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 809,
+        "firstMs": 810,
+        "totalMs": 810,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 609,
+        "firstMs": 610,
+        "totalMs": 610,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 808,
+        "firstMs": 809,
+        "totalMs": 809,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      }
+    ]
+  },
+  {
+    "id": "sim-impatient_buyer-6-mwvp9bkm",
+    "persona": "impatient_buyer",
+    "turns": [
+      {
+        "customer": "Yeah, it's fine. Let's get this done quick. How long is this gonna take?",
+        "max": "Awesome, great to connect with you! First of all, congratulations on your new vehicle... How has your experience been with our team so far?",
+        "beat": 0
+      },
+      {
+        "customer": "It's been fine. Can we skip the small talk and just do the paperwork? How long will this take?",
+        "max": "Understood, I value your time and will keep this crisp, direct, and straight to the point. I'm Max, your finance manager, and I'll be handling your paperwork today. Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.",
+        "beat": 1
+      },
+      {
+        "customer": "Okay fine, just get to the point. How long is this going to take?",
+        "max": "First I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork, have you got the chance to drive the vehicle that you are buying.",
+        "beat": 2
+      },
+      {
+        "customer": "Yeah I drove it. Can we skip this and just do the paperwork? How long is this gonna take?",
+        "max": "Awesome! When you came back from the test drive, the sales person did the walkaround and showed you all the features, bells, and whistles in the car.",
+        "beat": 3
+      },
+      {
+        "customer": "Yeah they did. Get to the point. How long is this going to take?",
+        "max": "Great. What's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?",
+        "beat": 4
+      },
+      {
+        "customer": "Yeah he did. Can we skip all this and just get to the price and sign? How long is this gonna take?",
+        "max": "I'm going to cover that in just a moment. There is actually more information about the warranty I need to go over with you to make sure you do understand everything... Is that okay?",
+        "beat": 5
+      },
+      {
+        "customer": "Fine, but make it fast. Just tell me the price and let's finish this.",
+        "max": "Understood, let's go straight to the numbers. You can get everything I just mentioned for only four dollars a day a coffee a day and everything is covered in your vehicle not even that a coffee a day from starbucks is eight dollars and sixty cent for less than half a cup of a coffee a day you will get everything covered so you don't have to worry about paying anyone anything in the future",
+        "beat": 22
+      },
+      {
+        "customer": "How much is it total? Just give me the price.",
+        "max": "Understood, let's go straight to the numbers. You can get everything I just mentioned for only four dollars a day a coffee a day and everything is covered in your vehicle not even that a coffee a day from starbucks is eight dollars and sixty cent for less than half a cup of a coffee a day you will get everything covered so you don't have to worry about paying anyone anything in the future",
+        "beat": 22
+      },
+      {
+        "customer": "Just tell me the total price. How much for the whole thing?",
+        "max": "As I mentioned, understood, let's go straight to the numbers.",
+        "beat": 22
+      },
+      {
+        "customer": "Just tell me the total price already. How much?",
+        "max": "Got it. Does that work for you?",
+        "beat": 22
+      },
+      {
+        "customer": "Yeah fine, add it. How long is this gonna take now?",
+        "max": "Would you like me to continue, or go over that again?",
+        "beat": 22
+      },
+      {
+        "customer": "No, just finish it. How long is this gonna take?",
+        "max": "I understand. While four dollars is our standard rate, the best I can offer directly is three dollars and fifty cents a day. Which two coverages are most important to you?",
+        "beat": 23
+      },
+      {
+        "customer": "Fine, add it. Just finish the paperwork. How long is this gonna take?",
+        "max": "Great, so to confirm, we're moving forward with full vehicle protection for three dollars and fifty cents a day on your 2026 Mazda CX five... Are you ready to finalize?",
+        "beat": 24
+      },
+      {
+        "customer": "Yeah, ready. Let's finalize this now. How long is this gonna take?",
+        "max": "Now that we've confirmed your paperwork, let me quickly verify your full legal name, spelling, and current mailing address before final signature.",
+        "beat": 25
+      },
+      {
+        "customer": "It's John Smith, same address as before. Can we skip this and sign already? How long is this gonna take?",
+        "max": "Everything on your paperwork is all set and finalized. Congratulations on your new vehicle, and enjoy the ride!",
+        "beat": 25
+      }
+    ],
+    "glitched": 0,
+    "endedBy": "max",
+    "scorecard": {
+      "checks": [
+        {
+          "id": "no_loop",
+          "label": "Max never loops",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "varied_reask",
+          "label": "Re-asks are not word for word",
+          "severity": "soft",
+          "pass": false,
+          "detail": "said twice in a row: \"Understood, let's go straight to the numbers. You can get everything I just mentioned for …\""
+        },
+        {
+          "id": "few_recoveries",
+          "label": "Rarely has to say he didn't understand",
+          "severity": "soft",
+          "pass": true
+        },
+        {
+          "id": "no_restart",
+          "label": "Never jumps back to the start",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "fragment_not_answer",
+          "label": "Fragments are not answers",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "price_approved",
+          "label": "Only approved prices, never under $3",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "ladder_on_no",
+          "label": "A 'no' to the price gets a lower price",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "no_confirm_after_refusal",
+          "label": "Never confirms the package after a refusal",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "not_stuck",
+          "label": "Never stuck on one beat",
+          "severity": "soft",
+          "pass": true
+        }
+      ],
+      "passed": 8,
+      "failed": 1,
+      "furthestBeat": 25,
+      "reachedPrice": true,
+      "completed": true
+    },
+    "seconds": 16,
+    "understanding": [
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 804,
+        "firstMs": 804,
+        "totalMs": 804,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      }
+    ]
+  },
+  {
+    "id": "sim-cooperative_buyer-8-mwvp9ks4",
+    "persona": "cooperative_buyer",
+    "turns": [
+      {
+        "customer": "Yes I can hear and see you just fine.",
+        "max": "Awesome, great to connect with you! First of all, congratulations on your new vehicle... How has your experience been with our team so far?",
+        "beat": 0
+      },
+      {
+        "customer": "It's been great. I drove the car and your salesperson did a really good walk around. I'm excited.",
+        "max": "Awesome, so glad to hear that! Our team works really hard to take care of our customers. I'm Max, your finance manager, and I'll be handling your paperwork today. Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.",
+        "beat": 1
+      },
+      {
+        "customer": "Okay that sounds good to me.",
+        "max": "First I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork, have you got the chance to drive the vehicle that you are buying.",
+        "beat": 2
+      },
+      {
+        "customer": "Yes I drove the car and the salesperson did a full walk around. I'm very happy with it.",
+        "max": "Awesome! When you came back from the test drive, the sales person did the walkaround and showed you all the features, bells, and whistles in the car.",
+        "beat": 3
+      },
+      {
+        "customer": "Yes that's correct. He showed me everything and I really like all the features.",
+        "max": "Great. What's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?",
+        "beat": 4
+      },
+      {
+        "customer": "Yes the salesperson explained the full factory warranty to me. It covers three years or thirty six thousand miles bumper to bumper and five years or sixty thousand miles on the powertrain. I'm comfortable with it.",
+        "max": "Gotcha. There is actually more information about the warranty I need to go over with you to make sure you do understand everything... Is that okay?",
+        "beat": 5
+      },
+      {
+        "customer": "Yes that's fine go ahead.",
+        "max": "Right on. Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one. The first warranty is three years thirty-six thousand mile Base limited warranty. The second is five years sixty thousand mile powertrain which is referring to the engine and the transmission, I'm sure you and I agree thats a very good complementary warranty from the manufacturer",
+        "beat": 6
+      },
+      {
+        "customer": "Yes I agree that's a very good warranty from the manufacturer.",
+        "max": "Great question. The factory warranty comes directly from the manufacturer, but it only covers manufacturer defects. The vehicle protection packages we're reviewing are our dealership's comprehensive coverage, which covers wear and tear, mechanical breakdowns, sensors, and electronic parts that the factory warranty excludes.",
+        "beat": 6
+      },
+      {
+        "customer": "That makes sense. I'd like to hear more about the vehicle protection package.",
+        "max": "But what you do not know that this warranty is a defect only stated in the manual book of the vehicle in the glovebox page number four saying that this warranty from the manufacturer is against any thing that is misdesigned, misbuilt, or misinstalled.",
+        "beat": 7
+      },
+      {
+        "customer": "Okay I understand. Thanks for explaining that. What does the protection package cover that the factory warranty doesn't?",
+        "max": "As a quick recap, your Mazda comes with the three years thirty-six thousand mile base warranty and the five years sixty thousand mile powertrain coverage.",
+        "beat": 7
+      },
+      {
+        "customer": "Yes I understand the factory warranties. Can you tell me about the vehicle protection package now?",
+        "max": "Now there is another reason can cause any break down to the vehicle goes under wear and tear I'm sure you heard that phrase before. Three reasons usually cause the wear and tear. Climate, road conditions, and driving habits... especially here in Texas. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause premature wear and tear on the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car",
+        "beat": 8
+      },
+      {
+        "customer": "I understand how the Texas weather can cause extra wear and tear. What does your protection package cover for that?",
+        "max": "Also Road conditions specially nowadays construction are everywhere and uneven service roads and potholes everywhere that can have big impact on the tires RIMS sensor electronic technology, engine transmission cooling system and tons of other parts on the vehicle.",
+        "beat": 8
+      },
+      {
+        "customer": "That makes sense with all the construction around here. So what exactly does the vehicle protection package cover for those kinds of issues?",
+        "max": "Also Road conditions specially nowadays construction are everywhere and uneven service roads and potholes everywhere that can have big impact on the tires RIMS sensor electronic technology, engine transmission cooling system and tons of other parts on the vehicle",
+        "beat": 9
+      },
+      {
+        "customer": "I understand the road conditions can cause a lot of extra wear. What's the daily price for the protection package that covers all this?",
+        "max": "I'm going to cover that in just a moment. And finally the Driving habits the way I drive the way you drive in fact the way everyone drives have a huge impact on the vehicle they are driving and those are the main three reasons can cause any break down to the vehicle ninety-five percent of the time when the vehicle break down it due to wear and tear",
+        "beat": 10
+      },
+      {
+        "customer": "I",
+        "max": "",
+        "beat": 10
+      },
+      {
+        "customer": "I understand how wear and tear works. What's the daily price for the protection package?",
+        "max": "As a quick recap, wear and tear from climate, roads, and driving causes ninety-five percent of breakdowns.",
+        "beat": 10
+      },
+      {
+        "customer": "Yes",
+        "max": "And the first thing you do as in owner when the vehicle break down you go to any service place and the first thing the first place will do before they say anything to you by the law they must first diagnose the vehicle to find out what is the problem, once they diagnose the vehicle the manufacturer will step in and they are very cautious.",
+        "beat": 11
+      },
+      {
+        "customer": "will do",
+        "max": "WHY? Because the manufacturer reserve the right to determine if the break down happen due to any Mis design or mis built or miss installed if they find out the break down happen because of them thats great because they will pay for it igf they find out the break down happen cause of you or the wear and tear unfortunately you will pay for it and like I said before ninety-five percent of the time when the vehicle break down it due to the wear and tear.",
+        "beat": 12
+      },
+      {
+        "customer": "I understand that most breakdowns are from wear and tear and the factory may not cover it. What's the daily price for the protection package?",
+        "max": "As a quick recap, wear and tear from climate, roads, and driving causes ninety-five percent of breakdowns.",
+        "beat": 12
+      },
+      {
+        "customer": "Yes I understand that ninety-five percent of breakdowns come from wear and tear. What is the daily price for the vehicle protection package?",
+        "max": "As I mentioned, as a quick recap, wear and tear from climate, roads, and driving causes ninety-five percent of breakdowns.",
+        "beat": 12
+      },
+      {
+        "customer": "Yes I understand wear and tear causes most breakdowns. Can you tell me the daily price for the protection package now?",
+        "max": "Got it. Does that help clarify things?",
+        "beat": 12
+      },
+      {
+        "customer": "Yes that helps. What's the daily price for the vehicle protection package?",
+        "max": "Understood, let's go straight to the numbers. You can get everything I just mentioned for only four dollars a day a coffee a day and everything is covered in your vehicle not even that a coffee a day from starbucks is eight dollars and sixty cent for less than half a cup of a coffee a day you will get everything covered so you don't have to worry about paying anyone anything in the future",
+        "beat": 22
+      },
+      {
+        "customer": "Four dollars a day sounds like a great deal. I'll take the protection package.",
+        "max": "Great, so to confirm, we're moving forward with full vehicle protection for four dollars a day on your 2026 Mazda CX five... Are you ready to finalize?",
+        "beat": 24
+      },
+      {
+        "customer": "Yes I'm ready to finalize everything. Let's do it.",
+        "max": "Now that we've confirmed your paperwork, let me quickly verify your full legal name, spelling, and current mailing address before final signature.",
+        "beat": 25
+      },
+      {
+        "customer": "My name is Jordan Lee, spelled J-O-R-D-A-N L-E-E, and my address is 1420 Oak Street, Dallas, Texas 75201.",
+        "max": "Everything on your paperwork is all set and finalized. Congratulations on your new vehicle, and enjoy the ride!",
+        "beat": 25
+      }
+    ],
+    "glitched": 3,
+    "endedBy": "max",
+    "scorecard": {
+      "checks": [
+        {
+          "id": "no_loop",
+          "label": "Max never loops",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "varied_reask",
+          "label": "Re-asks are not word for word",
+          "severity": "soft",
+          "pass": false,
+          "detail": "said twice in a row: \"Also Road conditions specially nowadays construction are everywhere and uneven service roa…\""
+        },
+        {
+          "id": "few_recoveries",
+          "label": "Rarely has to say he didn't understand",
+          "severity": "soft",
+          "pass": true
+        },
+        {
+          "id": "no_restart",
+          "label": "Never jumps back to the start",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "fragment_not_answer",
+          "label": "Fragments are not answers",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "price_approved",
+          "label": "Only approved prices, never under $3",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "ladder_on_no",
+          "label": "A 'no' to the price gets a lower price",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "no_confirm_after_refusal",
+          "label": "Never confirms the package after a refusal",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "not_stuck",
+          "label": "Never stuck on one beat",
+          "severity": "soft",
+          "pass": true
+        }
+      ],
+      "passed": 8,
+      "failed": 1,
+      "furthestBeat": 25,
+      "reachedPrice": true,
+      "completed": true
+    },
+    "seconds": 30,
+    "understanding": [
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 668,
+        "firstMs": 670,
+        "totalMs": 670,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 806,
+        "totalMs": 806,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 698,
+        "firstMs": 699,
+        "totalMs": 699,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 793,
+        "firstMs": 795,
+        "totalMs": 795,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 711,
+        "firstMs": 711,
+        "totalMs": 711,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      }
+    ]
+  },
+  {
+    "id": "sim-distrustful_buyer-7-mwvp9eo2",
+    "persona": "distrustful_buyer",
+    "turns": [
+      {
+        "customer": "Yeah I can see and hear you fine. Let's get this over with.",
+        "max": "Awesome, great to connect with you! First of all, congratulations on your new vehicle... How has your experience been with our team so far?",
+        "beat": 0
+      },
+      {
+        "customer": "It's been okay so far but I'm not here to chat. Can we just do the paperwork? I don't trust all this extra stuff you people always push.",
+        "max": "I'm sorry to hear that. I'll do my best to make the rest easy and make sure you're happy with everything. I'm Max, your finance manager, and I'll be handling your paperwork today. Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.",
+        "beat": 1
+      },
+      {
+        "customer": "Yeah that's fine just get on with it already. I don't trust this upsell crap you guys always do. Is this a scam?",
+        "max": "No pressure at all. I'll just walk you through the options, and the choice is always yours. Is that okay with you?",
+        "beat": 1
+      },
+      {
+        "customer": "Fine, whatever. Just don't try to upsell me on anything. I'm not paying for extra crap. Is this a scam?",
+        "max": "No pressure at all. I'll just walk you through the options, and the choice is always yours. Is that okay with you?",
+        "beat": 1
+      },
+      {
+        "customer": "I already said fine, just stop repeating yourself and show me the paperwork. I'm not buying any extras.",
+        "max": "Understood. I'll keep this short and clear so we can get you on your way.",
+        "beat": 1
+      },
+      {
+        "customer": "Good. Let's see the numbers then. No extras, no protection package, nothing. I'm not paying for that stuff.",
+        "max": "As I mentioned, no pressure at all. Is that okay with you?",
+        "beat": 1
+      },
+      {
+        "customer": "You keep saying no pressure but then you repeat it. Just show me the damn paperwork already. I'm not buying anything extra.",
+        "max": "Got it. Is that okay with you?",
+        "beat": 1
+      },
+      {
+        "customer": "I said yes already. Stop asking me the same thing over and over. Just do the paperwork.",
+        "max": "Would you like me to continue, or go over that again?",
+        "beat": 1
+      },
+      {
+        "customer": "Just continue already. I don't need you to repeat anything.",
+        "max": "First I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork, have you got the chance to drive the vehicle that you are buying.",
+        "beat": 2
+      },
+      {
+        "customer": "Yeah I drove it. Can we please just move on to the actual paperwork? I'm not interested in any add-ons or protection packages.",
+        "max": "Awesome! When you came back from the test drive, the sales person did the walkaround and showed you all the features, bells, and whistles in the car.",
+        "beat": 3
+      },
+      {
+        "customer": "Yes they did. Can we stop with the small talk and just do the paperwork? I'm not paying for any extra protection or warranties.",
+        "max": "No pressure at all. I'll just walk you through the options, and the choice is always yours. Did the salesperson do the walkaround with you?",
+        "beat": 3
+      },
+      {
+        "customer": "I already told you yes they did the walkaround. Quit repeating yourself and just show me the numbers without any upsells.",
+        "max": "No pressure at all. I'll just walk you through the options, and the choice is always yours. Did the salesperson do the walkaround with you?",
+        "beat": 3
+      },
+      {
+        "customer": "I already answered that twice. Yes. Stop repeating the same script and show me the actual paperwork. I'm not buying any extras.",
+        "max": "Understood. I'll keep this short and clear so we can get you on your way.",
+        "beat": 3
+      },
+      {
+        "customer": "Then do it. Show me the paperwork and the out-the-door price with no add-ons. I'm not buying any protection package.",
+        "max": "No problem, thanks for letting me know. What's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?",
+        "beat": 4
+      },
+      {
+        "customer": "vehicle Did the sales person",
+        "max": "Gotcha. There is actually more information about the warranty I need to go over with you to make sure you do understand everything.",
+        "beat": 5
+      },
+      {
+        "customer": "Fine go ahead and explain the warranty but keep it quick. I'm still not buying any extra protection package.",
+        "max": "I completely understand and I respect your time! By law, before you sign, I'm just required to go over what the manufacturer warranty does and doesn't cover so there are no surprises. Allow me to go over it really quick with you. Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one. The first warranty is three years thirty-six thousand mile Base limited warranty. The second is five years sixty thousand mile powertrain which is referring to the engine and the transmission, I'm sure you and I agree thats a very good complementary warranty from the manufacturer",
+        "beat": 6
+      },
+      {
+        "customer": "Yeah that's fine I get it. Just finish the paperwork and show me the final price with nothing added. I'm not paying for any protection plan.",
+        "max": "No pressure at all. I'll just walk you through the options, and the choice is always yours.",
+        "beat": 6
+      },
+      {
+        "customer": "Stop saying that. Just give me the numbers without any add-ons or protection package. I'm not interested.",
+        "max": "As a quick recap, your Mazda comes with the three years thirty-six thousand mile base warranty and the five years sixty thousand mile powertrain coverage.",
+        "beat": 6
+      },
+      {
+        "customer": "Okay I got it. Now can we see the final price with just the car and no extras at all?",
+        "max": "No pressure at all. I'll just walk you through the options, and the choice is always yours.",
+        "beat": 6
+      },
+      {
+        "customer": "Stop repeating that crap. Just show me the damn price without any protection package or add-ons. I'm not buying it.",
+        "max": "But what you do not know that this warranty is a defect only stated in the manual book of the vehicle in the glovebox page number four saying that this warranty from the manufacturer is against any thing that is misdesigned, misbuilt, or misinstalled.",
+        "beat": 7
+      },
+      {
+        "customer": "Yeah",
+        "max": "Now there is another reason can cause any break down to the vehicle goes under wear and tear I'm sure you heard that phrase before. Three reasons usually cause the wear and tear. Climate, road conditions, and driving habits... especially here in Texas. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause premature wear and tear on the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car",
+        "beat": 8
+      },
+      {
+        "customer": "Yeah I know all that Texas weather stuff. You're still just trying to upsell me that protection package aren't you? I'm not buying it. Show me the final price with nothing extra.",
+        "max": "As I mentioned, no pressure at all.",
+        "beat": 8
+      },
+      {
+        "customer": "Then stop pushing it and show me the price with zero add-ons. I'm not paying for your protection plan.",
+        "max": "Got it. Does that make sense?",
+        "beat": 8
+      },
+      {
+        "customer": "Yeah it makes sense. Now can we please just see the final numbers without any protection package or extras? I'm not buying it.",
+        "max": "Also Road conditions specially nowadays construction are everywhere and uneven service roads and potholes everywhere that can have big impact on the tires RIMS sensor electronic technology, engine transmission cooling system and tons of other parts on the vehicle",
+        "beat": 9
+      },
+      {
+        "customer": "Yeah I get it, roads suck here. You're still selling me on that protection plan though. I'm not paying for it. Just show me the price with nothing added.",
+        "max": "Okay. Does that make sense?",
+        "beat": 9
+      },
+      {
+        "customer": "Yeah it makes sense. Now just give me the out-the-door price with no protection package and nothing extra.",
+        "max": "Understood. Does that make sense?",
+        "beat": 9
+      },
+      {
+        "customer": "Yes it makes sense stop asking me that. Just show the price already without any add-ons.",
+        "max": "I'm going to cover that in just a moment. And finally the Driving habits the way I drive the way you drive in fact the way everyone drives have a huge impact on the vehicle they are driving and those are the main three reasons can cause any break down to the vehicle ninety-five percent of the time when the vehicle break down it due to wear and tear",
+        "beat": 10
+      },
+      {
+        "customer": "Yeah okay I get it. You're still pushing that protection plan aren't you? I'm not buying it. Just show me the final price with no extras.",
+        "max": "Got it. Are you with me?",
+        "beat": 10
+      },
+      {
+        "customer": "Yes I'm with you. Can we finally see the actual numbers now with nothing added? No protection plan.",
+        "max": "As a recap, wear and tear causes ninety-five percent of all mechanical breakdowns.",
+        "beat": 10
+      },
+      {
+        "customer": "Yeah I heard you the first ten times. This is clearly an upsell. I'm not buying your protection package. Just give me the price with nothing extra.",
+        "max": "Okay. Are you with me?",
+        "beat": 10
+      },
+      {
+        "customer": "Yes",
+        "max": "And the first thing you do as in owner when the vehicle break down you go to any service place and the first thing the first place will do before they say anything to you by the law they must first diagnose the vehicle to find out what is the problem, once they diagnose the vehicle the manufacturer will step in and they are very cautious.",
+        "beat": 11
+      },
+      {
+        "customer": "Yeah I know how it works. This is still sounding like you're trying to scare me into buying your extra protection scam. I'm not paying for it. Just show me the final price without any add-ons.",
+        "max": "Understood. Does that make sense?",
+        "beat": 11
+      },
+      {
+        "customer": "Yes it makes sense. Now please just show me the final price with zero add-ons or protection.",
+        "max": "WHY? Because the manufacturer reserve the right to determine if the break down happen due to any Mis design or mis built or miss installed if they find out the break down happen because of them thats great because they will pay for it igf they find out the break down happen cause of you or the wear and tear unfortunately you will pay for it and like I said before ninety-five percent of the time when the vehicle break down it due to the wear and tear.",
+        "beat": 12
+      },
+      {
+        "customer": "Yeah I get it you're trying to scare me into buying that protection package. This is exactly why I don't trust you people. I'm not paying for any extras just give me the final price.",
+        "max": "No pressure at all. I'll just walk you through the options, and the choice is always yours. WHY?",
+        "beat": 12
+      },
+      {
+        "customer": "Stop with the script already. You're clearly trying to upsell me. I'm not buying your protection package. Just show the final price with nothing added.",
+        "max": "No pressure at all. I'll just walk you through the options, and the choice is always yours. WHY?",
+        "beat": 12
+      },
+      {
+        "customer": "You keep repeating the same thing. This feels like a scam. Just show me the final price with no protection package. I'm not buying it.",
+        "max": "Let me put that more simply. Does that make sense?",
+        "beat": 12
+      },
+      {
+        "customer": "Yeah it makes sense. Now can we see the actual price without the protection package? I'm not buying it.",
+        "max": "Thats why we don't feel comfortable that we will leave you in a good position without a good warranty around the vehicle. Why because we do have a part department we know how much the parts cost engine by itself can cost up to seven thousand transmission six thousand AC almost four thousand electronic and technology is the luck of the draw could cost anywhere from hundred dollar all the way up to twelve thousand dollar",
+        "beat": 13
+      },
+      {
+        "customer": "Yeah I get what you're doing, you're scaring me with big numbers so I'll buy your protection plan. This is exactly the upsell I don't trust. I'm not paying for it. Just show me the final price with nothing extra.",
+        "max": "Got it. Does that make sense?",
+        "beat": 13
+      },
+      {
+        "customer": "Yes it makes sense. Stop asking and just show me the final price without any protection package. I'm not buying it.",
+        "max": "If God forbid a sensor break down in the screens in the dashboard they cant just change that sensor that sensor is a part of a huge component they will have to take the whole thing out and replace it with a brand new one thats roughly sixty five hundred dollar part up to eighty five hundred dollar part depends on the vehicle thats not even include the labor charge",
+        "beat": 14
+      },
+      {
+        "customer": "Yeah I hear you but you're still just scaring me into buying that protection scam. I'm not paying for it. Show me the price with nothing added.",
+        "max": "Okay. Does that make sense?",
+        "beat": 14
+      },
+      {
+        "customer": "Yes it makes sense. Now stop the scare tactics and just give me the final price with no protection package.",
+        "max": "To recap, dashboard sensors and electronics can cost thousands of dollars to replace.",
+        "beat": 14
+      },
+      {
+        "customer": "Yeah I heard you. You're still trying to upsell me hard. I'm not buying your protection package. Just show the final price with nothing extra.",
+        "max": "Understood. Does that make sense?",
+        "beat": 14
+      },
+      {
+        "customer": "Yes it makes sense. Can we finally see the price without any protection package or extras? I'm not buying it.",
+        "max": "Understood, let's go straight to the numbers. You can get everything I just mentioned for only four dollars a day a coffee a day and everything is covered in your vehicle not even that a coffee a day from starbucks is eight dollars and sixty cent for less than half a cup of a coffee a day you will get everything covered so you don't have to worry about paying anyone anything in the future",
+        "beat": 22
+      },
+      {
+        "customer": "I'm",
+        "max": "Would you like me to continue, or go over that again?",
+        "beat": 22
+      },
+      {
+        "customer": "No don't continue with that. I'm not buying the protection package. Just show me the out the door price with nothing added.",
+        "max": "I understand. While four dollars is our standard rate, the best I can offer directly is three dollars and fifty cents a day. Which two coverages are most important to you?",
+        "beat": 23
+      }
+    ],
+    "glitched": 4,
+    "endedBy": "turn limit",
+    "scorecard": {
+      "checks": [
+        {
+          "id": "no_loop",
+          "label": "Max never loops",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "varied_reask",
+          "label": "Re-asks are not word for word",
+          "severity": "soft",
+          "pass": false,
+          "detail": "said twice in a row: \"No pressure at all. I'll just walk you through the options, and the choice is always yours…\""
+        },
+        {
+          "id": "few_recoveries",
+          "label": "Rarely has to say he didn't understand",
+          "severity": "soft",
+          "pass": true
+        },
+        {
+          "id": "no_restart",
+          "label": "Never jumps back to the start",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "fragment_not_answer",
+          "label": "Fragments are not answers",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "price_approved",
+          "label": "Only approved prices, never under $3",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "ladder_on_no",
+          "label": "A 'no' to the price gets a lower price",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "no_confirm_after_refusal",
+          "label": "Never confirms the package after a refusal",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "not_stuck",
+          "label": "Never stuck on one beat",
+          "severity": "soft",
+          "pass": false,
+          "detail": "6 turns on Beat 1"
+        }
+      ],
+      "passed": 7,
+      "failed": 2,
+      "furthestBeat": 23,
+      "reachedPrice": true,
+      "completed": false
+    },
+    "seconds": 60,
+    "understanding": [
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 686,
+        "firstMs": 687,
+        "totalMs": 687,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 807,
+        "firstMs": 808,
+        "totalMs": 808,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 690,
+        "firstMs": 690,
+        "totalMs": 690,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 653,
+        "firstMs": 653,
+        "totalMs": 653,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 685,
+        "firstMs": 685,
+        "totalMs": 685,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 809,
+        "totalMs": 809,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 813,
+        "totalMs": 813,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 669,
+        "firstMs": 670,
+        "totalMs": 670,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 804,
+        "totalMs": 804,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 828,
+        "totalMs": 828,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 804,
+        "totalMs": 804,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 688,
+        "firstMs": 689,
+        "totalMs": 689,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 817,
+        "firstMs": 817,
+        "totalMs": 817,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      }
+    ]
+  },
+  {
+    "id": "sim-chatty_rambler-5-mwvp8yvi",
+    "persona": "chatty_rambler",
+    "turns": [
+      {
+        "customer": "Yeah I can see and hear you just fine Max, the picture's crystal clear. You know my old Honda was always cutting out on video calls, drove me nuts during my long commute from the suburbs. My brother-in-law's Toyota never has that problem though. By the way, how's the weather looking over there today?",
+        "max": "Awesome, great to connect with you! First of all, congratulations on your new vehicle... How has your experience been with our team so far?",
+        "beat": 0
+      },
+      {
+        "customer": "Oh it's been wonderful so far Max, everyone has been so friendly and patient with me. My old car was a 2012 CR-V that I drove forever, racked up almost 180,000 miles on my terrible commute through all that downtown traffic. My brother-in-law keeps telling me his Toyota handles the same route way better. So how's the weather where you are today, any sun out there?",
+        "max": "Awesome, so glad to hear that! Our team works really hard to take care of our customers. I'm Max, your finance manager, and I'll be handling your paperwork today. Now before I start, I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.",
+        "beat": 1
+      },
+      {
+        "customer": "I just",
+        "max": "Would you like me to continue, or go over that again?",
+        "beat": 1
+      },
+      {
+        "customer": "Oh no need to go over it again Max I'm following you just fine. My old CR-V used to have this glitchy Bluetooth that would cut out mid-call exactly like that, drove me crazy on my long commute. My brother-in-law's Toyota never had those issues though. So how's the weather where you are today, sunny or cloudy?",
+        "max": "Allow me to go over it really quick to make sure that you understand everything. Before I start I just want to let you know this transaction is recorded audio and video, also I'm required by the law to go over everything with you before you sign any paperwork to make sure you understand first okay.",
+        "beat": 1
+      },
+      {
+        "customer": "I totally understand Max, you go right ahead and cover it all again if you need to. My old CR-V had this habit of repeating the same warning chime over and over on my long commute until I wanted to scream, so I get why you have to be extra careful. My brother-in-law's Toyota never gave him that kind of grief. So how's the weather over there today?",
+        "max": "First I see that you agreed to buy a new 2026 Mazda CX five. A few questions before I prepare the paperwork, have you got the chance to drive the vehicle that you are buying.",
+        "beat": 2
+      },
+      {
+        "customer": "Oh yes I took it for a nice long test drive earlier Max and it felt so smooth compared to my old CR-V that used to shake like crazy in traffic on my commute every single morning. My brother-in-law still swears by his Toyota but I think this Mazda is going to be a big upgrade for me. So how's the weather looking where you are today?",
+        "max": "Awesome! When you came back from the test drive, the sales person did the walkaround and showed you all the features, bells, and whistles in the car.",
+        "beat": 3
+      },
+      {
+        "customer": "Yes they sure did Max, the salesperson was really thorough and showed me every single button and gadget. It was way more than I ever got with my old CR-V which only had the basics and still managed to break down in the worst traffic on my commute. My brother-in-law says his Toyota has some of the same safety stuff but not nearly as nice. So how's the weather where you are today, any chance of rain?",
+        "max": "Great. What's your understanding of the warranty that comes with the vehicle? Did the sales person go over everything with you?",
+        "beat": 4
+      },
+      {
+        "customer": "Oh the salesperson walked me through the whole factory warranty pretty well, said it's the standard three years or 36,000 miles bumper to bumper and then five years or 60,000 on the powertrain, which sounds a lot better than the mess I had with my old CR-V that started falling apart right after the warranty ended during my nightmare commute. My brother-in-law's Toyota still hasn't needed anything under its warranty though. So how's the weather looking where you are today?",
+        "max": "Gotcha. There is actually more information about the warranty I need to go over with you to make sure you do understand everything... Is that okay?",
+        "beat": 5
+      },
+      {
+        "customer": "Yeah that's perfectly fine Max go ahead and walk me through all the extra warranty details, I want to make sure I understand everything completely. My old CR-V's warranty stuff was always so confusing and it left me stranded in traffic more times than I can count on that awful commute, my brother-in-law still laughs about how his Toyota warranty covered everything without any headaches. So how's the weather looking over there today?",
+        "max": "Would you like me to continue, or go over that again?",
+        "beat": 5
+      },
+      {
+        "customer": "Oh no need to go over it again Max I'm following you just fine. My old CR-V had this habit of repeating the same warning chime over and over on my long commute until I wanted to scream, so I get why you have to be extra careful. My brother-in-law's Toyota never gave him that kind of grief. So how's the weather over there today?",
+        "max": "I completely understand and I respect your time! By law, before you sign, I'm just required to go over what the manufacturer warranty does and doesn't cover so there are no surprises. Allow me to go over it really quick with you. Mazda is like any other manufacturer when they build a vehicle they put warranty in it in your case you get two different warranty not one. The first warranty is three years thirty-six thousand mile Base limited warranty. The second is five years sixty thousand mile powertrain which is referring to the engine and the transmission, I'm sure you and I agree thats a very good complementary warranty from the manufacturer",
+        "beat": 6
+      },
+      {
+        "customer": "Yeah that all makes perfect sense to me Max, three years or 36,000 and five years or 60,000 on the powertrain sounds way better than the warranty headaches I had with my old CR-V that left me stuck in traffic more times than I can count. My brother-in-law's Toyota had similar coverage and he's never had a single problem. So how's the weather looking over there today?",
+        "max": "But what you do not know that this warranty is a defect only stated in the manual book of the vehicle in the glovebox page number four saying that this warranty from the manufacturer is against any thing that is misdesigned, misbuilt, or misinstalled.",
+        "beat": 7
+      },
+      {
+        "customer": "Oh okay that makes sense Max, so it's basically only for factory defects like if something was built wrong at the plant. That would have been nice on my old CR-V because half the stuff that broke on my terrible commute felt like it was just poorly put together from the start. My brother-in-law's Toyota manual said basically the same thing and he's been lucky so far. So how's the weather where you are today?",
+        "max": "Now there is another reason can cause any break down to the vehicle goes under wear and tear I'm sure you heard that phrase before. Three reasons usually cause the wear and tear. Climate, road conditions, and driving habits... especially here in Texas. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause premature wear and tear on the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car",
+        "beat": 8
+      },
+      {
+        "customer": "Oh I hear you loud and clear Max, that Texas heat and cold sure beats up a car fast. My old CR-V was always dying in the middle of summer traffic on my commute because the AC would quit from all that heat, and my brother-in-law complains his Toyota needs extra coolant every winter. So how's the weather looking over there today?",
+        "max": "Great! Now there is another reason can cause any break down to the vehicle goes under wear and tear I'm sure you heard that phrase before. Three reasons usually cause the wear and tear. Climate, road conditions, and driving habits... especially here in Texas. Climate... can go over one hundred ten degrees in summer and get very cold in the winter and this can cause premature wear and tear on the vehicle and this have a huge impact on the sensor electronic technology engine transmission and cooling system and the AC and so many other parts of the car",
+        "beat": 8
+      },
+      {
+        "customer": "Yeah I totally get it Max, that extreme Texas heat and cold is exactly why my old CR-V's AC and cooling system kept dying on me during those brutal summer commutes, I was always stuck in traffic sweating like crazy. My brother-in-law says the same thing happens to his Toyota even though he babies it. So how's the weather looking over there today?",
+        "max": "Also Road conditions specially nowadays construction are everywhere and uneven service roads and potholes everywhere that can have big impact on the tires RIMS sensor electronic technology, engine transmission cooling system and tons of other parts on the vehicle",
+        "beat": 9
+      },
+      {
+        "customer": "Oh",
+        "max": "",
+        "beat": 9
+      },
+      {
+        "customer": "Oh I know exactly what you mean Max, all those potholes and construction zones around here beat the absolute heck out of my old CR-V. I replaced struts twice and even cracked a rim on my nightmare commute last year. My brother-in-law says the same thing keeps happening to his Toyota no matter how careful he drives. So how's the weather looking over there today?",
+        "max": "As a recap, potholes and road hazards cause severe wear on tires, rims, and sensors.",
+        "beat": 9
+      },
+      {
+        "customer": "Oh yeah I totally agree Max, those potholes wrecked two sets of tires and messed up the sensors on my old CR-V during my horrible commute, it was one repair after another. My brother-in-law’s Toyota has the same problem with all the construction around here. So how’s the weather looking over there today?",
+        "max": "Also we know that the cost of ownership for you over the next five years will cost you thousands of dollars to maintain the vehicle thats why we include for you five years tire and wheel cover I'm assuming you will need two sets of tires over the next five years depends on your driving habits so instead you pay for eight tires three hundred and fifty dollar for each tire plus hundred and twenty five dollar installation thats almost five hundred dollar a pice eight of those will cost almost four thousand dollar instead you pay that no the policy will take care of that for you so you don't have to worry about paying that much.",
+        "beat": 9
+      },
+      {
+        "customer": "Yeah that sounds pretty good Max because my old CR-V ate through tires like crazy on all those rough roads during my long commute and it added up fast. My brother-in-law just spent almost a thousand dollars on new tires for his Toyota last month. So how's the weather looking over there today?",
+        "max": "As a quick recap, the tire and wheel package covers your tires and wheels for five full years with zero out-of-pocket costs.",
+        "beat": 9
+      },
+      {
+        "customer": "Yeah I got it Max, five full years of tires and wheels with no out-of-pocket sounds like it would have saved me a fortune on my old CR-V. Those potholes on my commute destroyed four tires in three years and my brother-in-law just dropped almost $900 on a new set for his Toyota. So how's the weather looking over there today?",
+        "max": "As a quick recap, the tire and wheel package covers your tires and wheels for five full years with zero out-of-pocket costs.",
+        "beat": 9
+      },
+      {
+        "customer": "Yeah I got that part Max, five years of free tires and wheels would have been a lifesaver on my old CR-V because those rough roads and construction on my commute kept chewing through tires every year or so. My brother-in-law just paid over a grand for new ones on his Toyota. So how’s the weather looking over there today?",
+        "max": "As I mentioned, as a quick recap, the tire and wheel package covers your tires and wheels for five full years with zero out-of-pocket costs.",
+        "beat": 9
+      },
+      {
+        "customer": "Yeah I understand Max, five full years of tires and wheels covered with zero out of pocket would have saved me so much money. My old CR-V went through tires constantly on that awful commute with all the potholes and construction, I probably spent close to four thousand dollars just on tires and alignments over the years, and my brother-in-law just paid almost a thousand for his Toyota set last month. So how's the weather looking over there today?",
+        "max": "Got it. Does that help clarify things?",
+        "beat": 9
+      },
+      {
+        "customer": "Yeah that helps a lot Max, it really does. My old CR-V cost me a fortune in tires from all those potholes on my commute and my brother-in-law just dropped almost a grand on his Toyota set. So how's the weather looking over there today?",
+        "max": "Okay. Does that help clarify things?",
+        "beat": 9
+      },
+      {
+        "customer": "Yeah it does clarify things Max, thanks. My old CR-V cost me a small fortune replacing tires every year from all those Texas potholes on my commute, and my brother-in-law just spent over a thousand on a new set for his Toyota last month. So how's the weather looking over there today?",
+        "max": "Understood. Does that help clarify things?",
+        "beat": 9
+      },
+      {
+        "customer": "Yes Max it clarifies it perfectly, thank you. My old CR-V went through so many tires from all the potholes on my long commute it felt like I was buying new ones every other year and my brother-in-law just spent nearly a thousand dollars on his Toyota set. So how's the weather looking over there today?",
+        "max": "Thanks for catching that, I'll make a note of your vehicle.",
+        "beat": 9
+      },
+      {
+        "customer": "Oh you're welcome Max, glad I could help with that. My old CR-V had so many weird notes in its service history from all the pothole damage on my commute that the mechanics practically knew me by name. My brother-in-law's Toyota service records are basically spotless though. So how's the weather looking over there today?",
+        "max": "And finally the Driving habits the way I drive the way you drive in fact the way everyone drives have a huge impact on the vehicle they are driving and those are the main three reasons can cause any break down to the vehicle ninety-five percent of the time when the vehicle break down it due to wear and tear",
+        "beat": 10
+      },
+      {
+        "customer": "Oh I totally agree with you Max, my driving habits on that stop-and-go commute definitely wore my old CR-V out fast. My brother-in-law is a super gentle driver and his Toyota still looks almost new. So how's the weather looking over there today?",
+        "max": "And the first thing you do as in owner when the vehicle break down you go to any service place and the first thing the first place will do before they say anything to you by the law they must first diagnose the vehicle to find out what is the problem, once they diagnose the vehicle the manufacturer will step in and they are very cautious.",
+        "beat": 11
+      },
+      {
+        "customer": "Yeah that makes sense Max, when my old CR-V broke down they always had to run that full diagnosis first and the manufacturer was so picky about covering anything. It left me stuck in traffic for hours more than once. My brother-in-law had the same thing happen with his Toyota once. So how's the weather looking over there today?",
+        "max": "WHY? Because the manufacturer reserve the right to determine if the break down happen due to any Mis design or mis built or miss installed if they find out the break down happen because of them thats great because they will pay for it igf they find out the break down happen cause of you or the wear and tear unfortunately you will pay for it and like I said before ninety-five percent of the time when the vehicle break down it due to the wear and tear.",
+        "beat": 12
+      },
+      {
+        "customer": "of the time",
+        "max": "Thats why we don't feel comfortable that we will leave you in a good position without a good warranty around the vehicle. Why because we do have a part department we know how much the parts cost engine by itself can cost up to seven thousand transmission six thousand AC almost four thousand electronic and technology is the luck of the draw could cost anywhere from hundred dollar all the way up to twelve thousand dollar",
+        "beat": 13
+      },
+      {
+        "customer": "Yeah I hear you Max, those repair prices are crazy high. My old CR-V needed a new AC unit that cost me almost four grand after the compressor died in the middle of summer traffic on my commute, and my brother-in-law just got quoted six thousand for a transmission on his Toyota that might go soon. So how's the weather looking over there today?",
+        "max": "If God forbid a sensor break down in the screens in the dashboard they cant just change that sensor that sensor is a part of a huge component they will have to take the whole thing out and replace it with a brand new one thats roughly sixty five hundred dollar part up to eighty five hundred dollar part depends on the vehicle thats not even include the labor charge.",
+        "beat": 13
+      },
+      {
+        "customer": "Oh wow, sixty-five to eighty-five hundred dollars just for a dashboard sensor part? That’s insane. My old CR-V had the whole dash screen go out once and even that little repair cost me almost two grand, I can’t imagine paying eight thousand. My brother-in-law paid over four thousand last year when his Toyota’s big screen module died. So how’s the weather looking over there today?",
+        "max": "Labor will charge you anywhere between one hundred eighty to two hundred dollars per hour depend on the quality of the technician they are using in the service place and a job like that could take anywhere between ten hours and fifteen hours of labor to fix it so instead you pay seventy hundred dollar for parts plus ten hours of labor. No absolutely not.",
+        "beat": 13
+      },
+      {
+        "customer": "Oh my gosh Max, ten to fifteen hours of labor at two hundred an hour on top of that huge part? That would be thousands more. My old CR-V once needed a big electronic module and the labor alone was over two thousand dollars, I was stuck without a car for a week during my horrible commute. My brother-in-law got hit with a four-thousand-dollar labor bill on his Toyota last year. So how's the weather looking over there today?",
+        "max": "Labor runs one hundred eighty to two hundred dollars an hour, depending on the technician, and a major repair can take ten to fifteen hours. Now, back to where we were.",
+        "beat": 13
+      },
+      {
+        "customer": "Yeah that labor adds up so fast Max, ten to fifteen hours at two hundred an hour would have bankrupted me with my old CR-V. I remember one repair that took twelve hours and the bill was almost three thousand just for labor while I was stuck riding the bus on my commute. My brother-in-law had the same sticker shock with his Toyota last year. So how's the weather looking over there today?",
+        "max": "If God forbid a sensor break down in the screens in the dashboard they cant just change that sensor that sensor is a part of a huge component they will have to take the whole thing out and replace it with a brand new one thats roughly sixty five hundred dollar part up to eighty five hundred dollar part depends on the vehicle thats not even include the labor charge",
+        "beat": 14
+      },
+      {
+        "customer": "Oh man, that’s a huge number Max. My old CR-V had its dash screen and computer module die right in the middle of my commute and even that smaller repair cost me almost twenty-five hundred dollars. My brother-in-law paid over six thousand when his Toyota’s big display unit went bad. So how’s the weather looking over there today?",
+        "max": "To recap, major parts like an engine or transmission can cost seven to eight thousand dollars.",
+        "beat": 14
+      },
+      {
+        "customer": "Yeah that’s a scary number Max. My old CR-V needed a new transmission at 140,000 miles and even that was almost six thousand with labor. My brother-in-law’s Toyota is starting to make noises now too and he’s worried it’s going to be the same story. So how’s the weather looking over there today?",
+        "max": "Take a deep breath—buying a car is a huge milestone, and it's totally normal to feel a bit hesitant. I'm here as your advocate with zero pressure, so we'll walk through every dollar together until you feel one hundred percent confident.",
+        "beat": 14
+      },
+      {
+        "customer": "Oh I appreciate that Max, thank you. Honestly I’m not really hesitant, I’m excited. My old CR-V finally gave up on me in the middle of rush-hour traffic last month and I had to call my brother-in-law to come get me in his Toyota. That was the last straw. So how’s the weather looking over there today?",
+        "max": "Take a deep breath—buying a car is a huge milestone, and it's totally normal to feel a bit hesitant. I'm here as your advocate with zero pressure, so we'll walk through every dollar together until you feel one hundred percent confident.",
+        "beat": 14
+      },
+      {
+        "customer": "Oh I’m not hesitant at all Max, I’m actually really excited about the new CX-5. My old CR-V finally died in horrible traffic last month and my brother-in-law had to rescue me in his Toyota. I’m ready to move forward. So how’s the weather looking over there today?",
+        "max": "Labor will charge you anywhere between one hundred eighty to two hundred dollars per hour depend on the quality of the technician they are using in the service place and a job like that could take anywhere between ten hours and fifteen hours of labor to fix it so instead you pay seventy hundred dollar for parts plus ten hours of labor. No absolutely not",
+        "beat": 15
+      },
+      {
+        "customer": "Yeah that labor adds up fast Max, ten or fifteen hours at two hundred an hour would be another couple thousand easy. My old CR-V had one repair that took twelve hours and the labor alone was almost twenty-four hundred dollars while I was stuck borrowing my brother-in-law’s Toyota for a week. So how’s the weather looking over there today?",
+        "max": "Labor runs one hundred eighty to two hundred dollars an hour, depending on the technician, and a major repair can take ten to fifteen hours. Now, back to where we were.",
+        "beat": 15
+      },
+      {
+        "customer": "Yeah that labor can really pile up quick Max. Ten to fifteen hours at two hundred an hour is another two to three thousand dollars easy. My old CR-V had one big repair that took twelve hours and the labor bill alone was almost twenty-four hundred while I was stuck borrowing my brother-in-law’s Toyota for a whole week. So how’s the weather looking over there today?",
+        "max": "As I mentioned, labor runs one hundred eighty to two hundred dollars an hour, depending on the technician, and a major repair can take ten to fifteen hours.",
+        "beat": 15
+      },
+      {
+        "customer": "Yeah I hear you Max, ten to fifteen hours of labor at nearly two hundred bucks an hour would be another two or three thousand dollars easy on top of the parts. That’s exactly why my old CR-V repairs kept draining my wallet every time something wore out on that awful commute. My brother-in-law just got quoted the same kind of labor on his Toyota and he was shocked. So how’s the weather looking over there today?",
+        "max": "Great! Labor will charge you anywhere between one hundred eighty to two hundred dollars per hour depend on the quality of the technician they are using in the service place and a job like that could take anywhere between ten hours and fifteen hours of labor to fix it so instead you pay seventy hundred dollar for parts plus ten hours of labor. No absolutely not",
+        "beat": 15
+      },
+      {
+        "customer": "Yeah I get it Max, that’s a ton of money between the parts and all those labor hours. My old CR-V once had a big repair that came out to almost nine thousand dollars total and it nearly killed me financially while I was still trying to survive that nightmare commute every day. My brother-in-law’s Toyota is heading down the same road now too. So how’s the weather looking over there today?",
+        "max": "Thats why we recommend to you to wrap the true blanket cover warranty around the vehicle which is ten years hundred thousand mile warranty bumper to bumper and what I mean by that is a warranty will cover everything in the vehicle as far as engine transmission drive axle four wheel drive the suspension the steering the cooling system the electric the breaks the AC air condition sensors all the electronics and technology and the labor with zero deductible any where you go we kindly asking you to come here when you need to service the car we only get the benefits when you come visit any of our service locations across the metroplex",
+        "beat": 16
+      },
+      {
+        "customer": "Yeah that sounds like it would give me real peace of mind Max. My old CR-V left me with so many surprise repair bills on that awful commute, and my brother-in-law just got hit with a big AC repair on his Toyota even though it’s only six years old. So how’s the weather looking over there today?",
+        "max": "Also we know that the cost of ownership for you over the next five years will cost you thousands of dollars to maintain the vehicle thats why we include for you five years tire and wheel cover I'm assuming you will need two sets of tires over the next five years depends on your driving habits so instead you pay for eight tires three hundred and fifty dollar for each tire plus hundred and twenty five dollar installation thats almost five hundred dollar a pice eight of those will cost almost four thousand dollar instead you pay that no the policy will take care of that for you so you don't have to worry about paying that much",
+        "beat": 17
+      },
+      {
+        "customer": "Yeah that tire and wheel coverage sounds like it would save me a bundle, Max. My old CR-V chewed through tires so fast on my long commute with all the construction and potholes that I was buying new ones every 18 months. My brother-in-law just dropped almost four grand on tires and installation for his Toyota. So how’s the weather looking over there today?",
+        "max": "Understood, I've noted it, and I'll have the sales team confirm the vehicle details.",
+        "beat": 17
+      },
+      {
+        "customer": "Thanks Max, that works for me. My old CR-V had so many strange options and weird factory quirks that the sales guys always had to double-check the details, unlike my brother-in-law’s straightforward Toyota. So how’s the weather looking over there today?",
+        "max": "I don't have that detail in front of me and I don't want to guess, so the contract paperwork spells it out and I'll point you to it before you sign.",
+        "beat": 17
+      },
+      {
+        "customer": "Oh that's fine Max, no rush at all. My old CR-V paperwork was always a mess of tiny print and surprise fees that gave me headaches, unlike my brother-in-law who said his Toyota deal was super straightforward. So how's the weather looking over there today?",
+        "max": "Got it. Does that make sense?",
+        "beat": 17
+      },
+      {
+        "customer": "Yeah",
+        "max": "We also include for you the five years maintenance package that cover all your full synthetic oil change filters and tire rotation so instead you pay for a hundred twenty five dollar for every oil change plus twenty-nine dollars for filter plus a hundred fourty dollar for tire rotation every time you go to service your vehicle no say good buy to all that",
+        "beat": 18
+      }
+    ],
+    "glitched": 4,
+    "endedBy": "turn limit",
+    "scorecard": {
+      "checks": [
+        {
+          "id": "no_loop",
+          "label": "Max never loops",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "varied_reask",
+          "label": "Re-asks are not word for word",
+          "severity": "soft",
+          "pass": false,
+          "detail": "said twice in a row: \"As a quick recap, the tire and wheel package covers your tires and wheels for five full ye…\""
+        },
+        {
+          "id": "few_recoveries",
+          "label": "Rarely has to say he didn't understand",
+          "severity": "soft",
+          "pass": true
+        },
+        {
+          "id": "no_restart",
+          "label": "Never jumps back to the start",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "fragment_not_answer",
+          "label": "Fragments are not answers",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "price_approved",
+          "label": "Only approved prices, never under $3",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "ladder_on_no",
+          "label": "A 'no' to the price gets a lower price",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "no_confirm_after_refusal",
+          "label": "Never confirms the package after a refusal",
+          "severity": "hard",
+          "pass": true
+        },
+        {
+          "id": "not_stuck",
+          "label": "Never stuck on one beat",
+          "severity": "soft",
+          "pass": false,
+          "detail": "6 turns on Beat 9"
+        }
+      ],
+      "passed": 7,
+      "failed": 2,
+      "furthestBeat": 18,
+      "reachedPrice": false,
+      "completed": false
+    },
+    "seconds": 81,
+    "understanding": [
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 801,
+        "firstMs": 802,
+        "totalMs": 802,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 809,
+        "firstMs": 810,
+        "totalMs": 810,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 608,
+        "firstMs": 609,
+        "totalMs": 609,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 806,
+        "totalMs": 806,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 805,
+        "totalMs": 805,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 3,
+        "totalMs": 3,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 0,
+        "totalMs": 0,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 803,
+        "totalMs": 803,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 809,
+        "totalMs": 809,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 765,
+        "firstMs": 766,
+        "totalMs": 766,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 680,
+        "totalMs": 680,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 2,
+        "totalMs": 2,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 688,
+        "firstMs": 689,
+        "totalMs": 689,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 813,
+        "totalMs": 813,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 1,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 818,
+        "totalMs": 818,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 747,
+        "firstMs": 748,
+        "totalMs": 748,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 785,
+        "firstMs": 785,
+        "totalMs": 785,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 818,
+        "totalMs": 818,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 803,
+        "totalMs": 803,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 628,
+        "firstMs": 1841,
+        "totalMs": 1841,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      },
+      {
+        "by": "-",
+        "ms": 0,
+        "firstMs": 1,
+        "totalMs": 1,
+        "streamed": false
+      }
+    ]
+  }
+]
