@@ -63,22 +63,40 @@ export async function createLiveAvatarSession(): Promise<LiveAvatarSessionResult
     effectiveVoiceId = FALLBACK_PUBLIC_VOICE_ID;
   }
 
-  // Step 1: Create session token
-  const tokenRes = await fetch(`${LIVEAVATAR_API_BASE}/sessions/token`, {
-    method: "POST",
-    headers: {
-      "X-API-KEY": apiKey,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      mode: "FULL",
-      avatar_id: effectiveAvatarId,
-      avatar_persona: {
-        voice_id: effectiveVoiceId,
-        language: "en",
+  // Max's voice (2026-11-27): an ElevenLabs voice bound in LiveAvatar (POST /v1/voices/third_party with the
+  // ElevenLabs key stored as a LiveAvatar secret). LIVEAVATAR_VOICE_ID is that LiveAvatar voice UUID; HeyGen
+  // still lip-syncs, ElevenLabs makes the voice. Unset = the avatar's own voice, as before.
+  const customVoiceId = process.env.LIVEAVATAR_VOICE_ID?.trim();
+  const requestToken = (voiceId: string, elevenLabs: boolean) =>
+    fetch(`${LIVEAVATAR_API_BASE}/sessions/token`, {
+      method: "POST",
+      headers: {
+        "X-API-KEY": apiKey,
+        "Content-Type": "application/json",
       },
-    }),
-  });
+      body: JSON.stringify({
+        mode: "FULL",
+        avatar_id: effectiveAvatarId,
+        avatar_persona: {
+          voice_id: voiceId,
+          language: "en",
+          // eleven_flash_v2_5: ElevenLabs' fastest model (LiveAvatar's default for ElevenLabs voices)
+          ...(elevenLabs ? { voice_settings: { provider: "elevenLabs", model: process.env.ELEVENLABS_MODEL?.trim() || "eleven_flash_v2_5" } } : {}),
+        },
+      }),
+    });
+
+  // Step 1: Create session token (the ElevenLabs voice first; if LiveAvatar refuses it, e.g. a free-tier
+  // ElevenLabs key or a deleted voice, the avatar's own voice, so a call never fails because of the voice)
+  let voiceUsed = customVoiceId ? "elevenlabs" : "avatar";
+  let tokenRes = await requestToken(customVoiceId || effectiveVoiceId, Boolean(customVoiceId));
+  if (customVoiceId && !tokenRes.ok) {
+    const reason = (await tokenRes.text()).slice(0, 300);
+    console.error(JSON.stringify({ event: "custom_voice_refused", status: tokenRes.status, reason }));
+    voiceUsed = "avatar";
+    tokenRes = await requestToken(effectiveVoiceId, false);
+  }
+  console.log(JSON.stringify({ event: "liveavatar_voice", voice: voiceUsed }));
 
   const tokenText = await tokenRes.text();
   let tokenData: any;

@@ -61,6 +61,14 @@ Next.js app (`tavus-avatar/`) for an AWS Summit Sydney booth demo. Real-time con
     claims, and the word-for-word recording disclosure; a reply that fails twice, times out
     (`FREE_AI_TIMEOUT_MS`, default 4 s) or errors is taken by the scripted controller for that turn.
     Overrides the other two switches. Not approved by TXM for real customers.
+- `LIVEAVATAR_VOICE_ID` - optional; Max's voice. An ElevenLabs voice (`KN1ax0awivdPOzZqVQM7`) bound in
+  LiveAvatar: the ElevenLabs key is stored as a LiveAvatar secret (`max-elevenlabs`) and
+  `POST /v1/voices/third_party` returned this LiveAvatar voice UUID. `createLiveAvatarSession`
+  (`src/lib/liveavatar-api.ts`) sends it with `voice_settings: {provider: "elevenLabs", model}`
+  (`ELEVENLABS_MODEL`, default `eleven_flash_v2_5`); if LiveAvatar refuses it (free-tier ElevenLabs key,
+  deleted voice) the session falls back to the avatar's own voice and logs `custom_voice_refused`.
+  HeyGen still lip-syncs. `ELEVENLABS_API_KEY` (from `npx @elevenlabs/cli onboard init`, in `.env.local`)
+  is only needed to bind a voice; the app itself does not call ElevenLabs.
 - `SENTRY_DSN` - optional. Every error (uncaught route errors via `src/instrumentation.ts`
   `onRequestError`, the turn API's caught failures, and call-screen errors sent to `/api/client-error`)
   goes through `src/lib/error-report.ts`: always one JSON `"event":"error"` log line, and with this set,
